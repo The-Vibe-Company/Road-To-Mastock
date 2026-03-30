@@ -1,8 +1,11 @@
 "use client";
 
+import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { SetForm } from "./set-form";
 import { SetRow } from "./set-row";
-import { CategoryBadge } from "./category-badge";
+import { X } from "lucide-react";
 
 interface ExerciseSet {
   id: number;
@@ -35,49 +38,58 @@ export function ExerciseBlock({
   onRemoveExercise,
 }: ExerciseBlockProps) {
   const lastSet = sets[sets.length - 1];
+  const totalVolume = sets.reduce((sum, s) => sum + s.weightKg * s.reps, 0);
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4">
-      <div className="mb-3 flex items-start justify-between">
+    <Card className="border-l-2 border-l-primary/50 card-glow">
+      <CardHeader>
         <div>
-          <h3 className="font-semibold">{nameFr}</h3>
-          <p className="text-xs text-zinc-500">{name}</p>
-          <div className="mt-1 flex gap-1.5">
-            <CategoryBadge category={category} />
+          <CardTitle className="text-base font-black tracking-tight">{nameFr}</CardTitle>
+          <p className="text-xs text-muted-foreground">{name}</p>
+          <div className="mt-2 flex gap-1.5">
+            <Badge variant="secondary" className="text-[10px] font-bold">{category}</Badge>
             {muscleGroup && (
-              <span className="inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
-                {muscleGroup}
-              </span>
+              <Badge variant="outline" className="text-[10px]">{muscleGroup}</Badge>
+            )}
+            {totalVolume > 0 && (
+              <Badge variant="outline" className="border-primary/20 text-[10px] text-primary">
+                {Math.round(totalVolume)} kg vol.
+              </Badge>
             )}
           </div>
         </div>
-        <button
-          onClick={() => onRemoveExercise(sessionExerciseId)}
-          className="rounded-lg px-2 py-1 text-xs text-red-500 active:bg-red-50"
-        >
-          Retirer
-        </button>
-      </div>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => onRemoveExercise(sessionExerciseId)}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <X className="size-4" />
+          </Button>
+        </CardAction>
+      </CardHeader>
 
-      {sets.length > 0 && (
-        <div className="mb-3 border-t border-zinc-100 pt-2">
-          {sets.map((s) => (
-            <SetRow
-              key={s.id}
-              setNumber={s.setNumber}
-              weightKg={s.weightKg}
-              reps={s.reps}
-              onDelete={() => onDeleteSet(s.id)}
-            />
-          ))}
-        </div>
-      )}
-
-      <SetForm
-        onAdd={(w, r) => onAddSet(sessionExerciseId, w, r)}
-        lastWeight={lastSet?.weightKg}
-        lastReps={lastSet?.reps}
-      />
-    </div>
+      <CardContent>
+        {sets.length > 0 && (
+          <div className="mb-3 border-b border-border/50 pb-2">
+            {sets.map((s) => (
+              <SetRow
+                key={s.id}
+                setNumber={s.setNumber}
+                weightKg={s.weightKg}
+                reps={s.reps}
+                onDelete={() => onDeleteSet(s.id)}
+              />
+            ))}
+          </div>
+        )}
+        <SetForm
+          onAdd={(w, r) => onAddSet(sessionExerciseId, w, r)}
+          lastWeight={lastSet?.weightKg}
+          lastReps={lastSet?.reps}
+        />
+      </CardContent>
+    </Card>
   );
 }

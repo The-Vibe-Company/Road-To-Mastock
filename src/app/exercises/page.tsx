@@ -2,14 +2,16 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { exercises } from "@/lib/db/schema";
 import { asc } from "drizzle-orm";
-import { CategoryBadge } from "@/components/category-badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 const CATEGORY_FR: Record<string, string> = {
   "Upper Body": "Haut du corps",
   "Lower Body": "Bas du corps",
-  Core: "Abdos / Core",
+  Core: "Core",
   Cardio: "Cardio",
   "Free Weights": "Poids libres",
 };
@@ -18,13 +20,8 @@ export default async function ExerciseCatalog() {
   const allExercises = await db
     .select()
     .from(exercises)
-    .orderBy(
-      asc(exercises.category),
-      asc(exercises.muscleGroup),
-      asc(exercises.sortOrder)
-    );
+    .orderBy(asc(exercises.category), asc(exercises.muscleGroup), asc(exercises.sortOrder));
 
-  // Group: category -> muscleGroup -> exercises
   const tree: Record<string, Record<string, typeof allExercises>> = {};
   for (const ex of allExercises) {
     const cat = ex.category;
@@ -38,42 +35,49 @@ export default async function ExerciseCatalog() {
     <div className="min-h-dvh px-4 pb-8 pt-6">
       <Link
         href="/"
-        className="mb-3 inline-block text-sm text-zinc-500 active:text-zinc-700"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
       >
-        &larr; Retour
+        <ArrowLeft className="size-4" />
+        Retour
       </Link>
-      <h1 className="mb-6 text-2xl font-bold">Catalogue des exercices</h1>
+      <h1 className="mb-6 text-2xl font-black tracking-tight">Catalogue</h1>
 
-      <div className="space-y-6">
+      <div className="space-y-8">
         {Object.entries(tree).map(([category, groups]) => (
           <div key={category}>
-            <div className="mb-3 flex items-center gap-2">
-              <CategoryBadge category={category} />
-              <h2 className="text-lg font-semibold">
+            <div className="mb-3">
+              <Badge
+                variant="secondary"
+                className="bg-primary/10 px-3 py-1 text-xs font-bold text-primary"
+              >
                 {CATEGORY_FR[category] || category}
-              </h2>
+              </Badge>
             </div>
 
             <div className="space-y-3">
               {Object.entries(groups).map(([muscleGroup, exs]) => (
-                <div
-                  key={muscleGroup}
-                  className="rounded-xl border border-zinc-200 bg-white p-4"
-                >
-                  <h3 className="mb-2 text-sm font-semibold text-zinc-500">
-                    {muscleGroup}
-                  </h3>
-                  <div className="space-y-2">
+                <Card key={muscleGroup} className="card-glow">
+                  <CardHeader>
+                    <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
+                      {muscleGroup}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-0.5">
                     {exs.map((ex) => (
-                      <div key={ex.id} className="flex justify-between">
+                      <Link
+                        key={ex.id}
+                        href={`/exercises/${ex.id}`}
+                        className="flex items-center justify-between rounded-xl px-3 py-3 transition-all hover:bg-accent active:scale-[0.97]"
+                      >
                         <div>
-                          <p className="text-sm font-medium">{ex.nameFr}</p>
-                          <p className="text-xs text-zinc-400">{ex.name}</p>
+                          <p className="font-bold">{ex.nameFr}</p>
+                          <p className="text-xs text-muted-foreground">{ex.name}</p>
                         </div>
-                      </div>
+                        <ChevronRight className="size-4 text-primary/40" />
+                      </Link>
                     ))}
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>

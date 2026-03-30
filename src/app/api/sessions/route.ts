@@ -1,8 +1,12 @@
 import { db } from "@/lib/db";
-import { sessions, sessionExercises, sets } from "@/lib/db/schema";
-import { desc, eq, count, sql } from "drizzle-orm";
+import { sessions, sessionExercises } from "@/lib/db/schema";
+import { desc, eq, count, and } from "drizzle-orm";
+import { getAuthUser } from "@/lib/auth";
 
 export async function GET() {
+  const auth = await getAuthUser();
+  if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const result = await db
     .select({
       id: sessions.id,
@@ -13,6 +17,7 @@ export async function GET() {
     })
     .from(sessions)
     .leftJoin(sessionExercises, eq(sessions.id, sessionExercises.sessionId))
+    .where(eq(sessions.userId, auth.userId))
     .groupBy(sessions.id)
     .orderBy(desc(sessions.date), desc(sessions.createdAt));
 
@@ -20,10 +25,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await getAuthUser();
+  if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const body = await request.json();
   const [session] = await db
     .insert(sessions)
     .values({
+      userId: auth.userId,
       date: body.date || new Date().toISOString().split("T")[0],
       notes: body.notes || null,
     })

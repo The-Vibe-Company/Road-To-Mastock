@@ -1,18 +1,22 @@
 import { db } from "@/lib/db";
 import { sessions, sessionExercises, sets, exercises } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { getAuthUser } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await getAuthUser();
+  if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const sessionId = parseInt(id);
 
   const [session] = await db
     .select()
     .from(sessions)
-    .where(eq(sessions.id, sessionId));
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, auth.userId)));
 
   if (!session) {
     return Response.json({ error: "Session not found" }, { status: 404 });
@@ -38,7 +42,6 @@ export async function GET(
     .where(eq(sessionExercises.sessionId, sessionId))
     .orderBy(sessionExercises.sortOrder, sets.setNumber);
 
-  // Group by exercise
   const grouped: Record<
     number,
     {
@@ -84,7 +87,13 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await getAuthUser();
+  if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
-  await db.delete(sessions).where(eq(sessions.id, parseInt(id)));
+  await db
+    .delete(sessions)
+    .where(and(eq(sessions.id, parseInt(id)), eq(sessions.userId, auth.userId)));
+
   return Response.json({ ok: true });
 }
