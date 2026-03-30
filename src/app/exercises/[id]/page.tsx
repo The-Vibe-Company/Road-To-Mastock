@@ -8,10 +8,8 @@ import { ArrowLeft, TrendingUp, Minus, Trophy, Calendar } from "lucide-react";
 
 interface ExerciseInfo {
   id: number;
-  category: string;
-  muscleGroup: string | null;
   name: string;
-  nameFr: string;
+  muscleGroup: string | null;
 }
 
 interface SessionHistory {
@@ -83,14 +81,12 @@ export default function ExerciseDetail({
       </Link>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-black tracking-tight">{exercise.nameFr}</h1>
-        <p className="text-sm text-muted-foreground">{exercise.name}</p>
-        <div className="mt-2 flex gap-1.5">
-          <Badge variant="secondary" className="font-bold">{exercise.category}</Badge>
-          {exercise.muscleGroup && (
-            <Badge variant="outline">{exercise.muscleGroup}</Badge>
-          )}
-        </div>
+        <h1 className="text-2xl font-black tracking-tight">{exercise.name}</h1>
+        {exercise.muscleGroup && (
+          <div className="mt-2">
+            <Badge variant="secondary" className="font-bold">{exercise.muscleGroup}</Badge>
+          </div>
+        )}
       </div>
 
       {/* Stats */}

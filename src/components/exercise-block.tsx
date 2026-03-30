@@ -17,8 +17,6 @@ interface ExerciseSet {
 interface ExerciseBlockProps {
   sessionExerciseId: number;
   name: string;
-  nameFr: string;
-  category: string;
   muscleGroup: string | null;
   sets: ExerciseSet[];
   onAddSet: (sessionExerciseId: number, weightKg: number, reps: number) => void;
@@ -29,8 +27,6 @@ interface ExerciseBlockProps {
 export function ExerciseBlock({
   sessionExerciseId,
   name,
-  nameFr,
-  category,
   muscleGroup,
   sets,
   onAddSet,
@@ -44,12 +40,10 @@ export function ExerciseBlock({
     <Card className="border-l-2 border-l-primary/50 card-glow">
       <CardHeader>
         <div>
-          <CardTitle className="text-base font-black tracking-tight">{nameFr}</CardTitle>
-          <p className="text-xs text-muted-foreground">{name}</p>
+          <CardTitle className="text-base font-black tracking-tight">{name}</CardTitle>
           <div className="mt-2 flex gap-1.5">
-            <Badge variant="secondary" className="text-[10px] font-bold">{category}</Badge>
             {muscleGroup && (
-              <Badge variant="outline" className="text-[10px]">{muscleGroup}</Badge>
+              <Badge variant="secondary" className="text-[10px] font-bold">{muscleGroup}</Badge>
             )}
             {totalVolume > 0 && (
               <Badge variant="outline" className="border-primary/20 text-[10px] text-primary">

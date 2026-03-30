@@ -17,18 +17,12 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
-export const exercises = pgTable(
-  "exercises",
-  {
-    id: serial("id").primaryKey(),
-    category: text("category").notNull(),
-    muscleGroup: text("muscle_group"),
-    name: text("name").notNull(),
-    nameFr: text("name_fr").notNull(),
-    sortOrder: integer("sort_order").default(0),
-  },
-  (table) => [unique("exercises_unique").on(table.category, table.muscleGroup, table.name)]
-);
+export const exercises = pgTable("exercises", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  muscleGroup: text("muscle_group"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
 
 export const sessions = pgTable("sessions", {
   id: serial("id").primaryKey(),

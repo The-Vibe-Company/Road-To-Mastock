@@ -27,8 +27,6 @@ export async function GET(
       sessionExerciseId: sessionExercises.id,
       exerciseId: exercises.id,
       exerciseName: exercises.name,
-      exerciseNameFr: exercises.nameFr,
-      category: exercises.category,
       muscleGroup: exercises.muscleGroup,
       sortOrder: sessionExercises.sortOrder,
       setId: sets.id,
@@ -48,8 +46,6 @@ export async function GET(
       sessionExerciseId: number;
       exerciseId: number;
       name: string;
-      nameFr: string;
-      category: string;
       muscleGroup: string | null;
       sets: { id: number; setNumber: number; weightKg: number; reps: number }[];
     }
@@ -61,8 +57,6 @@ export async function GET(
         sessionExerciseId: row.sessionExerciseId,
         exerciseId: row.exerciseId,
         name: row.exerciseName,
-        nameFr: row.exerciseNameFr,
-        category: row.category,
         muscleGroup: row.muscleGroup,
         sets: [],
       };

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ExercisePicker } from "./exercise-picker";
 import { ExerciseBlock } from "./exercise-block";
+import { DatePicker } from "./date-picker";
 import { Plus, Trash2, ArrowLeft, Dumbbell, Activity, Weight, Layers, CalendarDays } from "lucide-react";
 import Link from "next/link";
 
@@ -19,8 +20,6 @@ interface SessionExercise {
   sessionExerciseId: number;
   exerciseId: number;
   name: string;
-  nameFr: string;
-  category: string;
   muscleGroup: string | null;
   sets: ExerciseSet[];
 }
@@ -35,6 +34,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   const router = useRouter();
   const [session, setSession] = useState<SessionData | null>(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refreshSession = useCallback(async () => {
@@ -51,8 +51,6 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   const handleSelectExercise = async (exercise: {
     id: number;
     name: string;
-    nameFr: string;
-    category: string;
     muscleGroup: string | null;
   }) => {
     await fetch("/api/session-exercises", {
@@ -142,20 +140,24 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
           <ArrowLeft className="size-4" />
           Retour
         </Link>
-        <label className="group relative flex cursor-pointer items-center gap-2">
-          <h1 className="text-2xl font-black capitalize tracking-tight">
-            {date}
-          </h1>
-          <CalendarDays className="size-5 text-muted-foreground transition-colors group-hover:text-primary" />
-          <input
-            type="date"
-            className="absolute inset-0 cursor-pointer opacity-0"
+        <div className="relative">
+          <button
+            type="button"
+            className="group flex items-center gap-2 text-left"
+            onClick={() => setShowDatePicker(true)}
+          >
+            <h1 className="text-2xl font-black capitalize tracking-tight">
+              {date}
+            </h1>
+            <CalendarDays className="size-5 text-muted-foreground transition-colors group-hover:text-primary" />
+          </button>
+          <DatePicker
             value={session.date}
-            onChange={(e) => {
-              if (e.target.value) handleDateChange(e.target.value);
-            }}
+            onChange={handleDateChange}
+            open={showDatePicker}
+            onOpenChange={setShowDatePicker}
           />
-        </label>
+        </div>
         {exercises.length > 0 && (
           <div className="mt-3 flex gap-2">
             <div className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5">
@@ -202,8 +204,6 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
               key={ex.sessionExerciseId}
               sessionExerciseId={ex.sessionExerciseId}
               name={ex.name}
-              nameFr={ex.nameFr}
-              category={ex.category}
               muscleGroup={ex.muscleGroup}
               sets={ex.sets}
               onAddSet={handleAddSet}
@@ -242,6 +242,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
         onOpenChange={setShowPicker}
         onSelect={handleSelectExercise}
       />
+
     </div>
   );
 }

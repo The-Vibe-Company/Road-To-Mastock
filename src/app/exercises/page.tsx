@@ -8,27 +8,17 @@ import { ArrowLeft, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-const CATEGORY_FR: Record<string, string> = {
-  "Upper Body": "Haut du corps",
-  "Lower Body": "Bas du corps",
-  Core: "Core",
-  Cardio: "Cardio",
-  "Free Weights": "Poids libres",
-};
-
 export default async function ExerciseCatalog() {
   const allExercises = await db
     .select()
     .from(exercises)
-    .orderBy(asc(exercises.category), asc(exercises.muscleGroup), asc(exercises.sortOrder));
+    .orderBy(asc(exercises.muscleGroup), asc(exercises.name));
 
-  const tree: Record<string, Record<string, typeof allExercises>> = {};
+  const grouped: Record<string, typeof allExercises> = {};
   for (const ex of allExercises) {
-    const cat = ex.category;
-    const mg = ex.muscleGroup || "General";
-    if (!tree[cat]) tree[cat] = {};
-    if (!tree[cat][mg]) tree[cat][mg] = [];
-    tree[cat][mg].push(ex);
+    const key = ex.muscleGroup || "Autre";
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(ex);
   }
 
   return (
@@ -42,47 +32,42 @@ export default async function ExerciseCatalog() {
       </Link>
       <h1 className="mb-6 text-2xl font-black tracking-tight">Catalogue</h1>
 
-      <div className="space-y-8">
-        {Object.entries(tree).map(([category, groups]) => (
-          <div key={category}>
-            <div className="mb-3">
-              <Badge
-                variant="secondary"
-                className="bg-primary/10 px-3 py-1 text-xs font-bold text-primary"
-              >
-                {CATEGORY_FR[category] || category}
-              </Badge>
-            </div>
-
-            <div className="space-y-3">
-              {Object.entries(groups).map(([muscleGroup, exs]) => (
-                <Card key={muscleGroup} className="card-glow">
-                  <CardHeader>
-                    <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
-                      {muscleGroup}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-0.5">
-                    {exs.map((ex) => (
-                      <Link
-                        key={ex.id}
-                        href={`/exercises/${ex.id}`}
-                        className="flex items-center justify-between rounded-xl px-3 py-3 transition-all hover:bg-accent active:scale-[0.97]"
-                      >
-                        <div>
-                          <p className="font-bold">{ex.nameFr}</p>
-                          <p className="text-xs text-muted-foreground">{ex.name}</p>
-                        </div>
-                        <ChevronRight className="size-4 text-primary/40" />
-                      </Link>
-                    ))}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      {Object.keys(grouped).length === 0 ? (
+        <p className="py-16 text-center text-sm text-muted-foreground">
+          Aucun exercice. Crée-en un depuis une séance.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(grouped).map(([muscleGroup, exs]) => (
+            <Card key={muscleGroup} className="card-glow">
+              <CardHeader>
+                <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
+                  {muscleGroup}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0.5">
+                {exs.map((ex) => (
+                  <Link
+                    key={ex.id}
+                    href={`/exercises/${ex.id}`}
+                    className="flex items-center justify-between rounded-xl px-3 py-3 transition-all hover:bg-accent active:scale-[0.97]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold">{ex.name}</p>
+                      {ex.muscleGroup && (
+                        <Badge variant="outline" className="text-[10px]">
+                          {ex.muscleGroup}
+                        </Badge>
+                      )}
+                    </div>
+                    <ChevronRight className="size-4 text-primary/40" />
+                  </Link>
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
