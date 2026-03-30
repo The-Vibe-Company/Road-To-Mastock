@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ExercisePicker } from "./exercise-picker";
 import { ExerciseBlock } from "./exercise-block";
-import { Plus, Trash2, ArrowLeft, Dumbbell, Activity, Weight, Layers } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Dumbbell, Activity, Weight, Layers, CalendarDays } from "lucide-react";
 import Link from "next/link";
 
 interface ExerciseSet {
@@ -115,6 +115,15 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
     month: "long",
   });
 
+  const handleDateChange = async (newDate: string) => {
+    await fetch(`/api/sessions/${sessionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: newDate }),
+    });
+    await refreshSession();
+  };
+
   const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
   const totalVolume = exercises.reduce(
     (sum, ex) =>
@@ -133,9 +142,20 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
           <ArrowLeft className="size-4" />
           Retour
         </Link>
-        <h1 className="text-2xl font-black capitalize tracking-tight">
-          {date}
-        </h1>
+        <label className="group relative flex cursor-pointer items-center gap-2">
+          <h1 className="text-2xl font-black capitalize tracking-tight">
+            {date}
+          </h1>
+          <CalendarDays className="size-5 text-muted-foreground transition-colors group-hover:text-primary" />
+          <input
+            type="date"
+            className="absolute inset-0 cursor-pointer opacity-0"
+            value={session.date}
+            onChange={(e) => {
+              if (e.target.value) handleDateChange(e.target.value);
+            }}
+          />
+        </label>
         {exercises.length > 0 && (
           <div className="mt-3 flex gap-2">
             <div className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5">

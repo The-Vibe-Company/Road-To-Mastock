@@ -83,6 +83,33 @@ export async function GET(
   });
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await getAuthUser();
+  if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const body = await request.json();
+
+  if (!body.date) {
+    return Response.json({ error: "Date is required" }, { status: 400 });
+  }
+
+  const [updated] = await db
+    .update(sessions)
+    .set({ date: body.date })
+    .where(and(eq(sessions.id, parseInt(id)), eq(sessions.userId, auth.userId)))
+    .returning();
+
+  if (!updated) {
+    return Response.json({ error: "Session not found" }, { status: 404 });
+  }
+
+  return Response.json(updated);
+}
+
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
