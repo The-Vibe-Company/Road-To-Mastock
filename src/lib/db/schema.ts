@@ -6,6 +6,7 @@ import {
   real,
   date,
   timestamp,
+  boolean,
   unique,
 } from "drizzle-orm/pg-core";
 
@@ -43,6 +44,7 @@ export const sessionExercises = pgTable("session_exercises", {
     .notNull()
     .references(() => exercises.id),
   sortOrder: integer("sort_order").default(0),
+  locked: boolean("locked").default(false).notNull(),
 });
 
 export const sets = pgTable("sets", {

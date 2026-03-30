@@ -29,6 +29,7 @@ export async function GET(
       exerciseName: exercises.name,
       muscleGroup: exercises.muscleGroup,
       sortOrder: sessionExercises.sortOrder,
+      locked: sessionExercises.locked,
       setId: sets.id,
       setNumber: sets.setNumber,
       weightKg: sets.weightKg,
@@ -47,6 +48,7 @@ export async function GET(
       exerciseId: number;
       name: string;
       muscleGroup: string | null;
+      locked: boolean;
       sets: { id: number; setNumber: number; weightKg: number; reps: number }[];
     }
   > = {};
@@ -58,6 +60,7 @@ export async function GET(
         exerciseId: row.exerciseId,
         name: row.exerciseName,
         muscleGroup: row.muscleGroup,
+        locked: row.locked,
         sets: [],
       };
     }

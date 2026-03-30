@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Road to Massive
+# Road to Mastock
 
 Application web mobile-first pour tracker les séances de musculation à BasicFit.
 

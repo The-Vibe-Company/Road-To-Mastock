@@ -8,8 +8,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Road to Massive",
-  description: "Track your gym sessions. Get massive.",
+  title: "Road to Mastock",
+  description: "Track your gym sessions. Get mastock.",
 };
 
 export const viewport: Viewport = {

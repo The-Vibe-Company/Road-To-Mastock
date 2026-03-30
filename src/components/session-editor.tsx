@@ -21,6 +21,7 @@ interface SessionExercise {
   exerciseId: number;
   name: string;
   muscleGroup: string | null;
+  locked: boolean;
   sets: ExerciseSet[];
 }
 
@@ -83,6 +84,15 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   const handleRemoveExercise = async (sessionExerciseId: number) => {
     await fetch(`/api/session-exercises/${sessionExerciseId}`, {
       method: "DELETE",
+    });
+    await refreshSession();
+  };
+
+  const handleToggleLock = async (sessionExerciseId: number, locked: boolean) => {
+    await fetch(`/api/session-exercises/${sessionExerciseId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locked }),
     });
     await refreshSession();
   };
@@ -203,12 +213,15 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
             <ExerciseBlock
               key={ex.sessionExerciseId}
               sessionExerciseId={ex.sessionExerciseId}
+              exerciseId={ex.exerciseId}
               name={ex.name}
               muscleGroup={ex.muscleGroup}
+              locked={ex.locked}
               sets={ex.sets}
               onAddSet={handleAddSet}
               onDeleteSet={handleDeleteSet}
               onRemoveExercise={handleRemoveExercise}
+              onToggleLock={handleToggleLock}
             />
           ))}
         </div>

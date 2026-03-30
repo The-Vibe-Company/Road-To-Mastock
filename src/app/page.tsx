@@ -20,7 +20,7 @@ export default async function Home() {
     .from(users)
     .where(eq(users.id, auth.userId));
 
-  const allSessions = await db.execute(sql`
+  const result = await db.execute(sql`
     SELECT
       s.id,
       s.date,
@@ -34,7 +34,8 @@ export default async function Home() {
     FROM sessions s
     WHERE s.user_id = ${auth.userId}
     ORDER BY s.date DESC, s.created_at DESC
-  `) as unknown as { id: number; date: string; exercise_count: number; total_volume: number }[];
+  `);
+  const allSessions = (result.rows ?? result) as unknown as { id: number; date: string; exercise_count: number; total_volume: number }[];
 
   return (
     <div className="flex min-h-dvh flex-col px-4 pb-28 pt-10">
@@ -44,7 +45,7 @@ export default async function Home() {
           <div>
             <h1 className="text-3xl font-black tracking-tighter">
               ROAD TO{" "}
-              <span className="text-gradient-orange">MASSIVE</span>
+              <span className="text-gradient-orange">MASTOCK</span>
             </h1>
             <p className="mt-1 text-sm font-medium text-muted-foreground">
               {user?.name ? `Hey ${user.name}` : "Tes séances"} — {allSessions.length} séance{allSessions.length !== 1 ? "s" : ""}

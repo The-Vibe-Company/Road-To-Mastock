@@ -32,6 +32,7 @@ export default function ExerciseDetail({
   const [data, setData] = useState<HistoryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [chartTab, setChartTab] = useState<"weight" | "volume">("weight");
+  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(`/api/exercises/${id}/history`)
@@ -164,40 +165,86 @@ export default function ExerciseDetail({
               </div>
             </CardHeader>
             <CardContent>
-              <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.7 0.2 45)" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="oklch(0.7 0.2 45)" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                {/* Area */}
-                <path d={areaPath} fill="url(#chartGrad)" />
-                {/* Line */}
-                <path d={linePath} fill="none" stroke="oklch(0.7 0.2 45)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                {/* Dots */}
-                {points.map((p, i) => (
-                  <circle
-                    key={i}
-                    cx={p.x}
-                    cy={p.y}
-                    r={i === points.length - 1 ? 5 : 3}
-                    fill={i === points.length - 1 ? "oklch(0.7 0.2 45)" : "oklch(0.15 0 0)"}
-                    stroke="oklch(0.7 0.2 45)"
-                    strokeWidth={i === points.length - 1 ? 0 : 1.5}
-                  />
-                ))}
-              </svg>
+              <div className="relative overflow-hidden" onMouseLeave={() => setHoveredPoint(null)} onTouchEnd={() => setHoveredPoint(null)}>
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="oklch(0.7 0.2 45)" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="oklch(0.7 0.2 45)" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  {/* Area */}
+                  <path d={areaPath} fill="url(#chartGrad)" />
+                  {/* Line */}
+                  <path d={linePath} fill="none" stroke="oklch(0.7 0.2 45)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  {/* Vertical hover line */}
+                  {hoveredPoint !== null && (
+                    <line
+                      x1={points[hoveredPoint].x}
+                      y1={padY}
+                      x2={points[hoveredPoint].x}
+                      y2={H}
+                      stroke="oklch(0.7 0.2 45)"
+                      strokeWidth="1"
+                      strokeDasharray="4 3"
+                      opacity="0.4"
+                    />
+                  )}
+                  {/* Dots */}
+                  {points.map((p, i) => (
+                    <g key={i}>
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r={hoveredPoint === i ? 6 : i === points.length - 1 ? 5 : 3}
+                        fill={hoveredPoint === i || i === points.length - 1 ? "oklch(0.7 0.2 45)" : "oklch(0.15 0 0)"}
+                        stroke="oklch(0.7 0.2 45)"
+                        strokeWidth={hoveredPoint === i || i === points.length - 1 ? 0 : 1.5}
+                        className="transition-all duration-150"
+                      />
+                      {/* Invisible larger hit area */}
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r={16}
+                        fill="transparent"
+                        onMouseEnter={() => setHoveredPoint(i)}
+                        onTouchStart={() => setHoveredPoint(i)}
+                        style={{ cursor: "pointer" }}
+                      />
+                    </g>
+                  ))}
+                </svg>
+
+                {/* Tooltip */}
+                {hoveredPoint !== null && (() => {
+                  const p = points[hoveredPoint];
+                  const pctX = (p.x / W) * 100;
+                  const dateStr = new Date(p.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+                  const val = chartTab === "weight" ? `${p.value} kg` : `${Math.round(p.value)} kg`;
+                  const isLeft = pctX < 15;
+                  const isRight = pctX > 85;
+                  return (
+                    <div
+                      className="pointer-events-none absolute top-2 z-10"
+                      style={{
+                        left: `${pctX}%`,
+                        transform: isLeft ? "translateX(0%)" : isRight ? "translateX(-100%)" : "translateX(-50%)",
+                      }}
+                    >
+                      <div className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-primary/30 bg-card/95 px-3 py-1.5 shadow-xl backdrop-blur-sm">
+                        <span className="text-xs font-black text-primary">{val}</span>
+                        <span className="text-[10px] font-medium text-muted-foreground capitalize">{dateStr}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
 
               {/* Labels */}
               <div className="mt-1 flex justify-between text-[10px] font-medium text-muted-foreground">
                 <span>
                   {new Date(chartData[0].date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                </span>
-                <span className="font-bold text-primary">
-                  {chartTab === "weight"
-                    ? `${values[values.length - 1]} kg`
-                    : `${Math.round(values[values.length - 1])} kg`}
                 </span>
                 <span>
                   {new Date(chartData[chartData.length - 1].date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
