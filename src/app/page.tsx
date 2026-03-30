@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { sessions, sessionExercises, users } from "@/lib/db/schema";
-import { desc, eq, count } from "drizzle-orm";
+import { sessions, sessionExercises, sets, users } from "@/lib/db/schema";
+import { desc, eq, count, sum, sql } from "drizzle-orm";
 import { SessionCard } from "@/components/session-card";
 import { Button } from "@/components/ui/button";
 import { Plus, Dumbbell, BookOpen } from "lucide-react";
@@ -20,17 +20,21 @@ export default async function Home() {
     .from(users)
     .where(eq(users.id, auth.userId));
 
-  const allSessions = await db
-    .select({
-      id: sessions.id,
-      date: sessions.date,
-      exerciseCount: count(sessionExercises.id),
-    })
-    .from(sessions)
-    .leftJoin(sessionExercises, eq(sessions.id, sessionExercises.sessionId))
-    .where(eq(sessions.userId, auth.userId))
-    .groupBy(sessions.id)
-    .orderBy(desc(sessions.date), desc(sessions.createdAt));
+  const allSessions = await db.execute(sql`
+    SELECT
+      s.id,
+      s.date,
+      (SELECT COUNT(*) FROM session_exercises se WHERE se.session_id = s.id) AS exercise_count,
+      COALESCE((
+        SELECT SUM(st.weight_kg * st.reps)
+        FROM sets st
+        JOIN session_exercises se ON se.id = st.session_exercise_id
+        WHERE se.session_id = s.id
+      ), 0) AS total_volume
+    FROM sessions s
+    WHERE s.user_id = ${auth.userId}
+    ORDER BY s.date DESC, s.created_at DESC
+  `) as unknown as { id: number; date: string; exercise_count: number; total_volume: number }[];
 
   return (
     <div className="flex min-h-dvh flex-col px-4 pb-28 pt-10">
@@ -80,7 +84,8 @@ export default async function Home() {
               key={s.id}
               id={s.id}
               date={s.date}
-              exerciseCount={s.exerciseCount}
+              exerciseCount={Number(s.exercise_count)}
+              totalVolume={Math.round(Number(s.total_volume))}
             />
           ))}
         </div>

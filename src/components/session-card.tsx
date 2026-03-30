@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { ChevronRight, Flame } from "lucide-react";
+import { ChevronRight, Flame, Weight } from "lucide-react";
 
 interface SessionCardProps {
   id: number;
   date: string;
   exerciseCount: number;
+  totalVolume: number;
 }
 
-export function SessionCard({ id, date, exerciseCount }: SessionCardProps) {
+export function SessionCard({ id, date, exerciseCount, totalVolume }: SessionCardProps) {
   const d = new Date(date);
   const formatted = d.toLocaleDateString("fr-FR", {
     weekday: "long",
@@ -23,9 +24,17 @@ export function SessionCard({ id, date, exerciseCount }: SessionCardProps) {
         </div>
         <div className="flex-1">
           <p className="font-bold capitalize">{formatted}</p>
-          <p className="text-xs text-muted-foreground">
-            {exerciseCount} exercice{exerciseCount !== 1 ? "s" : ""}
-          </p>
+          <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
+            <span>{exerciseCount} exercice{exerciseCount !== 1 ? "s" : ""}</span>
+            {totalVolume > 0 && (
+              <span className="flex items-center gap-1 font-bold text-primary">
+                <Weight className="size-3" />
+                {totalVolume >= 1000
+                  ? `${(totalVolume / 1000).toFixed(1)}t`
+                  : `${totalVolume} kg`}
+              </span>
+            )}
+          </div>
         </div>
         <ChevronRight className="size-4 text-primary/40" />
       </div>

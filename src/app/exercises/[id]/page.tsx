@@ -4,7 +4,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, TrendingUp, Minus, Trophy, Calendar } from "lucide-react";
+import { ArrowLeft, Minus, Trophy, Calendar } from "lucide-react";
 
 interface ExerciseInfo {
   id: number;
@@ -31,6 +31,7 @@ export default function ExerciseDetail({
   const { id } = use(params);
   const [data, setData] = useState<HistoryData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [chartTab, setChartTab] = useState<"weight" | "volume">("weight");
 
   useEffect(() => {
     fetch(`/api/exercises/${id}/history`)
@@ -112,56 +113,106 @@ export default function ExerciseDetail({
       </div>
 
       {/* Chart */}
-      {chartData.length > 1 && (
-        <Card className="mb-6 card-glow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm font-bold">
-              <TrendingUp className="size-4 text-primary" />
-              Progression du poids max
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex h-36 items-end gap-1">
-              {chartData.map((d, i) => {
-                const height = (d.maxWeight / maxChartWeight) * 100;
-                const isLast = i === chartData.length - 1;
-                return (
-                  <div
-                    key={`${d.date}-${i}`}
-                    className="group relative flex flex-1 flex-col items-center"
-                  >
-                    <div
-                      className={`w-full rounded-t-sm transition-colors ${
-                        isLast ? "bg-gradient-orange-intense shadow-lg" : "bg-primary/20 hover:bg-primary/30"
-                      }`}
-                      style={{ height: `${Math.max(height, 4)}%` }}
-                    />
-                    <div className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 rounded-lg bg-gradient-orange-intense px-2.5 py-1 text-xs font-bold text-black opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                      {d.maxWeight}kg
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-2 flex justify-between text-[10px] font-medium text-muted-foreground">
-              <span>
-                {new Date(chartData[0].date).toLocaleDateString("fr-FR", {
-                  day: "numeric",
-                  month: "short",
-                })}
-              </span>
-              <span>
-                {new Date(
-                  chartData[chartData.length - 1].date
-                ).toLocaleDateString("fr-FR", {
-                  day: "numeric",
-                  month: "short",
-                })}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {chartData.length > 1 && (() => {
+        const values = chartData.map((d) =>
+          chartTab === "weight" ? d.maxWeight : d.totalVolume
+        );
+        const maxVal = Math.max(...values);
+        const minVal = Math.min(...values);
+        const range = maxVal - minVal || 1;
+        const W = 320;
+        const H = 160;
+        const padX = 0;
+        const padY = 16;
+        const graphW = W - padX * 2;
+        const graphH = H - padY * 2;
+
+        const points = values.map((v, i) => ({
+          x: padX + (i / (values.length - 1)) * graphW,
+          y: padY + graphH - ((v - minVal) / range) * graphH,
+          value: v,
+          date: chartData[i].date,
+        }));
+
+        const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+        const areaPath = `${linePath} L ${points[points.length - 1].x} ${H} L ${points[0].x} ${H} Z`;
+
+        return (
+          <Card className="mb-6 card-glow">
+            <CardHeader>
+              <div className="flex items-center gap-2 rounded-xl bg-secondary/50 p-1">
+                <button
+                  onClick={() => setChartTab("weight")}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                    chartTab === "weight"
+                      ? "bg-gradient-orange-intense text-black shadow-lg"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Poids max
+                </button>
+                <button
+                  onClick={() => setChartTab("volume")}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                    chartTab === "volume"
+                      ? "bg-gradient-orange-intense text-black shadow-lg"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Volume total
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.7 0.2 45)" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="oklch(0.7 0.2 45)" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                {/* Area */}
+                <path d={areaPath} fill="url(#chartGrad)" />
+                {/* Line */}
+                <path d={linePath} fill="none" stroke="oklch(0.7 0.2 45)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                {/* Dots */}
+                {points.map((p, i) => (
+                  <circle
+                    key={i}
+                    cx={p.x}
+                    cy={p.y}
+                    r={i === points.length - 1 ? 5 : 3}
+                    fill={i === points.length - 1 ? "oklch(0.7 0.2 45)" : "oklch(0.15 0 0)"}
+                    stroke="oklch(0.7 0.2 45)"
+                    strokeWidth={i === points.length - 1 ? 0 : 1.5}
+                  />
+                ))}
+              </svg>
+
+              {/* Labels */}
+              <div className="mt-1 flex justify-between text-[10px] font-medium text-muted-foreground">
+                <span>
+                  {new Date(chartData[0].date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                </span>
+                <span className="font-bold text-primary">
+                  {chartTab === "weight"
+                    ? `${values[values.length - 1]} kg`
+                    : `${Math.round(values[values.length - 1])} kg`}
+                </span>
+                <span>
+                  {new Date(chartData[chartData.length - 1].date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                </span>
+              </div>
+
+              {/* Min / Max */}
+              <div className="mt-2 flex justify-center gap-4 text-[10px] text-muted-foreground">
+                <span>Min: <span className="font-bold text-foreground">{chartTab === "weight" ? minVal : Math.round(minVal)} kg</span></span>
+                <span>Max: <span className="font-bold text-primary">{chartTab === "weight" ? maxVal : Math.round(maxVal)} kg</span></span>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* History */}
       {history.length === 0 ? (
