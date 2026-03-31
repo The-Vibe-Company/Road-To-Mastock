@@ -93,7 +93,7 @@ export default function ExerciseDetail({
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-2 gap-3">
-        <Card className="glow-orange border-primary/20">
+        <Card className="border-primary/20">
           <CardContent className="flex flex-col items-center gap-1 py-5">
             <Trophy className="size-5 text-primary" />
             <p className="text-4xl font-black tracking-tighter text-primary">
@@ -139,7 +139,7 @@ export default function ExerciseDetail({
         const areaPath = `${linePath} L ${points[points.length - 1].x} ${H} L ${points[0].x} ${H} Z`;
 
         return (
-          <Card className="mb-6 card-glow">
+          <Card className="mb-6">
             <CardHeader>
               <div className="flex items-center gap-2 rounded-xl bg-secondary/50 p-1">
                 <button
@@ -284,7 +284,7 @@ export default function ExerciseDetail({
               );
               const d = new Date(h.date);
               return (
-                <Card key={h.sessionId} className="card-glow">
+                <Card key={h.sessionId}>
                   <CardContent>
                     <div className="mb-2.5 flex items-center justify-between">
                       <p className="font-bold capitalize">

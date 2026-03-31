@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { sessions, sessionExercises, sets, exercises } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 
 export async function GET(
@@ -74,9 +74,60 @@ export async function GET(
     }
   }
 
+  const exerciseList = Object.values(grouped);
+  const exerciseIds = [...new Set(exerciseList.map((e) => e.exerciseId))];
+
+  // Compute rankings for each exercise (max weight & total volume across all user sessions)
+  const rankings: Record<number, { weightRank: number | null; volumeRank: number | null }> = {};
+
+  if (exerciseIds.length > 0) {
+    const rankRows = (await db.execute(sql`
+      WITH exercise_stats AS (
+        SELECT
+          se.id AS se_id,
+          se.exercise_id,
+          COALESCE(MAX(st.weight_kg), 0) AS max_weight,
+          COALESCE(SUM(st.weight_kg * st.reps), 0) AS total_volume
+        FROM session_exercises se
+        JOIN sessions s ON s.id = se.session_id
+        LEFT JOIN sets st ON st.session_exercise_id = se.id
+        WHERE se.exercise_id IN (${sql.join(exerciseIds.map(id => sql`${id}`), sql`, `)})
+          AND s.user_id = ${auth.userId}
+        GROUP BY se.id, se.exercise_id
+      ),
+      ranked AS (
+        SELECT
+          se_id,
+          exercise_id,
+          RANK() OVER (PARTITION BY exercise_id ORDER BY max_weight DESC) AS weight_rank,
+          RANK() OVER (PARTITION BY exercise_id ORDER BY total_volume DESC) AS volume_rank
+        FROM exercise_stats
+        WHERE max_weight > 0
+      )
+      SELECT * FROM ranked
+      WHERE se_id IN (${sql.join(exerciseList.map(e => sql`${e.sessionExerciseId}`), sql`, `)})
+    `)) as unknown as { rows?: { se_id: number; weight_rank: number; volume_rank: number }[] };
+
+    const rows = (rankRows.rows ?? rankRows) as unknown as { se_id: number; weight_rank: number; volume_rank: number }[];
+    for (const row of rows) {
+      rankings[row.se_id] = {
+        weightRank: Number(row.weight_rank),
+        volumeRank: Number(row.volume_rank),
+      };
+    }
+  }
+
   return Response.json({
     ...session,
-    exercises: Object.values(grouped),
+    exercises: exerciseList.map((e) => ({
+      ...e,
+      record: rankings[e.sessionExerciseId]
+        ? Math.min(
+            rankings[e.sessionExerciseId].weightRank ?? 999,
+            rankings[e.sessionExerciseId].volumeRank ?? 999
+          )
+        : null,
+    })),
   });
 }
 

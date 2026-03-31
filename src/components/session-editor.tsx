@@ -22,6 +22,7 @@ interface SessionExercise {
   name: string;
   muscleGroup: string | null;
   locked: boolean;
+  record: number | null;
   sets: ExerciseSet[];
 }
 
@@ -217,6 +218,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
               name={ex.name}
               muscleGroup={ex.muscleGroup}
               locked={ex.locked}
+              record={ex.record}
               sets={ex.sets}
               onAddSet={handleAddSet}
               onDeleteSet={handleDeleteSet}

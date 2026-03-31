@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SetForm } from "./set-form";
 import { SetRow } from "./set-row";
-import { X, Lock, Unlock } from "lucide-react";
+import { X, Lock, Unlock, Trophy } from "lucide-react";
 
 interface ExerciseSet {
   id: number;
@@ -21,6 +21,7 @@ interface ExerciseBlockProps {
   name: string;
   muscleGroup: string | null;
   locked: boolean;
+  record: number | null;
   sets: ExerciseSet[];
   onAddSet: (sessionExerciseId: number, weightKg: number, reps: number) => void;
   onDeleteSet: (setId: number) => void;
@@ -28,12 +29,19 @@ interface ExerciseBlockProps {
   onToggleLock: (sessionExerciseId: number, locked: boolean) => void;
 }
 
+const recordStyles: Record<number, { border: string; bg: string; badge: string; label: string }> = {
+  1: { border: "border-l-yellow-500", bg: "bg-yellow-500/5", badge: "bg-yellow-500/15 text-yellow-500", label: "Record" },
+  2: { border: "border-l-gray-400", bg: "bg-gray-400/5", badge: "bg-gray-400/15 text-gray-400", label: "2e" },
+  3: { border: "border-l-amber-700", bg: "bg-amber-700/5", badge: "bg-amber-700/15 text-amber-700", label: "3e" },
+};
+
 export function ExerciseBlock({
   sessionExerciseId,
   exerciseId,
   name,
   muscleGroup,
   locked,
+  record,
   sets,
   onAddSet,
   onDeleteSet,
@@ -42,15 +50,22 @@ export function ExerciseBlock({
 }: ExerciseBlockProps) {
   const lastSet = sets[sets.length - 1];
   const totalVolume = sets.reduce((sum, s) => sum + s.weightKg * s.reps, 0);
+  const medal = record && record <= 3 ? recordStyles[record] : null;
 
   return (
-    <Card className={`border-l-2 card-glow ${locked ? "border-l-muted-foreground/30 opacity-70" : "border-l-primary/50"}`}>
+    <Card className={`border-l-2 ${medal ? `${medal.border} ${medal.bg}` : locked ? "border-l-muted-foreground/30 opacity-70" : "border-l-primary/50"}`}>
       <CardHeader>
         <div>
           <Link href={`/exercises/${exerciseId}`} className="transition-colors hover:text-primary">
             <CardTitle className="text-base font-black tracking-tight">{name}</CardTitle>
           </Link>
-          <div className="mt-2 flex gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {medal && (
+              <Badge className={`${medal.badge} text-[10px] font-bold`}>
+                <Trophy className="mr-1 size-3" />
+                {medal.label}
+              </Badge>
+            )}
             {muscleGroup && (
               <Badge variant="secondary" className="text-[10px] font-bold">{muscleGroup}</Badge>
             )}

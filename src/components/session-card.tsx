@@ -1,14 +1,17 @@
 import Link from "next/link";
-import { ChevronRight, Flame, Weight } from "lucide-react";
+import { ChevronRight, Flame, Weight, Trophy } from "lucide-react";
 
 interface SessionCardProps {
   id: number;
   date: string;
   exerciseCount: number;
   totalVolume: number;
+  gold: number;
+  silver: number;
+  bronze: number;
 }
 
-export function SessionCard({ id, date, exerciseCount, totalVolume }: SessionCardProps) {
+export function SessionCard({ id, date, exerciseCount, totalVolume, gold, silver, bronze }: SessionCardProps) {
   const d = new Date(date);
   const formatted = d.toLocaleDateString("fr-FR", {
     weekday: "long",
@@ -32,6 +35,25 @@ export function SessionCard({ id, date, exerciseCount, totalVolume }: SessionCar
                 {totalVolume >= 1000
                   ? `${(totalVolume / 1000).toFixed(1)}t`
                   : `${totalVolume} kg`}
+              </span>
+            )}
+            {(gold > 0 || silver > 0 || bronze > 0) && (
+              <span className="flex items-center gap-1.5">
+                {gold > 0 && (
+                  <span className="flex items-center gap-0.5 font-bold text-yellow-500">
+                    <Trophy className="size-3" />{gold}
+                  </span>
+                )}
+                {silver > 0 && (
+                  <span className="flex items-center gap-0.5 font-bold text-gray-400">
+                    <Trophy className="size-3" />{silver}
+                  </span>
+                )}
+                {bronze > 0 && (
+                  <span className="flex items-center gap-0.5 font-bold text-amber-700">
+                    <Trophy className="size-3" />{bronze}
+                  </span>
+                )}
               </span>
             )}
           </div>

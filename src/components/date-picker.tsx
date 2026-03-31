@@ -142,7 +142,7 @@ export function DatePicker({ value, onChange, open, onOpenChange }: DatePickerPr
                   onClick={() => handleSelect(day)}
                   className={`flex h-10 items-center justify-center rounded-xl text-sm font-semibold transition-all active:scale-90 ${
                     sel
-                      ? "bg-gradient-orange-intense text-black shadow-lg glow-orange"
+                      ? "bg-gradient-orange-intense text-black"
                       : tod
                         ? "border border-primary/40 text-primary"
                         : "text-foreground hover:bg-primary/10"

@@ -147,7 +147,7 @@ export default function ExerciseCatalog() {
       ) : (
         <div className="space-y-4">
           {Object.entries(grouped).map(([muscleGroup, exs]) => (
-            <Card key={muscleGroup} className="card-glow">
+            <Card key={muscleGroup}>
               <CardHeader>
                 <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
                   {muscleGroup}

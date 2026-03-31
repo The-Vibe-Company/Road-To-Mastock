@@ -21,6 +21,30 @@ export default async function Home() {
     .where(eq(users.id, auth.userId));
 
   const result = await db.execute(sql`
+    WITH exercise_rankings AS (
+      SELECT
+        se.id AS se_id,
+        se.session_id,
+        se.exercise_id,
+        COALESCE(MAX(st.weight_kg), 0) AS max_weight,
+        COALESCE(SUM(st.weight_kg * st.reps), 0) AS total_volume
+      FROM session_exercises se
+      JOIN sessions s ON s.id = se.session_id
+      LEFT JOIN sets st ON st.session_exercise_id = se.id
+      WHERE s.user_id = ${auth.userId}
+      GROUP BY se.id, se.session_id, se.exercise_id
+    ),
+    ranked AS (
+      SELECT
+        se_id,
+        session_id,
+        LEAST(
+          RANK() OVER (PARTITION BY exercise_id ORDER BY max_weight DESC),
+          RANK() OVER (PARTITION BY exercise_id ORDER BY total_volume DESC)
+        ) AS best_rank
+      FROM exercise_rankings
+      WHERE max_weight > 0
+    )
     SELECT
       s.id,
       s.date,
@@ -30,12 +54,15 @@ export default async function Home() {
         FROM sets st
         JOIN session_exercises se ON se.id = st.session_exercise_id
         WHERE se.session_id = s.id
-      ), 0) AS total_volume
+      ), 0) AS total_volume,
+      COALESCE((SELECT COUNT(*) FROM ranked r WHERE r.session_id = s.id AND r.best_rank = 1), 0) AS gold,
+      COALESCE((SELECT COUNT(*) FROM ranked r WHERE r.session_id = s.id AND r.best_rank = 2), 0) AS silver,
+      COALESCE((SELECT COUNT(*) FROM ranked r WHERE r.session_id = s.id AND r.best_rank = 3), 0) AS bronze
     FROM sessions s
     WHERE s.user_id = ${auth.userId}
     ORDER BY s.date DESC, s.created_at DESC
   `);
-  const allSessions = (result.rows ?? result) as unknown as { id: number; date: string; exercise_count: number; total_volume: number }[];
+  const allSessions = (result.rows ?? result) as unknown as { id: number; date: string; exercise_count: number; total_volume: number; gold: number; silver: number; bronze: number }[];
 
   return (
     <div className="flex min-h-dvh flex-col px-4 pb-28 pt-10">
@@ -87,6 +114,9 @@ export default async function Home() {
               date={s.date}
               exerciseCount={Number(s.exercise_count)}
               totalVolume={Math.round(Number(s.total_volume))}
+              gold={Number(s.gold)}
+              silver={Number(s.silver)}
+              bronze={Number(s.bronze)}
             />
           ))}
         </div>
