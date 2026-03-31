@@ -167,23 +167,29 @@ export function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
-              {stats.topExercises.map((ex, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-secondary/30">
-                  <Trophy className="size-3.5 shrink-0 text-yellow-500/70" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold">{ex.name}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="text-sm font-black text-primary">{ex.maxWeight} kg</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {ex.totalVolume >= 1000
-                        ? `${(ex.totalVolume / 1000).toFixed(1)}t vol.`
-                        : `${ex.totalVolume}kg vol.`}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div className="max-h-64 overflow-y-auto pr-1">
+              <table className="w-full">
+                <tbody>
+                  {stats.topExercises.map((ex, i) => (
+                    <tr key={i} className="transition-colors hover:bg-secondary/30">
+                      <td className="py-2 pl-2 pr-2">
+                        <Trophy className="size-3.5 text-yellow-500/70" />
+                      </td>
+                      <td className="py-2 pr-3">
+                        <p className="truncate text-sm font-bold">{ex.name}</p>
+                      </td>
+                      <td className="whitespace-nowrap py-2 pr-3 text-right text-sm font-black text-primary">
+                        {ex.maxWeight} kg
+                      </td>
+                      <td className="whitespace-nowrap py-2 pr-2 text-right text-[10px] text-muted-foreground">
+                        {ex.totalVolume >= 1000
+                          ? `${(ex.totalVolume / 1000).toFixed(1)}t vol.`
+                          : `${ex.totalVolume}kg vol.`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>
