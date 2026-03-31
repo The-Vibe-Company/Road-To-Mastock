@@ -53,7 +53,7 @@ export function ExerciseBlock({
   const medal = record && record <= 3 ? recordStyles[record] : null;
 
   return (
-    <Card className={`border-l-2 ${medal ? `${medal.border} ${medal.bg}` : locked ? "border-l-muted-foreground/30 opacity-70" : "border-l-primary/50"}`}>
+    <Card className={`${medal ? medal.bg : locked ? "opacity-70" : ""}`}>
       <CardHeader>
         <div>
           <Link href={`/exercises/${exerciseId}`} className="transition-colors hover:text-primary">
