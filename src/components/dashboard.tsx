@@ -11,7 +11,7 @@ interface Stats {
   lastSessionDate: string | null;
   daysSinceLastSession: number | null;
   weeklyVolumes: { week: string; volume: number }[];
-  topExercises: { name: string; maxWeight: number; date: string }[];
+  topExercises: { name: string; maxWeight: number; totalVolume: number; date: string }[];
   muscleDistribution: { muscleGroup: string; setCount: number }[];
 }
 
@@ -104,40 +104,61 @@ export function Dashboard() {
       </div>
 
       {/* Weekly volume chart */}
-      {stats.weeklyVolumes.length > 0 && (
-        <Card className="card-gradient-border">
-          <CardHeader>
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
-              Volume par semaine
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end gap-1.5" style={{ height: 120 }}>
-              {stats.weeklyVolumes.map((w, i) => {
-                const pct = (w.volume / maxWeeklyVolume) * 100;
-                const weekDate = new Date(w.week);
-                const label = `${weekDate.getDate()}/${weekDate.getMonth() + 1}`;
-                return (
-                  <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                    <span className="text-[9px] font-bold text-primary/60">
-                      {w.volume >= 1000 ? `${(w.volume / 1000).toFixed(1)}t` : `${w.volume}`}
-                    </span>
-                    <div className="w-full flex-1 flex flex-col justify-end">
-                      <div
-                        className="w-full rounded-t-md bg-gradient-orange"
-                        style={{ height: `${Math.max(pct, 4)}%` }}
-                      />
-                    </div>
-                    <span className="text-[9px] font-medium text-muted-foreground">{label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {stats.weeklyVolumes.length > 0 && (() => {
+        const W = 320;
+        const H = 140;
+        const padTop = 20;
+        const padBottom = 20;
+        const padX = 8;
+        const n = stats.weeklyVolumes.length;
+        const barGap = 6;
+        const barW = Math.min(36, (W - padX * 2 - barGap * (n - 1)) / n);
+        const chartH = H - padTop - padBottom;
+        const totalBarArea = n * barW + (n - 1) * barGap;
+        const offsetX = (W - totalBarArea) / 2;
 
-      {/* Top exercises */}
+        return (
+          <Card className="card-gradient-border">
+            <CardHeader>
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
+                Volume par semaine
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+                <defs>
+                  <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ff9a4d" />
+                    <stop offset="100%" stopColor="#e84a00" />
+                  </linearGradient>
+                </defs>
+                {stats.weeklyVolumes.map((w, i) => {
+                  const pct = maxWeeklyVolume > 0 ? w.volume / maxWeeklyVolume : 0;
+                  const barH = Math.max(pct * chartH, 3);
+                  const x = offsetX + i * (barW + barGap);
+                  const y = padTop + chartH - barH;
+                  const weekDate = new Date(w.week);
+                  const label = `${weekDate.getDate()}/${weekDate.getMonth() + 1}`;
+                  const valLabel = w.volume >= 1000 ? `${(w.volume / 1000).toFixed(1)}t` : `${w.volume}`;
+                  return (
+                    <g key={i}>
+                      <rect x={x} y={y} width={barW} height={barH} rx={4} fill="url(#barGrad)" />
+                      <text x={x + barW / 2} y={y - 5} textAnchor="middle" className="fill-primary/70 text-[8px] font-bold">
+                        {valLabel}
+                      </text>
+                      <text x={x + barW / 2} y={H - 4} textAnchor="middle" className="fill-muted-foreground text-[8px]">
+                        {label}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* All exercises - records */}
       {stats.topExercises.length > 0 && (
         <Card className="card-gradient-border">
           <CardHeader>
@@ -146,22 +167,23 @@ export function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {stats.topExercises.map((ex, i) => {
-                const colors = ["text-yellow-500", "text-gray-400", "text-amber-700"];
-                return (
-                  <div key={i} className="flex items-center gap-3">
-                    <Trophy className={`size-4 ${colors[i]}`} />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold">{ex.name}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {new Date(ex.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                      </p>
-                    </div>
-                    <p className="text-lg font-black text-primary">{ex.maxWeight} kg</p>
+            <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+              {stats.topExercises.map((ex, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-secondary/30">
+                  <Trophy className="size-3.5 shrink-0 text-yellow-500/70" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold">{ex.name}</p>
                   </div>
-                );
-              })}
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="text-sm font-black text-primary">{ex.maxWeight} kg</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {ex.totalVolume >= 1000
+                        ? `${(ex.totalVolume / 1000).toFixed(1)}t vol.`
+                        : `${ex.totalVolume}kg vol.`}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

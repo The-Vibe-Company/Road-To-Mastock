@@ -39,11 +39,12 @@ export async function GET() {
       ORDER BY week_start
     `),
 
-    // Top 3 exercises by max weight
+    // All exercises by name with max weight
     db.execute(sql`
       SELECT
         e.name,
         MAX(st.weight_kg) AS max_weight,
+        COALESCE(SUM(st.weight_kg * st.reps), 0) AS total_volume,
         (SELECT s2.date FROM sessions s2
          JOIN session_exercises se2 ON se2.session_id = s2.id
          JOIN sets st2 ON st2.session_exercise_id = se2.id
@@ -56,8 +57,7 @@ export async function GET() {
       JOIN sets st ON st.session_exercise_id = se.id
       WHERE s.user_id = ${userId}
       GROUP BY e.id, e.name
-      ORDER BY max_weight DESC
-      LIMIT 3
+      ORDER BY e.name ASC
     `),
 
     // Muscle distribution
@@ -84,7 +84,7 @@ export async function GET() {
 
   const summary = ((summaryRes.rows ?? summaryRes) as unknown as { total_sessions: number; total_volume: number }[])[0];
   const weeklyVolumes = (weeklyRes.rows ?? weeklyRes) as unknown as { week_start: string; volume: number }[];
-  const topExercises = (topExercisesRes.rows ?? topExercisesRes) as unknown as { name: string; max_weight: number; date: string }[];
+  const topExercises = (topExercisesRes.rows ?? topExercisesRes) as unknown as { name: string; max_weight: number; total_volume: number; date: string }[];
   const muscleDistribution = (muscleRes.rows ?? muscleRes) as unknown as { muscle_group: string; set_count: number }[];
   const dates = (datesRes.rows ?? datesRes) as unknown as { date: string }[];
 
@@ -134,6 +134,7 @@ export async function GET() {
     topExercises: topExercises.map((e) => ({
       name: e.name,
       maxWeight: Number(e.max_weight),
+      totalVolume: Math.round(Number(e.total_volume)),
       date: e.date,
     })),
     muscleDistribution: muscleDistribution.map((m) => ({
