@@ -9,7 +9,7 @@ export async function GET() {
   const userId = auth.userId;
 
   // All queries in parallel
-  const [summaryRes, weeklyRes, topExercisesRes, muscleRes, datesRes] = await Promise.all([
+  const [summaryRes, weeklyRes, topExercisesRes, muscleRes, datesRes, sparklineRes, suggestionsRes, muscleWeeklyRes] = await Promise.all([
     // Summary stats
     db.execute(sql`
       SELECT
@@ -74,11 +74,52 @@ export async function GET() {
       ORDER BY set_count DESC
     `),
 
-    // All session dates for streak calculation
+    // All session dates for streak + heatmap
     db.execute(sql`
       SELECT DISTINCT date FROM sessions
       WHERE user_id = ${userId}
       ORDER BY date DESC
+    `),
+
+    // Sparklines: last 8 max weights per exercise
+    db.execute(sql`
+      SELECT e.name, s.date, MAX(st.weight_kg) AS max_weight
+      FROM exercises e
+      JOIN session_exercises se ON se.exercise_id = e.id
+      JOIN sessions s ON s.id = se.session_id
+      JOIN sets st ON st.session_exercise_id = se.id
+      WHERE s.user_id = ${userId}
+      GROUP BY e.name, s.date, se.id
+      ORDER BY e.name, s.date DESC
+    `),
+
+    // Suggestions: last session date per muscle group
+    db.execute(sql`
+      SELECT
+        COALESCE(e.muscle_group, 'Autre') AS muscle_group,
+        MAX(s.date) AS last_date
+      FROM exercises e
+      JOIN session_exercises se ON se.exercise_id = e.id
+      JOIN sessions s ON s.id = se.session_id
+      WHERE s.user_id = ${userId}
+      GROUP BY e.muscle_group
+      ORDER BY last_date ASC
+    `),
+
+    // Muscle volume over time (last 8 weeks)
+    db.execute(sql`
+      SELECT
+        DATE_TRUNC('week', s.date::timestamp)::date AS week_start,
+        COALESCE(e.muscle_group, 'Autre') AS muscle_group,
+        COALESCE(SUM(st.weight_kg * st.reps), 0) AS volume
+      FROM sessions s
+      JOIN session_exercises se ON se.session_id = s.id
+      JOIN exercises e ON e.id = se.exercise_id
+      JOIN sets st ON st.session_exercise_id = se.id
+      WHERE s.user_id = ${userId}
+        AND s.date >= (CURRENT_DATE - INTERVAL '8 weeks')
+      GROUP BY DATE_TRUNC('week', s.date::timestamp), e.muscle_group
+      ORDER BY week_start, muscle_group
     `),
   ]);
 
@@ -87,6 +128,43 @@ export async function GET() {
   const topExercises = (topExercisesRes.rows ?? topExercisesRes) as unknown as { name: string; max_weight: number; total_volume: number; date: string }[];
   const muscleDistribution = (muscleRes.rows ?? muscleRes) as unknown as { muscle_group: string; set_count: number }[];
   const dates = (datesRes.rows ?? datesRes) as unknown as { date: string }[];
+  const sparklineRows = (sparklineRes.rows ?? sparklineRes) as unknown as { name: string; max_weight: number }[];
+  const suggestionRows = (suggestionsRes.rows ?? suggestionsRes) as unknown as { muscle_group: string; last_date: string }[];
+  const muscleWeeklyRows = (muscleWeeklyRes.rows ?? muscleWeeklyRes) as unknown as { week_start: string; muscle_group: string; volume: number }[];
+
+  // Build sparklines: last 8 values per exercise
+  const sparklines: Record<string, number[]> = {};
+  for (const row of sparklineRows) {
+    if (!sparklines[row.name]) sparklines[row.name] = [];
+    if (sparklines[row.name].length < 8) {
+      sparklines[row.name].push(Number(row.max_weight));
+    }
+  }
+  // Reverse so oldest first (for left-to-right chart)
+  for (const key of Object.keys(sparklines)) {
+    sparklines[key].reverse();
+  }
+
+  // Suggestions: muscles not worked in > 7 days
+  const today = new Date();
+  const suggestions = suggestionRows
+    .map((r) => ({
+      muscleGroup: r.muscle_group,
+      daysSince: Math.floor((today.getTime() - new Date(r.last_date).getTime()) / 86400000),
+    }))
+    .filter((s) => s.daysSince > 7)
+    .sort((a, b) => b.daysSince - a.daysSince);
+
+  // Muscle volume over time
+  const muscleVolumeOverTime: Record<string, { week: string; volume: number }[]> = {};
+  for (const row of muscleWeeklyRows) {
+    const mg = row.muscle_group;
+    if (!muscleVolumeOverTime[mg]) muscleVolumeOverTime[mg] = [];
+    muscleVolumeOverTime[mg].push({
+      week: row.week_start,
+      volume: Math.round(Number(row.volume)),
+    });
+  }
 
   // Calculate weekly streak (consecutive ISO weeks with at least one session)
   let streak = 0;
@@ -148,5 +226,9 @@ export async function GET() {
       muscleGroup: m.muscle_group,
       setCount: Number(m.set_count),
     })),
+    sessionDates: dates.map((d) => d.date),
+    sparklines,
+    suggestions,
+    muscleVolumeOverTime,
   });
 }

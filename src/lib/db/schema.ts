@@ -45,6 +45,7 @@ export const sessionExercises = pgTable("session_exercises", {
     .references(() => exercises.id),
   sortOrder: integer("sort_order").default(0),
   locked: boolean("locked").default(false).notNull(),
+  notes: text("notes"),
 });
 
 export const sets = pgTable("sets", {

@@ -1,12 +1,14 @@
 "use client";
 
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SetForm } from "./set-form";
 import { SetRow } from "./set-row";
-import { X, Lock, Unlock, Trophy } from "lucide-react";
+import { RestTimer } from "./rest-timer";
+import { X, Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote } from "lucide-react";
 
 interface ExerciseSet {
   id: number;
@@ -21,12 +23,18 @@ interface ExerciseBlockProps {
   name: string;
   muscleGroup: string | null;
   locked: boolean;
+  notes: string | null;
   record: number | null;
   sets: ExerciseSet[];
   onAddSet: (sessionExerciseId: number, weightKg: number, reps: number) => void;
   onDeleteSet: (setId: number) => void;
   onRemoveExercise: (sessionExerciseId: number) => void;
   onToggleLock: (sessionExerciseId: number, locked: boolean) => void;
+  onUpdateNotes: (sessionExerciseId: number, notes: string) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }
 
 const recordStyles: Record<number, { card: string; badge: string; label: string }> = {
@@ -41,16 +49,30 @@ export function ExerciseBlock({
   name,
   muscleGroup,
   locked,
+  notes,
   record,
   sets,
   onAddSet,
   onDeleteSet,
   onRemoveExercise,
   onToggleLock,
+  onUpdateNotes,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
 }: ExerciseBlockProps) {
   const lastSet = sets[sets.length - 1];
   const totalVolume = sets.reduce((sum, s) => sum + s.weightKg * s.reps, 0);
   const medal = record && record <= 3 ? recordStyles[record] : null;
+  const [showNotes, setShowNotes] = useState(!!notes);
+  const [showTimer, setShowTimer] = useState(false);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleAddSet = (w: number, r: number) => {
+    onAddSet(sessionExerciseId, w, r);
+    setShowTimer(true);
+  };
 
   return (
     <Card className={`${medal ? medal.card : "card-gradient-border"} ${locked ? "opacity-70" : ""}`}>
@@ -76,12 +98,34 @@ export function ExerciseBlock({
             )}
             {locked && (
               <Badge variant="outline" className="border-muted-foreground/20 text-[10px] text-muted-foreground">
-                Terminé
+                Termine
               </Badge>
             )}
           </div>
         </div>
-        <CardAction className="flex gap-1">
+        <CardAction className="flex gap-0.5">
+          {!locked && (
+            <>
+              {canMoveUp && (
+                <Button variant="ghost" size="icon-xs" onClick={onMoveUp} className="text-muted-foreground hover:text-primary">
+                  <ChevronUp className="size-4" />
+                </Button>
+              )}
+              {canMoveDown && (
+                <Button variant="ghost" size="icon-xs" onClick={onMoveDown} className="text-muted-foreground hover:text-primary">
+                  <ChevronDown className="size-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => setShowNotes(!showNotes)}
+                className={notes ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-primary"}
+              >
+                <StickyNote className="size-4" />
+              </Button>
+            </>
+          )}
           <Button
             variant="ghost"
             size="icon-xs"
@@ -104,6 +148,24 @@ export function ExerciseBlock({
       </CardHeader>
 
       <CardContent>
+        {/* Notes */}
+        {showNotes && (
+          <div className="mb-3">
+            {locked ? (
+              notes && <p className="text-xs italic text-muted-foreground">{notes}</p>
+            ) : (
+              <textarea
+                ref={notesRef}
+                defaultValue={notes || ""}
+                placeholder="Notes..."
+                onBlur={(e) => onUpdateNotes(sessionExerciseId, e.target.value)}
+                className="w-full resize-none rounded-lg bg-secondary/50 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                rows={2}
+              />
+            )}
+          </div>
+        )}
+
         {sets.length > 0 && (
           <div className={!locked ? "mb-3 border-b border-border/50 pb-2" : ""}>
             {sets.map((s) => (
@@ -117,9 +179,17 @@ export function ExerciseBlock({
             ))}
           </div>
         )}
+
+        {/* Rest timer */}
+        {!locked && showTimer && (
+          <div className="mb-3">
+            <RestTimer onDismiss={() => setShowTimer(false)} />
+          </div>
+        )}
+
         {!locked && (
           <SetForm
-            onAdd={(w, r) => onAddSet(sessionExerciseId, w, r)}
+            onAdd={handleAddSet}
             lastWeight={lastSet?.weightKg}
             lastReps={lastSet?.reps}
           />

@@ -22,6 +22,7 @@ interface SessionExercise {
   name: string;
   muscleGroup: string | null;
   locked: boolean;
+  notes: string | null;
   record: number | null;
   sets: ExerciseSet[];
 }
@@ -95,6 +96,34 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ locked }),
     });
+    await refreshSession();
+  };
+
+  const handleUpdateNotes = async (sessionExerciseId: number, notes: string) => {
+    await fetch(`/api/session-exercises/${sessionExerciseId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: notes || null }),
+    });
+  };
+
+  const handleMoveExercise = async (index: number, direction: "up" | "down") => {
+    const swapIndex = direction === "up" ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= exercises.length) return;
+    const a = exercises[index];
+    const b = exercises[swapIndex];
+    await Promise.all([
+      fetch(`/api/session-exercises/${a.sessionExerciseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: swapIndex }),
+      }),
+      fetch(`/api/session-exercises/${b.sessionExerciseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: index }),
+      }),
+    ]);
     await refreshSession();
   };
 
@@ -210,7 +239,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {exercises.map((ex) => (
+          {exercises.map((ex, i) => (
             <ExerciseBlock
               key={ex.sessionExerciseId}
               sessionExerciseId={ex.sessionExerciseId}
@@ -218,12 +247,18 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
               name={ex.name}
               muscleGroup={ex.muscleGroup}
               locked={ex.locked}
+              notes={ex.notes}
               record={ex.record}
               sets={ex.sets}
               onAddSet={handleAddSet}
               onDeleteSet={handleDeleteSet}
               onRemoveExercise={handleRemoveExercise}
               onToggleLock={handleToggleLock}
+              onUpdateNotes={handleUpdateNotes}
+              canMoveUp={i > 0}
+              canMoveDown={i < exercises.length - 1}
+              onMoveUp={() => handleMoveExercise(i, "up")}
+              onMoveDown={() => handleMoveExercise(i, "down")}
             />
           ))}
         </div>

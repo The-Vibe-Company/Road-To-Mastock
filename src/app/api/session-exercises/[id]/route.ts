@@ -9,9 +9,14 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
+  const update: Record<string, unknown> = {};
+  if (body.locked !== undefined) update.locked = body.locked;
+  if (body.notes !== undefined) update.notes = body.notes;
+  if (body.sortOrder !== undefined) update.sortOrder = body.sortOrder;
+
   const [updated] = await db
     .update(sessionExercises)
-    .set({ locked: body.locked })
+    .set(update)
     .where(eq(sessionExercises.id, parseInt(id)))
     .returning();
 
