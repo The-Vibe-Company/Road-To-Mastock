@@ -29,10 +29,10 @@ interface ExerciseBlockProps {
   onToggleLock: (sessionExerciseId: number, locked: boolean) => void;
 }
 
-const recordStyles: Record<number, { border: string; bg: string; badge: string; label: string }> = {
-  1: { border: "border-l-yellow-500", bg: "bg-yellow-500/5", badge: "bg-yellow-500/15 text-yellow-500", label: "Record" },
-  2: { border: "border-l-gray-400", bg: "bg-gray-400/5", badge: "bg-gray-400/15 text-gray-400", label: "2e" },
-  3: { border: "border-l-amber-700", bg: "bg-amber-700/5", badge: "bg-amber-700/15 text-amber-700", label: "3e" },
+const recordStyles: Record<number, { card: string; badge: string; label: string }> = {
+  1: { card: "card-gradient-gold", badge: "bg-yellow-500/15 text-yellow-500", label: "Record" },
+  2: { card: "card-gradient-silver", badge: "bg-gray-400/15 text-gray-400", label: "2e" },
+  3: { card: "card-gradient-bronze", badge: "bg-amber-700/15 text-amber-700", label: "3e" },
 };
 
 export function ExerciseBlock({
@@ -53,7 +53,7 @@ export function ExerciseBlock({
   const medal = record && record <= 3 ? recordStyles[record] : null;
 
   return (
-    <Card className={`${medal ? medal.bg : locked ? "opacity-70" : ""}`}>
+    <Card className={`${medal ? medal.card : "card-gradient-border"} ${locked ? "opacity-70" : ""}`}>
       <CardHeader>
         <div>
           <Link href={`/exercises/${exerciseId}`} className="transition-colors hover:text-primary">

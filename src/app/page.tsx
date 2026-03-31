@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { sessions, sessionExercises, sets, users } from "@/lib/db/schema";
-import { desc, eq, count, sum, sql } from "drizzle-orm";
-import { SessionCard } from "@/components/session-card";
+import { users } from "@/lib/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
-import { Plus, Dumbbell, BookOpen } from "lucide-react";
+import { Plus, BookOpen } from "lucide-react";
 import { getAuthUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
+import { HomeTabs } from "@/components/home-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -93,34 +93,17 @@ export default async function Home() {
         </div>
       </div>
 
-      {allSessions.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
-            <Dumbbell className="size-8 text-primary/50" />
-          </div>
-          <div>
-            <p className="font-semibold">Aucune séance</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Commence ta première séance
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {allSessions.map((s) => (
-            <SessionCard
-              key={s.id}
-              id={s.id}
-              date={s.date}
-              exerciseCount={Number(s.exercise_count)}
-              totalVolume={Math.round(Number(s.total_volume))}
-              gold={Number(s.gold)}
-              silver={Number(s.silver)}
-              bronze={Number(s.bronze)}
-            />
-          ))}
-        </div>
-      )}
+      <HomeTabs
+        sessions={allSessions.map((s) => ({
+          id: Number(s.id),
+          date: s.date,
+          exerciseCount: Number(s.exercise_count),
+          totalVolume: Math.round(Number(s.total_volume)),
+          gold: Number(s.gold),
+          silver: Number(s.silver),
+          bronze: Number(s.bronze),
+        }))}
+      />
 
       {/* FAB */}
       <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
