@@ -88,29 +88,33 @@ export async function GET() {
   const muscleDistribution = (muscleRes.rows ?? muscleRes) as unknown as { muscle_group: string; set_count: number }[];
   const dates = (datesRes.rows ?? datesRes) as unknown as { date: string }[];
 
-  // Calculate weekly streak (consecutive weeks with at least one session)
+  // Calculate weekly streak (consecutive ISO weeks with at least one session)
   let streak = 0;
   if (dates.length > 0) {
-    const getWeek = (d: Date) => {
-      const dt = new Date(d);
-      dt.setHours(0, 0, 0, 0);
-      // Monday-based week number: get days since Monday, subtract, get ISO week start
-      const day = dt.getDay() || 7; // Sunday=7
-      dt.setDate(dt.getDate() - day + 1); // Monday
-      return dt.getTime();
+    // ISO week number: weeks start on Monday
+    const getISOWeekKey = (dateStr: string) => {
+      const parts = dateStr.split("-");
+      const d = new Date(Date.UTC(+parts[0], +parts[1] - 1, +parts[2]));
+      const dayOfWeek = d.getUTCDay() || 7; // Monday=1 ... Sunday=7
+      d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek); // Thursday of the week
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+      return d.getUTCFullYear() * 100 + weekNo; // e.g. 202613
     };
 
-    const today = new Date();
-    const currentWeek = getWeek(today);
-    const sessionWeeks = [...new Set(dates.map((d) => getWeek(new Date(d.date))))].sort((a, b) => b - a);
-    const oneWeek = 7 * 86400000;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const currentWeekKey = getISOWeekKey(todayStr);
+
+    const sessionWeekKeys = [...new Set(dates.map((d) => getISOWeekKey(d.date)))].sort((a, b) => b - a);
 
     // Check if most recent session is this week or last week
-    if (sessionWeeks[0] >= currentWeek - oneWeek) {
+    if (sessionWeekKeys[0] >= currentWeekKey - 1) {
       streak = 1;
-      for (let i = 1; i < sessionWeeks.length; i++) {
-        const diff = sessionWeeks[i - 1] - sessionWeeks[i];
-        if (diff === oneWeek) {
+      for (let i = 1; i < sessionWeekKeys.length; i++) {
+        const diff = sessionWeekKeys[i - 1] - sessionWeekKeys[i];
+        // diff=1 means consecutive weeks (handles year boundary approximately)
+        if (diff === 1) {
           streak++;
         } else {
           break;

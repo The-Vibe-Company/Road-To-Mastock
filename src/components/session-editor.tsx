@@ -145,7 +145,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
       {/* Header */}
       <div className="mb-6">
         <Link
-          href="/"
+          href="/?tab=sessions"
           className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
         >
           <ArrowLeft className="size-4" />

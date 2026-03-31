@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { SessionCard } from "./session-card";
 import { Dashboard } from "./dashboard";
 
@@ -15,7 +15,13 @@ interface Session {
 }
 
 export function HomeTabs({ sessions }: { sessions: Session[] }) {
-  const [tab, setTab] = useState<"dashboard" | "sessions">("dashboard");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tab = searchParams.get("tab") === "sessions" ? "sessions" : "dashboard";
+
+  const setTab = (t: "dashboard" | "sessions") => {
+    router.replace(t === "dashboard" ? "/" : "/?tab=sessions", { scroll: false });
+  };
 
   return (
     <>

@@ -74,6 +74,10 @@ export default function ExerciseCatalog() {
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(ex);
   }
+  // Sort groups alphabetically, and exercises within each group
+  const sortedGroups = Object.entries(grouped)
+    .sort(([a], [b]) => a.localeCompare(b, "fr"))
+    .map(([key, exs]) => [key, exs.sort((a, b) => a.name.localeCompare(b.name, "fr"))] as const);
 
   if (loading) {
     return (
@@ -146,7 +150,7 @@ export default function ExerciseCatalog() {
         </p>
       ) : (
         <div className="space-y-4">
-          {Object.entries(grouped).map(([muscleGroup, exs]) => (
+          {sortedGroups.map(([muscleGroup, exs]) => (
             <Card key={muscleGroup}>
               <CardHeader>
                 <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
