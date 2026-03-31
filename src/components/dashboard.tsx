@@ -83,7 +83,7 @@ export function Dashboard() {
             </div>
             <div>
               <p className="text-2xl font-black text-primary">{stats.streak}</p>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Streak jours</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Streak sem.</p>
             </div>
           </CardContent>
         </Card>

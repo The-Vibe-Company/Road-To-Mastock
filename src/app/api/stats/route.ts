@@ -88,27 +88,30 @@ export async function GET() {
   const muscleDistribution = (muscleRes.rows ?? muscleRes) as unknown as { muscle_group: string; set_count: number }[];
   const dates = (datesRes.rows ?? datesRes) as unknown as { date: string }[];
 
-  // Calculate streak
+  // Calculate weekly streak (consecutive weeks with at least one session)
   let streak = 0;
   if (dates.length > 0) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const sortedDates = dates.map((d) => {
-      const dt = new Date(d.date);
+    const getWeek = (d: Date) => {
+      const dt = new Date(d);
       dt.setHours(0, 0, 0, 0);
+      // Monday-based week number: get days since Monday, subtract, get ISO week start
+      const day = dt.getDay() || 7; // Sunday=7
+      dt.setDate(dt.getDate() - day + 1); // Monday
       return dt.getTime();
-    });
+    };
 
-    // Check if the most recent session is today or yesterday
-    const diffFirst = Math.floor((today.getTime() - sortedDates[0]) / 86400000);
-    if (diffFirst <= 1) {
+    const today = new Date();
+    const currentWeek = getWeek(today);
+    const sessionWeeks = [...new Set(dates.map((d) => getWeek(new Date(d.date))))].sort((a, b) => b - a);
+    const oneWeek = 7 * 86400000;
+
+    // Check if most recent session is this week or last week
+    if (sessionWeeks[0] >= currentWeek - oneWeek) {
       streak = 1;
-      for (let i = 1; i < sortedDates.length; i++) {
-        const diff = Math.floor((sortedDates[i - 1] - sortedDates[i]) / 86400000);
-        if (diff === 1) {
+      for (let i = 1; i < sessionWeeks.length; i++) {
+        const diff = sessionWeeks[i - 1] - sessionWeeks[i];
+        if (diff === oneWeek) {
           streak++;
-        } else if (diff === 0) {
-          continue; // same day
         } else {
           break;
         }
