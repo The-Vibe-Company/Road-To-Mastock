@@ -141,18 +141,14 @@ export function ExerciseBlock({
         {/* Notes */}
         {showNotes && (
           <div className="mb-3">
-            {locked ? (
-              notes && <p className="text-xs italic text-muted-foreground">{notes}</p>
-            ) : (
-              <textarea
-                ref={notesRef}
-                defaultValue={notes || ""}
-                placeholder="Notes..."
-                onBlur={(e) => onUpdateNotes(sessionExerciseId, e.target.value)}
-                className="w-full resize-none rounded-lg bg-secondary/50 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
-                rows={2}
-              />
-            )}
+            <textarea
+              ref={notesRef}
+              defaultValue={notes || ""}
+              placeholder="Notes..."
+              onBlur={(e) => onUpdateNotes(sessionExerciseId, e.target.value)}
+              className="w-full resize-none rounded-lg bg-secondary/50 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+              rows={2}
+            />
           </div>
         )}
 

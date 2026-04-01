@@ -111,22 +111,17 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
     const swapIndex = direction === "up" ? index - 1 : index + 1;
     if (swapIndex < 0 || swapIndex >= exercises.length) return;
 
-    // Reassign all sortOrders to ensure consistency
-    const newOrder = exercises.map((ex, i) => ({ id: ex.sessionExerciseId, sortOrder: i }));
-    // Swap the two
-    const tmp = newOrder[index].sortOrder;
-    newOrder[index].sortOrder = newOrder[swapIndex].sortOrder;
-    newOrder[swapIndex].sortOrder = tmp;
+    // Build new order: swap the two exercises
+    const reordered = exercises.map((ex, i) => ex.sessionExerciseId);
+    const tmp = reordered[index];
+    reordered[index] = reordered[swapIndex];
+    reordered[swapIndex] = tmp;
 
-    await Promise.all(
-      newOrder.map((item) =>
-        fetch(`/api/session-exercises/${item.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sortOrder: item.sortOrder }),
-        })
-      )
-    );
+    await fetch("/api/session-exercises/reorder", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: reordered }),
+    });
     await refreshSession();
   };
 
