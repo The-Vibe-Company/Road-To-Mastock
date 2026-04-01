@@ -9,10 +9,10 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
-  const update: Record<string, unknown> = {};
+  const update: Partial<typeof sessionExercises.$inferInsert> = {};
   if (body.locked !== undefined) update.locked = body.locked;
   if (body.notes !== undefined) update.notes = body.notes;
-  if (body.sortOrder !== undefined) update.sortOrder = body.sortOrder;
+  if (body.sortOrder !== undefined) update.sortOrder = Number(body.sortOrder);
 
   const [updated] = await db
     .update(sessionExercises)

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { SetForm } from "./set-form";
 import { SetRow } from "./set-row";
 import { RestTimer } from "./rest-timer";
-import { X, Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote } from "lucide-react";
+import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote } from "lucide-react";
 
 interface ExerciseSet {
   id: number;
@@ -134,16 +134,6 @@ export function ExerciseBlock({
           >
             {locked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
           </Button>
-          {!locked && (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => onRemoveExercise(sessionExerciseId)}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <X className="size-4" />
-            </Button>
-          )}
         </CardAction>
       </CardHeader>
 
