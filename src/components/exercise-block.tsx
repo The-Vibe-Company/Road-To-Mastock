@@ -116,16 +116,16 @@ export function ExerciseBlock({
                   <ChevronDown className="size-4" />
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => setShowNotes(!showNotes)}
-                className={notes ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-primary"}
-              >
-                <StickyNote className="size-4" />
-              </Button>
             </>
           )}
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => setShowNotes(!showNotes)}
+            className={notes ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-primary"}
+          >
+            <StickyNote className="size-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon-xs"

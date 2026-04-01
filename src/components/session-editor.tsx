@@ -110,20 +110,23 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   const handleMoveExercise = async (index: number, direction: "up" | "down") => {
     const swapIndex = direction === "up" ? index - 1 : index + 1;
     if (swapIndex < 0 || swapIndex >= exercises.length) return;
-    const a = exercises[index];
-    const b = exercises[swapIndex];
-    await Promise.all([
-      fetch(`/api/session-exercises/${a.sessionExerciseId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sortOrder: swapIndex }),
-      }),
-      fetch(`/api/session-exercises/${b.sessionExerciseId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sortOrder: index }),
-      }),
-    ]);
+
+    // Reassign all sortOrders to ensure consistency
+    const newOrder = exercises.map((ex, i) => ({ id: ex.sessionExerciseId, sortOrder: i }));
+    // Swap the two
+    const tmp = newOrder[index].sortOrder;
+    newOrder[index].sortOrder = newOrder[swapIndex].sortOrder;
+    newOrder[swapIndex].sortOrder = tmp;
+
+    await Promise.all(
+      newOrder.map((item) =>
+        fetch(`/api/session-exercises/${item.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sortOrder: item.sortOrder }),
+        })
+      )
+    );
     await refreshSession();
   };
 

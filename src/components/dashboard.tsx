@@ -16,13 +16,7 @@ interface Stats {
   sessionDates: string[];
   sparklines: Record<string, number[]>;
   suggestions: { muscleGroup: string; daysSince: number }[];
-  muscleVolumeOverTime: Record<string, { week: string; volume: number }[]>;
 }
-
-const MUSCLE_COLORS = [
-  "#ff6b1a", "#ff9a4d", "#e84a00", "#ffb366", "#cc3d00",
-  "#ff8533", "#d45a00", "#ffcc99",
-];
 
 export function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -111,73 +105,6 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Heatmap */}
-      {stats.sessionDates.length > 0 && (() => {
-        const dateSet = new Set(stats.sessionDates);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const weeks = 13;
-        const cellSize = 14;
-        const gap = 3;
-        const W = weeks * (cellSize + gap) + 20;
-        const H = 7 * (cellSize + gap) + 16;
-        const dayLabels = ["L", "", "M", "", "V", "", "D"];
-
-        // Find the Monday of the current week
-        const dayOfWeek = today.getDay() || 7;
-        const monday = new Date(today);
-        monday.setDate(monday.getDate() - dayOfWeek + 1);
-
-        const cells: { x: number; y: number; active: boolean; date: string }[] = [];
-        for (let w = 0; w < weeks; w++) {
-          for (let d = 0; d < 7; d++) {
-            const cellDate = new Date(monday);
-            cellDate.setDate(cellDate.getDate() - (weeks - 1 - w) * 7 + d);
-            if (cellDate > today) continue;
-            const dateStr = `${cellDate.getFullYear()}-${String(cellDate.getMonth() + 1).padStart(2, "0")}-${String(cellDate.getDate()).padStart(2, "0")}`;
-            cells.push({
-              x: 20 + w * (cellSize + gap),
-              y: d * (cellSize + gap),
-              active: dateSet.has(dateStr),
-              date: dateStr,
-            });
-          }
-        }
-
-        return (
-          <Card className="card-gradient-border">
-            <CardHeader>
-              <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
-                Frequence (3 mois)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-                {dayLabels.map((label, i) => (
-                  label && (
-                    <text key={i} x={8} y={i * (cellSize + gap) + cellSize - 2} textAnchor="middle" className="fill-muted-foreground text-[7px]">
-                      {label}
-                    </text>
-                  )
-                ))}
-                {cells.map((c, i) => (
-                  <rect
-                    key={i}
-                    x={c.x}
-                    y={c.y}
-                    width={cellSize}
-                    height={cellSize}
-                    rx={3}
-                    fill={c.active ? "oklch(0.72 0.21 48)" : "oklch(0.18 0.008 50)"}
-                    opacity={c.active ? 1 : 0.5}
-                  />
-                ))}
-              </svg>
-            </CardContent>
-          </Card>
-        );
-      })()}
 
       {/* Suggestions */}
       {stats.suggestions.length > 0 && (
@@ -314,75 +241,6 @@ export function Dashboard() {
         </Card>
       )}
 
-      {/* Muscle volume over time */}
-      {Object.keys(stats.muscleVolumeOverTime).length > 0 && (() => {
-        const muscles = Object.keys(stats.muscleVolumeOverTime);
-        const allWeeks = [...new Set(muscles.flatMap((m) => stats.muscleVolumeOverTime[m].map((w) => w.week)))].sort();
-        const W = 320;
-        const H = 160;
-        const padTop = 16;
-        const padBottom = 20;
-        const padX = 8;
-        const chartW = W - padX * 2;
-        const chartH = H - padTop - padBottom;
-
-        // Find max volume across all muscles
-        let maxVol = 0;
-        for (const m of muscles) {
-          for (const w of stats.muscleVolumeOverTime[m]) {
-            if (w.volume > maxVol) maxVol = w.volume;
-          }
-        }
-        if (maxVol === 0) maxVol = 1;
-
-        return (
-          <Card className="card-gradient-border">
-            <CardHeader>
-              <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
-                Volume par muscle / semaine
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
-                {muscles.map((muscle, mi) => {
-                  const data = stats.muscleVolumeOverTime[muscle];
-                  const color = MUSCLE_COLORS[mi % MUSCLE_COLORS.length];
-                  const path = allWeeks.map((week, wi) => {
-                    const entry = data.find((d) => d.week === week);
-                    const vol = entry ? entry.volume : 0;
-                    const x = padX + (allWeeks.length > 1 ? (wi / (allWeeks.length - 1)) * chartW : chartW / 2);
-                    const y = padTop + chartH - (vol / maxVol) * chartH;
-                    return `${wi === 0 ? "M" : "L"} ${x} ${y}`;
-                  }).join(" ");
-                  return (
-                    <path key={muscle} d={path} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" opacity={0.8} />
-                  );
-                })}
-                {/* X axis labels */}
-                {allWeeks.map((week, wi) => {
-                  const x = padX + (allWeeks.length > 1 ? (wi / (allWeeks.length - 1)) * chartW : chartW / 2);
-                  const d = new Date(week);
-                  return (
-                    <text key={wi} x={x} y={H - 4} textAnchor="middle" className="fill-muted-foreground text-[7px]">
-                      {`${d.getDate()}/${d.getMonth() + 1}`}
-                    </text>
-                  );
-                })}
-              </svg>
-              {/* Legend */}
-              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                {muscles.map((muscle, mi) => (
-                  <div key={muscle} className="flex items-center gap-1">
-                    <div className="size-2 rounded-full" style={{ backgroundColor: MUSCLE_COLORS[mi % MUSCLE_COLORS.length] }} />
-                    <span className="text-[9px] font-bold text-muted-foreground">{muscle}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
-
       {/* Muscle distribution */}
       {stats.muscleDistribution.length > 0 && (
         <Card className="card-gradient-border">
@@ -414,6 +272,71 @@ export function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Heatmap */}
+      {stats.sessionDates.length > 0 && (() => {
+        const dateSet = new Set(stats.sessionDates);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const weeks = 13;
+        const cellSize = 14;
+        const gap = 3;
+        const W = weeks * (cellSize + gap) + 20;
+        const H = 7 * (cellSize + gap) + 16;
+        const dayLabels = ["L", "", "M", "", "V", "", "D"];
+
+        const dayOfWeek = today.getDay() || 7;
+        const monday = new Date(today);
+        monday.setDate(monday.getDate() - dayOfWeek + 1);
+
+        const cells: { x: number; y: number; active: boolean }[] = [];
+        for (let w = 0; w < weeks; w++) {
+          for (let d = 0; d < 7; d++) {
+            const cellDate = new Date(monday);
+            cellDate.setDate(cellDate.getDate() - (weeks - 1 - w) * 7 + d);
+            if (cellDate > today) continue;
+            const dateStr = `${cellDate.getFullYear()}-${String(cellDate.getMonth() + 1).padStart(2, "0")}-${String(cellDate.getDate()).padStart(2, "0")}`;
+            cells.push({
+              x: 20 + w * (cellSize + gap),
+              y: d * (cellSize + gap),
+              active: dateSet.has(dateStr),
+            });
+          }
+        }
+
+        return (
+          <Card className="card-gradient-border">
+            <CardHeader>
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
+                Frequence (3 mois)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+                {dayLabels.map((label, i) => (
+                  label && (
+                    <text key={i} x={8} y={i * (cellSize + gap) + cellSize - 2} textAnchor="middle" className="fill-muted-foreground text-[7px]">
+                      {label}
+                    </text>
+                  )
+                ))}
+                {cells.map((c, i) => (
+                  <rect
+                    key={i}
+                    x={c.x}
+                    y={c.y}
+                    width={cellSize}
+                    height={cellSize}
+                    rx={3}
+                    fill={c.active ? "oklch(0.72 0.21 48)" : "oklch(0.18 0.008 50)"}
+                    opacity={c.active ? 1 : 0.5}
+                  />
+                ))}
+              </svg>
+            </CardContent>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
