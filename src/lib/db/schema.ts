@@ -15,6 +15,8 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
+  accentColor: text("accent_color").default("orange"),
+  theme: text("theme").default("dark"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -46,6 +48,18 @@ export const sessionExercises = pgTable("session_exercises", {
   sortOrder: integer("sort_order").default(0),
   locked: boolean("locked").default(false).notNull(),
   notes: text("notes"),
+});
+
+export const friendships = pgTable("friendships", {
+  id: serial("id").primaryKey(),
+  requesterId: integer("requester_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  addresseeId: integer("addressee_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 export const sets = pgTable("sets", {

@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
-import { Plus, BookOpen } from "lucide-react";
+import { Plus, BookOpen, Users, Settings } from "lucide-react";
 import { getAuthUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
@@ -79,6 +79,15 @@ export default async function Home() {
             </p>
           </div>
           <div className="flex items-center gap-1">
+            <Link href="/friends">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-10 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              >
+                <Users className="size-5" />
+              </Button>
+            </Link>
             <Link href="/exercises">
               <Button
                 variant="ghost"
@@ -86,6 +95,15 @@ export default async function Home() {
                 className="size-10 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary"
               >
                 <BookOpen className="size-5" />
+              </Button>
+            </Link>
+            <Link href="/settings">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-10 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              >
+                <Settings className="size-5" />
               </Button>
             </Link>
             <LogoutButton />

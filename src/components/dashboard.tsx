@@ -18,18 +18,21 @@ interface Stats {
   suggestions: { muscleGroup: string; daysSince: number }[];
 }
 
-export function Dashboard() {
+export function Dashboard({ friendUserId }: { friendUserId?: number } = {}) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/stats")
+    const url = friendUserId
+      ? `/api/friends/${friendUserId}/stats`
+      : "/api/stats";
+    fetch(url)
       .then((r) => r.json())
       .then((data) => {
         setStats(data);
         setLoading(false);
       });
-  }, []);
+  }, [friendUserId]);
 
   if (loading) {
     return (
@@ -154,8 +157,8 @@ export function Dashboard() {
               <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
                 <defs>
                   <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ff9a4d" />
-                    <stop offset="100%" stopColor="#e84a00" />
+                    <stop offset="0%" stopColor="var(--accent-gradient-start)" />
+                    <stop offset="100%" stopColor="var(--accent-gradient-end)" />
                   </linearGradient>
                 </defs>
                 {stats.weeklyVolumes.map((w, i) => {
@@ -224,7 +227,7 @@ export function Dashboard() {
                         <td className="py-2 pr-2">
                           {sparkPath && (
                             <svg width={sparkW} height={sparkH} viewBox={`0 0 ${sparkW} ${sparkH}`}>
-                              <path d={sparkPath} fill="none" stroke="oklch(0.72 0.21 48)" strokeWidth="1.5" strokeLinecap="round" />
+                              <path d={sparkPath} fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinecap="round" />
                             </svg>
                           )}
                         </td>
@@ -328,7 +331,7 @@ export function Dashboard() {
                     width={cellSize}
                     height={cellSize}
                     rx={3}
-                    fill={c.active ? "oklch(0.72 0.21 48)" : "oklch(0.18 0.008 50)"}
+                    fill={c.active ? "var(--primary)" : "var(--muted)"}
                     opacity={c.active ? 1 : 0.5}
                   />
                 ))}

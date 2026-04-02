@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   const [user] = await db
-    .select({ id: users.id, email: users.email, name: users.name })
+    .select({ id: users.id, email: users.email, name: users.name, accentColor: users.accentColor, theme: users.theme })
     .from(users)
     .where(eq(users.id, auth.userId));
 

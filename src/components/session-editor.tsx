@@ -70,37 +70,71 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
     weightKg: number,
     reps: number
   ) => {
+    // Optimistic: add set locally
+    setSession((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex) =>
+          ex.sessionExerciseId === sessionExerciseId
+            ? { ...ex, sets: [...ex.sets, { id: Date.now(), setNumber: ex.sets.length + 1, weightKg, reps }] }
+            : ex
+        ),
+      };
+    });
     await fetch("/api/sets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionExerciseId, weightKg, reps }),
     });
-    await refreshSession();
+    refreshSession();
   };
 
   const handleDeleteSet = async (setId: number) => {
+    // Optimistic: remove set locally
+    setSession((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex) => ({
+          ...ex,
+          sets: ex.sets.filter((s) => s.id !== setId),
+        })),
+      };
+    });
     await fetch(`/api/sets/${setId}`, { method: "DELETE" });
-    await refreshSession();
+    refreshSession();
   };
 
   const handleRemoveExercise = async (sessionExerciseId: number) => {
-    await fetch(`/api/session-exercises/${sessionExerciseId}`, {
-      method: "DELETE",
+    setSession((prev) => {
+      if (!prev) return prev;
+      return { ...prev, exercises: prev.exercises.filter((ex) => ex.sessionExerciseId !== sessionExerciseId) };
     });
-    await refreshSession();
+    await fetch(`/api/session-exercises/${sessionExerciseId}`, { method: "DELETE" });
+    refreshSession();
   };
 
   const handleToggleLock = async (sessionExerciseId: number, locked: boolean) => {
-    await fetch(`/api/session-exercises/${sessionExerciseId}`, {
+    // Optimistic: toggle lock locally
+    setSession((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex) =>
+          ex.sessionExerciseId === sessionExerciseId ? { ...ex, locked } : ex
+        ),
+      };
+    });
+    fetch(`/api/session-exercises/${sessionExerciseId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ locked }),
     });
-    await refreshSession();
   };
 
   const handleUpdateNotes = async (sessionExerciseId: number, notes: string) => {
-    await fetch(`/api/session-exercises/${sessionExerciseId}`, {
+    fetch(`/api/session-exercises/${sessionExerciseId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notes: notes || null }),
@@ -108,21 +142,30 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   };
 
   const handleMoveExercise = async (index: number, direction: "up" | "down") => {
+    if (!session) return;
+    const exs = session.exercises || [];
     const swapIndex = direction === "up" ? index - 1 : index + 1;
-    if (swapIndex < 0 || swapIndex >= exercises.length) return;
+    if (swapIndex < 0 || swapIndex >= exs.length) return;
 
-    // Build new order: swap the two exercises
-    const reordered = exercises.map((ex, i) => ex.sessionExerciseId);
-    const tmp = reordered[index];
-    reordered[index] = reordered[swapIndex];
-    reordered[swapIndex] = tmp;
+    // Optimistic: swap locally
+    const newExercises = [...exs];
+    const tmp = newExercises[index];
+    newExercises[index] = newExercises[swapIndex];
+    newExercises[swapIndex] = tmp;
+    setSession((prev) => prev ? { ...prev, exercises: newExercises } : prev);
 
-    await fetch("/api/session-exercises/reorder", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: reordered }),
-    });
-    await refreshSession();
+    await Promise.all([
+      fetch(`/api/session-exercises/${exs[index].sessionExerciseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: swapIndex }),
+      }),
+      fetch(`/api/session-exercises/${exs[swapIndex].sessionExerciseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: index }),
+      }),
+    ]);
   };
 
   const handleDeleteSession = async () => {

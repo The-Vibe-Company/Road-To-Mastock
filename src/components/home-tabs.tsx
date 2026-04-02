@@ -1,6 +1,7 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { SessionCard } from "./session-card";
 import { Dashboard } from "./dashboard";
 
@@ -16,11 +17,12 @@ interface Session {
 
 export function HomeTabs({ sessions }: { sessions: Session[] }) {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const tab = searchParams.get("tab") === "sessions" ? "sessions" : "dashboard";
+  const initial = searchParams.get("tab") === "sessions" ? "sessions" : "dashboard";
+  const [tab, setTab] = useState<"dashboard" | "sessions">(initial);
 
-  const setTab = (t: "dashboard" | "sessions") => {
-    router.replace(t === "dashboard" ? "/" : "/?tab=sessions", { scroll: false });
+  const switchTab = (t: "dashboard" | "sessions") => {
+    setTab(t);
+    window.history.replaceState(null, "", t === "dashboard" ? "/" : "/?tab=sessions");
   };
 
   return (
@@ -28,7 +30,7 @@ export function HomeTabs({ sessions }: { sessions: Session[] }) {
       {/* Tabs */}
       <div className="mb-6 flex items-center gap-2 rounded-xl bg-secondary/50 p-1">
         <button
-          onClick={() => setTab("dashboard")}
+          onClick={() => switchTab("dashboard")}
           className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-all ${
             tab === "dashboard"
               ? "bg-gradient-orange-intense text-black shadow-lg"
@@ -38,7 +40,7 @@ export function HomeTabs({ sessions }: { sessions: Session[] }) {
           Dashboard
         </button>
         <button
-          onClick={() => setTab("sessions")}
+          onClick={() => switchTab("sessions")}
           className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-all ${
             tab === "sessions"
               ? "bg-gradient-orange-intense text-black shadow-lg"
@@ -50,35 +52,38 @@ export function HomeTabs({ sessions }: { sessions: Session[] }) {
       </div>
 
       {/* Content */}
-      {tab === "dashboard" ? (
+      <div className={tab === "dashboard" ? "" : "hidden"}>
         <Dashboard />
-      ) : sessions.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
-            <span className="text-3xl">🏋️</span>
+      </div>
+      {tab === "sessions" && (
+        sessions.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+            <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
+              <span className="text-3xl">🏋️</span>
+            </div>
+            <div>
+              <p className="font-semibold">Aucune seance</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Commence ta premiere seance
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold">Aucune seance</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Commence ta premiere seance
-            </p>
+        ) : (
+          <div className="space-y-3">
+            {sessions.map((s) => (
+              <SessionCard
+                key={s.id}
+                id={s.id}
+                date={s.date}
+                exerciseCount={s.exerciseCount}
+                totalVolume={s.totalVolume}
+                gold={s.gold}
+                silver={s.silver}
+                bronze={s.bronze}
+              />
+            ))}
           </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {sessions.map((s) => (
-            <SessionCard
-              key={s.id}
-              id={s.id}
-              date={s.date}
-              exerciseCount={s.exerciseCount}
-              totalVolume={s.totalVolume}
-              gold={s.gold}
-              silver={s.silver}
-              bronze={s.bronze}
-            />
-          ))}
-        </div>
+        )
       )}
     </>
   );

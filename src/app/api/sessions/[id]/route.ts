@@ -42,33 +42,35 @@ export async function GET(
     .where(eq(sessionExercises.sessionId, sessionId))
     .orderBy(sessionExercises.sortOrder, sets.setNumber);
 
-  const grouped: Record<
+  const grouped = new Map<
     number,
     {
       sessionExerciseId: number;
       exerciseId: number;
       name: string;
       muscleGroup: string | null;
+      sortOrder: number;
       locked: boolean;
       notes: string | null;
       sets: { id: number; setNumber: number; weightKg: number; reps: number }[];
     }
-  > = {};
+  >();
 
   for (const row of exercisesWithSets) {
-    if (!grouped[row.sessionExerciseId]) {
-      grouped[row.sessionExerciseId] = {
+    if (!grouped.has(row.sessionExerciseId)) {
+      grouped.set(row.sessionExerciseId, {
         sessionExerciseId: row.sessionExerciseId,
         exerciseId: row.exerciseId,
         name: row.exerciseName,
         muscleGroup: row.muscleGroup,
+        sortOrder: row.sortOrder ?? 0,
         locked: row.locked,
         notes: row.notes,
         sets: [],
-      };
+      });
     }
     if (row.setId) {
-      grouped[row.sessionExerciseId].sets.push({
+      grouped.get(row.sessionExerciseId)!.sets.push({
         id: row.setId,
         setNumber: row.setNumber!,
         weightKg: row.weightKg!,
@@ -77,7 +79,7 @@ export async function GET(
     }
   }
 
-  const exerciseList = Object.values(grouped);
+  const exerciseList = [...grouped.values()].sort((a, b) => a.sortOrder - b.sortOrder);
   const exerciseIds = [...new Set(exerciseList.map((e) => e.exerciseId))];
 
   // Compute rankings for each exercise (max weight & total volume across all user sessions)

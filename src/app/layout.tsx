@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { AccentProvider } from "@/components/accent-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,7 +34,9 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`dark ${geistSans.variable}`}>
       <body>
-        <div className="mx-auto min-h-dvh max-w-lg">{children}</div>
+        <AccentProvider>
+          <div className="mx-auto min-h-dvh max-w-lg">{children}</div>
+        </AccentProvider>
       </body>
     </html>
   );

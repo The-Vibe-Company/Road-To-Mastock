@@ -72,11 +72,11 @@ export function RestTimer({ onDismiss }: { onDismiss: () => void }) {
       <svg width="80" height="80" viewBox="0 0 80 80">
         <circle
           cx="40" cy="40" r={radius}
-          fill="none" stroke="oklch(0.22 0.012 50)" strokeWidth="5"
+          fill="none" stroke="var(--border)" strokeWidth="5"
         />
         <circle
           cx="40" cy="40" r={radius}
-          fill="none" stroke="oklch(0.72 0.21 48)" strokeWidth="5"
+          fill="none" stroke="var(--primary)" strokeWidth="5"
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={strokeOffset}

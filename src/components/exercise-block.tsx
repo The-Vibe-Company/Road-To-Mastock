@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { SetForm } from "./set-form";
 import { SetRow } from "./set-row";
 import { RestTimer } from "./rest-timer";
-import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote } from "lucide-react";
+import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2 } from "lucide-react";
 
 interface ExerciseSet {
   id: number;
@@ -65,9 +65,12 @@ export function ExerciseBlock({
   const lastSet = sets[sets.length - 1];
   const totalVolume = sets.reduce((sum, s) => sum + s.weightKg * s.reps, 0);
   const medal = record && record <= 3 ? recordStyles[record] : null;
-  const [showNotes, setShowNotes] = useState(!!notes);
+  const [showNotes, setShowNotes] = useState(false);
+  const [savedNotes, setSavedNotes] = useState(notes || "");
   const [showTimer, setShowTimer] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const notesRef = useRef<HTMLTextAreaElement>(null);
+  const notesVisible = !!savedNotes || showNotes;
 
   const handleAddSet = (w: number, r: number) => {
     onAddSet(sessionExerciseId, w, r);
@@ -122,7 +125,7 @@ export function ExerciseBlock({
             variant="ghost"
             size="icon-xs"
             onClick={() => setShowNotes(!showNotes)}
-            className={notes ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-primary"}
+            className={savedNotes ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-primary"}
           >
             <StickyNote className="size-4" />
           </Button>
@@ -134,21 +137,43 @@ export function ExerciseBlock({
           >
             {locked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
           </Button>
+          {!locked && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-muted-foreground hover:text-red-500"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
         </CardAction>
       </CardHeader>
 
       <CardContent>
         {/* Notes */}
-        {showNotes && (
-          <div className="mb-3">
+        {notesVisible && (
+          <div className="mb-3 flex gap-2">
             <textarea
               ref={notesRef}
-              defaultValue={notes || ""}
+              defaultValue={savedNotes}
               placeholder="Notes..."
-              onBlur={(e) => onUpdateNotes(sessionExerciseId, e.target.value)}
-              className="w-full resize-none rounded-lg bg-secondary/50 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+              className="flex-1 resize-none rounded-lg bg-secondary/50 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
               rows={2}
             />
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="mt-1 shrink-0 text-muted-foreground hover:text-primary"
+              onClick={() => {
+                const val = notesRef.current?.value || "";
+                onUpdateNotes(sessionExerciseId, val);
+                setSavedNotes(val);
+                if (!val) setShowNotes(false);
+              }}
+            >
+              <Check className="size-4" />
+            </Button>
           </div>
         )}
 
@@ -181,6 +206,31 @@ export function ExerciseBlock({
           />
         )}
       </CardContent>
+
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="border-t border-border/50 px-4 py-3">
+          <p className="mb-3 text-center text-sm font-bold">
+            Supprimer {name} ?
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 border-primary/30 text-sm font-bold"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1 text-sm font-bold"
+              onClick={() => onRemoveExercise(sessionExerciseId)}
+            >
+              Supprimer
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
