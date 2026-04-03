@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
@@ -9,11 +9,32 @@ interface SetFormProps {
   onAdd: (weightKg: number, reps: number) => void;
   lastWeight?: number;
   lastReps?: number;
+  knownWeights?: number[];
 }
 
-export function SetForm({ onAdd, lastWeight, lastReps }: SetFormProps) {
-  const [weight, setWeight] = useState(lastWeight?.toString() || "");
-  const [reps, setReps] = useState(lastReps?.toString() || "");
+function getNextWeight(currentWeight: number | undefined, knownWeights: number[]): number | undefined {
+  if (!currentWeight || knownWeights.length === 0) return undefined;
+  const sorted = [...knownWeights].sort((a, b) => a - b);
+  const next = sorted.find((w) => w > currentWeight);
+  return next ?? currentWeight;
+}
+
+export function SetForm({ onAdd, lastWeight, lastReps, knownWeights = [] }: SetFormProps) {
+  const suggestedWeight = lastWeight != null
+    ? getNextWeight(lastWeight, knownWeights) ?? lastWeight
+    : undefined;
+
+  const [weight, setWeight] = useState(suggestedWeight?.toString() || "");
+  const [reps, setReps] = useState(lastReps?.toString() || "10");
+
+  // Update suggestions when lastWeight/lastReps change (new set added)
+  useEffect(() => {
+    if (lastWeight != null) {
+      const next = getNextWeight(lastWeight, knownWeights) ?? lastWeight;
+      setWeight(next.toString());
+    }
+    setReps("10");
+  }, [lastWeight, lastReps, knownWeights]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

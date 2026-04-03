@@ -16,6 +16,11 @@ interface ExerciseSet {
   reps: number;
 }
 
+interface LastPerf {
+  date: string;
+  sets: { weightKg: number; reps: number }[];
+}
+
 interface SessionExercise {
   sessionExerciseId: number;
   exerciseId: number;
@@ -24,6 +29,8 @@ interface SessionExercise {
   locked: boolean;
   notes: string | null;
   record: number | null;
+  lastPerf: LastPerf | null;
+  knownWeights: number[];
   sets: ExerciseSet[];
 }
 
@@ -290,6 +297,8 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
               locked={ex.locked}
               notes={ex.notes}
               record={ex.record}
+              lastPerf={ex.lastPerf}
+              knownWeights={ex.knownWeights}
               sets={ex.sets}
               onAddSet={handleAddSet}
               onDeleteSet={handleDeleteSet}

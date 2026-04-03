@@ -62,6 +62,18 @@ export const friendships = pgTable("friendships", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+export const exerciseWeights = pgTable(
+  "exercise_weights",
+  {
+    id: serial("id").primaryKey(),
+    exerciseId: integer("exercise_id")
+      .notNull()
+      .references(() => exercises.id, { onDelete: "cascade" }),
+    weightKg: real("weight_kg").notNull(),
+  },
+  (t) => [unique().on(t.exerciseId, t.weightKg)]
+);
+
 export const sets = pgTable("sets", {
   id: serial("id").primaryKey(),
   sessionExerciseId: integer("session_exercise_id")

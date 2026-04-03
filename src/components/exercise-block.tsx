@@ -8,13 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { SetForm } from "./set-form";
 import { SetRow } from "./set-row";
 import { RestTimer } from "./rest-timer";
-import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2 } from "lucide-react";
+import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History } from "lucide-react";
 
 interface ExerciseSet {
   id: number;
   setNumber: number;
   weightKg: number;
   reps: number;
+}
+
+interface LastPerf {
+  date: string;
+  sets: { weightKg: number; reps: number }[];
 }
 
 interface ExerciseBlockProps {
@@ -25,6 +30,8 @@ interface ExerciseBlockProps {
   locked: boolean;
   notes: string | null;
   record: number | null;
+  lastPerf: LastPerf | null;
+  knownWeights: number[];
   sets: ExerciseSet[];
   onAddSet: (sessionExerciseId: number, weightKg: number, reps: number) => void;
   onDeleteSet: (setId: number) => void;
@@ -51,6 +58,8 @@ export function ExerciseBlock({
   locked,
   notes,
   record,
+  lastPerf,
+  knownWeights,
   sets,
   onAddSet,
   onDeleteSet,
@@ -69,12 +78,20 @@ export function ExerciseBlock({
   const [savedNotes, setSavedNotes] = useState(notes || "");
   const [showTimer, setShowTimer] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteSetId, setDeleteSetId] = useState<number | null>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const notesVisible = !!savedNotes || showNotes;
 
   const handleAddSet = (w: number, r: number) => {
     onAddSet(sessionExerciseId, w, r);
     setShowTimer(true);
+  };
+
+  const handleConfirmDeleteSet = () => {
+    if (deleteSetId !== null) {
+      onDeleteSet(deleteSetId);
+      setDeleteSetId(null);
+    }
   };
 
   return (
@@ -106,46 +123,37 @@ export function ExerciseBlock({
             )}
           </div>
         </div>
-        <CardAction className="flex gap-0.5">
-          {!locked && (
-            <>
-              {canMoveUp && (
-                <Button variant="ghost" size="icon-xs" onClick={onMoveUp} className="text-muted-foreground hover:text-primary">
-                  <ChevronUp className="size-4" />
-                </Button>
-              )}
-              {canMoveDown && (
-                <Button variant="ghost" size="icon-xs" onClick={onMoveDown} className="text-muted-foreground hover:text-primary">
-                  <ChevronDown className="size-4" />
-                </Button>
-              )}
-            </>
+        <CardAction className="flex gap-1">
+          {!locked && canMoveUp && (
+            <button onClick={onMoveUp} className="flex size-10 items-center justify-center rounded-xl bg-secondary/50 text-muted-foreground transition-colors active:scale-95 hover:text-primary">
+              <ChevronUp className="size-5" />
+            </button>
           )}
-          <Button
-            variant="ghost"
-            size="icon-xs"
+          {!locked && canMoveDown && (
+            <button onClick={onMoveDown} className="flex size-10 items-center justify-center rounded-xl bg-secondary/50 text-muted-foreground transition-colors active:scale-95 hover:text-primary">
+              <ChevronDown className="size-5" />
+            </button>
+          )}
+          <button
             onClick={() => setShowNotes(!showNotes)}
-            className={savedNotes ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-primary"}
+            className={`flex size-10 items-center justify-center rounded-xl transition-colors active:scale-95 ${
+              savedNotes ? "bg-primary/15 text-primary" : "bg-secondary/50 text-muted-foreground hover:text-primary"
+            }`}
           >
-            <StickyNote className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
+            <StickyNote className="size-5" />
+          </button>
+          <button
             onClick={() => onToggleLock(sessionExerciseId, !locked)}
-            className={locked ? "text-primary hover:text-primary/80" : "text-muted-foreground hover:text-primary"}
+            className={`flex size-10 items-center justify-center rounded-xl transition-colors active:scale-95 ${
+              locked ? "bg-primary/15 text-primary" : "bg-secondary/50 text-muted-foreground hover:text-primary"
+            }`}
           >
-            {locked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
-          </Button>
+            {locked ? <Lock className="size-5" /> : <Unlock className="size-5" />}
+          </button>
           {!locked && (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-muted-foreground hover:text-red-500"
-            >
-              <Trash2 className="size-4" />
-            </Button>
+            <button onClick={() => setShowDeleteConfirm(true)} className="flex size-10 items-center justify-center rounded-xl bg-secondary/50 text-muted-foreground transition-colors active:scale-95 hover:text-red-500">
+              <Trash2 className="size-5" />
+            </button>
           )}
         </CardAction>
       </CardHeader>
@@ -177,6 +185,30 @@ export function ExerciseBlock({
           </div>
         )}
 
+        {/* Last performance */}
+        {!locked && lastPerf && lastPerf.sets.length > 0 && (
+          <div className="mb-3 rounded-lg border border-primary/10 bg-primary/5 px-3 py-2.5">
+            <div className="mb-2 flex items-center gap-1.5">
+              <History className="size-3 text-primary/40" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Derniere perf</span>
+            </div>
+            <div className="grid grid-cols-1 gap-1">
+              {lastPerf.sets.map((s, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="w-4 text-right text-[10px] font-bold text-primary/30">{i + 1}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-black text-primary/70">{s.weightKg}</span>
+                    <span className="text-[10px] text-muted-foreground">kg</span>
+                    <span className="text-xs text-primary/25">x</span>
+                    <span className="text-sm font-black text-primary/70">{s.reps}</span>
+                    <span className="text-[10px] text-muted-foreground">reps</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {sets.length > 0 && (
           <div className={!locked ? "mb-3 border-b border-border/50 pb-2" : ""}>
             {sets.map((s) => (
@@ -185,9 +217,32 @@ export function ExerciseBlock({
                 setNumber={s.setNumber}
                 weightKg={s.weightKg}
                 reps={s.reps}
-                onDelete={locked ? undefined : () => onDeleteSet(s.id)}
+                onDelete={locked ? undefined : () => setDeleteSetId(s.id)}
               />
             ))}
+          </div>
+        )}
+
+        {/* Delete set confirmation */}
+        {deleteSetId !== null && (
+          <div className="mb-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-3">
+            <p className="mb-2.5 text-center text-sm font-bold">Supprimer cette serie ?</p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 h-10 border-primary/30 text-sm font-bold"
+                onClick={() => setDeleteSetId(null)}
+              >
+                Annuler
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 h-10 text-sm font-bold"
+                onClick={handleConfirmDeleteSet}
+              >
+                Supprimer
+              </Button>
+            </div>
           </div>
         )}
 
@@ -203,11 +258,12 @@ export function ExerciseBlock({
             onAdd={handleAddSet}
             lastWeight={lastSet?.weightKg}
             lastReps={lastSet?.reps}
+            knownWeights={knownWeights}
           />
         )}
       </CardContent>
 
-      {/* Delete confirmation modal */}
+      {/* Delete exercise confirmation */}
       {showDeleteConfirm && (
         <div className="border-t border-border/50 px-4 py-3">
           <p className="mb-3 text-center text-sm font-bold">
@@ -216,14 +272,14 @@ export function ExerciseBlock({
           <div className="flex gap-2">
             <Button
               variant="outline"
-              className="flex-1 border-primary/30 text-sm font-bold"
+              className="flex-1 h-10 border-primary/30 text-sm font-bold"
               onClick={() => setShowDeleteConfirm(false)}
             >
               Annuler
             </Button>
             <Button
               variant="destructive"
-              className="flex-1 text-sm font-bold"
+              className="flex-1 h-10 text-sm font-bold"
               onClick={() => onRemoveExercise(sessionExerciseId)}
             >
               Supprimer

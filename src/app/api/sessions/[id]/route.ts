@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { sessions, sessionExercises, sets, exercises } from "@/lib/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { sessions, sessionExercises, sets, exercises, exerciseWeights } from "@/lib/db/schema";
+import { eq, and, sql, inArray, asc } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 
 export async function GET(
@@ -82,6 +82,49 @@ export async function GET(
   const exerciseList = [...grouped.values()].sort((a, b) => a.sortOrder - b.sortOrder);
   const exerciseIds = [...new Set(exerciseList.map((e) => e.exerciseId))];
 
+  // Fetch last session's sets for each exercise (previous performance)
+  const lastPerf: Record<number, { date: string; sets: { weightKg: number; reps: number }[] }> = {};
+
+  if (exerciseIds.length > 0) {
+    const lastPerfRows = (await db.execute(sql`
+      WITH last_se AS (
+        SELECT DISTINCT ON (se.exercise_id)
+          se.id AS se_id,
+          se.exercise_id,
+          s.date
+        FROM session_exercises se
+        JOIN sessions s ON s.id = se.session_id
+        WHERE se.exercise_id IN (${sql.join(exerciseIds.map(id => sql`${id}`), sql`, `)})
+          AND s.user_id = ${auth.userId}
+          AND se.session_id != ${sessionId}
+        ORDER BY se.exercise_id, s.date DESC, s.created_at DESC
+      )
+      SELECT
+        lse.exercise_id,
+        lse.date,
+        st.weight_kg,
+        st.reps,
+        st.set_number
+      FROM last_se lse
+      JOIN sets st ON st.session_exercise_id = lse.se_id
+      ORDER BY lse.exercise_id, st.set_number
+    `)) as unknown as { rows?: any[] };
+
+    const rows = (lastPerfRows.rows ?? lastPerfRows) as unknown as {
+      exercise_id: number; date: string; weight_kg: number; reps: number; set_number: number;
+    }[];
+
+    for (const row of rows) {
+      if (!lastPerf[row.exercise_id]) {
+        lastPerf[row.exercise_id] = { date: row.date, sets: [] };
+      }
+      lastPerf[row.exercise_id].sets.push({
+        weightKg: Number(row.weight_kg),
+        reps: Number(row.reps),
+      });
+    }
+  }
+
   // Compute rankings for each exercise (max weight & total volume across all user sessions)
   const rankings: Record<number, { weightRank: number | null; volumeRank: number | null }> = {};
 
@@ -122,6 +165,20 @@ export async function GET(
     }
   }
 
+  // Fetch known weights per exercise
+  const knownWeightsMap: Record<number, number[]> = {};
+  if (exerciseIds.length > 0) {
+    const weightRows = await db
+      .select({ exerciseId: exerciseWeights.exerciseId, weightKg: exerciseWeights.weightKg })
+      .from(exerciseWeights)
+      .where(inArray(exerciseWeights.exerciseId, exerciseIds))
+      .orderBy(asc(exerciseWeights.weightKg));
+    for (const row of weightRows) {
+      if (!knownWeightsMap[row.exerciseId]) knownWeightsMap[row.exerciseId] = [];
+      knownWeightsMap[row.exerciseId].push(row.weightKg);
+    }
+  }
+
   return Response.json({
     ...session,
     exercises: exerciseList.map((e) => ({
@@ -132,6 +189,8 @@ export async function GET(
             rankings[e.sessionExerciseId].volumeRank ?? 999
           )
         : null,
+      lastPerf: lastPerf[e.exerciseId] || null,
+      knownWeights: knownWeightsMap[e.exerciseId] || [],
     })),
   });
 }
