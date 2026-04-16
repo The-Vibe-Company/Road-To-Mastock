@@ -8,6 +8,7 @@ const COOKIE_NAME = "rtm-token";
 export async function signToken(userId: number): Promise<string> {
   return new SignJWT({ userId })
     .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
     .setExpirationTime("30d")
     .sign(secret);
 }

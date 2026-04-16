@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ExercisePicker } from "./exercise-picker";
 import { ExerciseBlock } from "./exercise-block";
 import { DatePicker } from "./date-picker";
-import { Plus, Trash2, ArrowLeft, Dumbbell, Activity, Weight, Layers, CalendarDays } from "lucide-react";
-import Link from "next/link";
+import { Plus, Trash2, Dumbbell, Activity, Weight, Layers, CalendarDays } from "lucide-react";
+import { BackButton } from "./back-button";
 
 interface ExerciseSet {
   id: number;
@@ -221,13 +221,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
     <div className="flex min-h-dvh flex-col px-4 pb-24 pt-6">
       {/* Header */}
       <div className="mb-6">
-        <Link
-          href="/?tab=sessions"
-          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-        >
-          <ArrowLeft className="size-4" />
-          Retour
-        </Link>
+        <BackButton fallback="/?tab=sessions" className="mb-3" />
         <div className="relative">
           <button
             type="button"

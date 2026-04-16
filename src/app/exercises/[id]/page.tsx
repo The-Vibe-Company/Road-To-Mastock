@@ -1,10 +1,10 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Minus, Trophy, Calendar } from "lucide-react";
+import { Minus, Trophy, Calendar } from "lucide-react";
+import { BackButton } from "@/components/back-button";
 
 interface ExerciseInfo {
   id: number;
@@ -74,13 +74,7 @@ export default function ExerciseDetail({
 
   return (
     <div className="min-h-dvh px-4 pb-8 pt-6">
-      <Link
-        href="/exercises"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-      >
-        <ArrowLeft className="size-4" />
-        Catalogue
-      </Link>
+      <BackButton fallback="/exercises" />
 
       <div className="mb-6">
         <h1 className="text-2xl font-black tracking-tight">{exercise.name}</h1>

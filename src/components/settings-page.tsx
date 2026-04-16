@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, Palette, Sun, Moon } from "lucide-react";
+import { Palette, Sun, Moon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ColorPicker } from "./color-picker";
 import { useAccent } from "./accent-provider";
+import { BackButton } from "./back-button";
 
 export function SettingsPage() {
   const { theme, setTheme } = useAccent();
@@ -12,13 +12,7 @@ export function SettingsPage() {
   return (
     <div className="flex min-h-dvh flex-col px-4 pb-12 pt-6">
       <div className="mb-6">
-        <Link
-          href="/"
-          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-        >
-          <ArrowLeft className="size-4" />
-          Retour
-        </Link>
+        <BackButton className="mb-3" />
         <h1 className="text-2xl font-black tracking-tight">Parametres</h1>
       </div>
 

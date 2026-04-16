@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { SignJWT, jwtVerify } from "jose";
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
 const publicPaths = ["/login", "/register", "/api/auth/login", "/api/auth/register"];
+
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+// Only re-issue the cookie when it's more than a day old, to avoid
+// rewriting Set-Cookie on every single request.
+const REFRESH_AFTER = 60 * 60 * 24; // 1 day
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -25,6 +30,26 @@ export async function proxy(request: NextRequest) {
     const { payload } = await jwtVerify(token, secret);
     const response = NextResponse.next();
     response.headers.set("x-user-id", String(payload.userId));
+
+    // Sliding session: if the token was issued more than a day ago,
+    // re-sign it and reset the cookie so the user stays logged in as long
+    // as they use the app at least once every 30 days.
+    const iat = typeof payload.iat === "number" ? payload.iat : 0;
+    const now = Math.floor(Date.now() / 1000);
+    if (now - iat > REFRESH_AFTER) {
+      const fresh = await new SignJWT({ userId: payload.userId })
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setExpirationTime("30d")
+        .sign(secret);
+      response.cookies.set("rtm-token", fresh, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: SESSION_MAX_AGE,
+        path: "/",
+      });
+    }
     return response;
   } catch {
     if (pathname.startsWith("/api/")) {

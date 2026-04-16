@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, ChevronRight, Plus, Pencil, Check, X } from "lucide-react";
+import { ChevronRight, Plus, Pencil, Check, X } from "lucide-react";
+import { BackButton } from "@/components/back-button";
 
 interface Exercise {
   id: number;
@@ -29,6 +30,8 @@ export default function ExerciseCatalog() {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
+  const [editMuscle, setEditMuscle] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const refresh = useCallback(() => {
     fetch("/api/exercises")
@@ -56,16 +59,34 @@ export default function ExerciseCatalog() {
     refresh();
   };
 
-  const handleRename = async (id: number) => {
-    if (!editName.trim()) return;
+  const handleSaveEdit = async (id: number) => {
+    if (!editName.trim() || savingEdit) return;
+    setSavingEdit(true);
     await fetch(`/api/exercises/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName.trim() }),
+      body: JSON.stringify({
+        name: editName.trim(),
+        muscleGroup: editMuscle,
+      }),
     });
+    setSavingEdit(false);
     setEditingId(null);
     setEditName("");
+    setEditMuscle(null);
     refresh();
+  };
+
+  const startEdit = (ex: Exercise) => {
+    setEditingId(ex.id);
+    setEditName(ex.name);
+    setEditMuscle(ex.muscleGroup);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditName("");
+    setEditMuscle(null);
   };
 
   const grouped: Record<string, Exercise[]> = {};
@@ -89,13 +110,7 @@ export default function ExerciseCatalog() {
 
   return (
     <div className="min-h-dvh px-4 pb-8 pt-6">
-      <Link
-        href="/"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-      >
-        <ArrowLeft className="size-4" />
-        Retour
-      </Link>
+      <BackButton />
 
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-black tracking-tight">Catalogue</h1>
@@ -159,34 +174,60 @@ export default function ExerciseCatalog() {
               </CardHeader>
               <CardContent className="space-y-0.5">
                 {exs.map((ex) => (
-                  <div key={ex.id} className="flex items-center gap-1">
+                  <div key={ex.id}>
                     {editingId === ex.id ? (
                       <form
-                        className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2"
-                        onSubmit={(e) => { e.preventDefault(); handleRename(ex.id); }}
+                        className="space-y-3 rounded-xl border border-primary/20 bg-secondary/30 p-3"
+                        onSubmit={(e) => { e.preventDefault(); handleSaveEdit(ex.id); }}
                       >
                         <Input
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="h-9 flex-1 bg-secondary/50 font-bold"
+                          placeholder="Nom de l'exercice"
+                          className="h-10 bg-secondary/50 font-bold"
                           autoFocus
                         />
-                        <button
-                          type="submit"
-                          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary/20"
-                        >
-                          <Check className="size-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(null)}
-                          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent"
-                        >
-                          <X className="size-4" />
-                        </button>
+                        <div>
+                          <p className="mb-2 text-xs font-bold text-muted-foreground">Muscle ciblé</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {MUSCLE_GROUPS.map((mg) => (
+                              <button
+                                key={mg}
+                                type="button"
+                                onClick={() => setEditMuscle(editMuscle === mg ? null : mg)}
+                                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${
+                                  editMuscle === mg
+                                    ? "bg-gradient-orange-intense text-black shadow-lg"
+                                    : "bg-secondary/50 text-muted-foreground hover:bg-accent"
+                                }`}
+                              >
+                                {mg}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="submit"
+                            disabled={!editName.trim() || savingEdit}
+                            className="h-10 flex-1 bg-gradient-orange-intense font-bold text-black"
+                          >
+                            <Check className="size-4" strokeWidth={3} />
+                            {savingEdit ? "..." : "Enregistrer"}
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={cancelEdit}
+                            variant="ghost"
+                            className="h-10 px-4 font-bold"
+                          >
+                            <X className="size-4" />
+                            Annuler
+                          </Button>
+                        </div>
                       </form>
                     ) : (
-                      <>
+                      <div className="flex items-center gap-1">
                         <Link
                           href={`/exercises/${ex.id}`}
                           className="flex flex-1 items-center justify-between rounded-xl px-3 py-3 transition-all hover:bg-accent active:scale-[0.97]"
@@ -195,12 +236,12 @@ export default function ExerciseCatalog() {
                           <ChevronRight className="size-4 text-primary/40" />
                         </Link>
                         <button
-                          onClick={() => { setEditingId(ex.id); setEditName(ex.name); }}
+                          onClick={() => startEdit(ex)}
                           className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
                         >
                           <Pencil className="size-3.5" />
                         </button>
-                      </>
+                      </div>
                     )}
                   </div>
                 ))}

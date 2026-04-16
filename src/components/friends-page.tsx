@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, UserPlus, Users, Check, X, Eye, Search, Clock, Trash2 } from "lucide-react";
+import { UserPlus, Users, Check, X, Eye, Search, Clock, Trash2 } from "lucide-react";
+import { BackButton } from "./back-button";
 
 interface Friend {
   friendshipId: number;
@@ -111,13 +112,7 @@ export function FriendsPage() {
   return (
     <div className="flex min-h-dvh flex-col px-4 pb-12 pt-6">
       <div className="mb-6">
-        <Link
-          href="/"
-          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-        >
-          <ArrowLeft className="size-4" />
-          Retour
-        </Link>
+        <BackButton className="mb-3" />
         <h1 className="text-2xl font-black tracking-tight">Amis</h1>
       </div>
 
