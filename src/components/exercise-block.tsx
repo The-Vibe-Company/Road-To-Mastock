@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { SetForm } from "./set-form";
 import { SetRow } from "./set-row";
 import { RestTimer } from "./rest-timer";
-import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History } from "lucide-react";
+import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Zap } from "lucide-react";
 
 interface ExerciseSet {
   id: number;
@@ -42,6 +42,7 @@ interface ExerciseBlockProps {
   canMoveDown: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onOpenFocus?: () => void;
 }
 
 const recordStyles: Record<number, { card: string; badge: string; label: string }> = {
@@ -70,6 +71,7 @@ export function ExerciseBlock({
   canMoveDown,
   onMoveUp,
   onMoveDown,
+  onOpenFocus,
 }: ExerciseBlockProps) {
   const lastSet = sets[sets.length - 1];
   const totalVolume = sets.reduce((sum, s) => sum + s.weightKg * s.reps, 0);
@@ -124,6 +126,16 @@ export function ExerciseBlock({
           </div>
         </div>
         <CardAction className="flex gap-1">
+          {!locked && onOpenFocus && (
+            <button
+              onClick={onOpenFocus}
+              className="glow-orange-sm flex h-10 items-center gap-1.5 rounded-xl bg-gradient-orange-intense px-3 text-xs font-black tracking-tight text-black transition-transform active:scale-95"
+              aria-label="Mode focus"
+            >
+              <Zap className="size-4" strokeWidth={3} />
+              Focus
+            </button>
+          )}
           {!locked && canMoveUp && (
             <button onClick={onMoveUp} className="flex size-10 items-center justify-center rounded-xl bg-secondary/50 text-muted-foreground transition-colors active:scale-95 hover:text-primary">
               <ChevronUp className="size-5" />
