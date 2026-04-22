@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ExercisePicker } from "./exercise-picker";
 import { ExerciseBlock } from "./exercise-block";
 import { DatePicker } from "./date-picker";
+import { SessionFocus } from "./session-focus";
 import { Plus, Trash2, Dumbbell, Activity, Weight, Layers, CalendarDays } from "lucide-react";
 import { BackButton } from "./back-button";
 
@@ -46,6 +47,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   const [showPicker, setShowPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [focusSessionExerciseId, setFocusSessionExerciseId] = useState<number | null>(null);
 
   const refreshSession = useCallback(async () => {
     const res = await fetch(`/api/sessions/${sessionId}`);
@@ -303,6 +305,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
               canMoveDown={i < exercises.length - 1}
               onMoveUp={() => handleMoveExercise(i, "up")}
               onMoveDown={() => handleMoveExercise(i, "down")}
+              onOpenFocus={() => setFocusSessionExerciseId(ex.sessionExerciseId)}
             />
           ))}
         </div>
@@ -337,6 +340,29 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
         onSelect={handleSelectExercise}
       />
 
+      {/* Focus mode overlay */}
+      {focusSessionExerciseId !== null && (() => {
+        const idx = exercises.findIndex(
+          (e) => e.sessionExerciseId === focusSessionExerciseId
+        );
+        if (idx < 0) return null;
+        const ex = exercises[idx];
+        return (
+          <SessionFocus
+            sessionId={session.id}
+            sessionExerciseId={ex.sessionExerciseId}
+            exerciseId={ex.exerciseId}
+            name={ex.name}
+            muscleGroup={ex.muscleGroup}
+            exerciseIndex={idx + 1}
+            totalExercises={exercises.length}
+            currentSets={ex.sets}
+            onAddSet={handleAddSet}
+            onDeleteSet={handleDeleteSet}
+            onClose={() => setFocusSessionExerciseId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
