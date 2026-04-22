@@ -289,7 +289,7 @@ export function SessionFocus({
         <div className="absolute inset-x-0 bottom-0 z-10 border-t border-primary/10 bg-background/85 px-4 pt-3 pb-5 backdrop-blur-xl">
           <button
             onClick={handleValidate}
-            disabled={kg <= 0 || reps <= 0}
+            disabled={kg < 0 || reps <= 0}
             className="glow-orange flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-orange-intense text-sm font-black tracking-tight text-black disabled:opacity-40 disabled:shadow-none"
           >
             <Check className="size-4" strokeWidth={3} />
@@ -875,9 +875,11 @@ function HistoryView({ name, history, pr, currentSessionId }: HistoryViewProps) 
   );
   const sessions = sorted.filter((s) => s.sessionId !== currentSessionId);
 
-  // Build chart points for the progression line (max kg per session)
+  // Build chart points for the progression line (max kg per session).
+  // Filter out empty-set sessions defensively — Math.max(...[]) is -Infinity.
   const chartData = [...sessions]
     .reverse()
+    .filter((s) => s.sets.length > 0)
     .map((s) => Math.max(...s.sets.map((x) => x.weightKg)));
   const chartMax = chartData.length > 0 ? Math.max(...chartData) : 1;
   const chartMin = chartData.length > 0 ? Math.min(...chartData) : 0;
@@ -979,7 +981,9 @@ function HistoryView({ name, history, pr, currentSessionId }: HistoryViewProps) 
               (a, x) => a + x.weightKg * x.reps,
               0
             );
-            const top = Math.max(...s.sets.map((x) => x.weightKg));
+            const top = s.sets.length > 0
+              ? Math.max(...s.sets.map((x) => x.weightKg))
+              : 0;
             const isPrSession = pr && s.date === pr.date && top === pr.kg;
             return (
               <div
