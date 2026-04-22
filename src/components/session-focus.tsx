@@ -161,6 +161,15 @@ export function SessionFocus({
     setRestOpen(true);
   };
 
+  // Shift the virtual start time by -delta seconds so the running interval
+  // converges to `left + delta` on its next tick (the interval recomputes left
+  // from restStartRef every 200ms — just calling setRestLeft would be clobbered).
+  // The immediate setRestLeft avoids a visible lag until that next tick.
+  const adjustRest = useCallback((delta: number) => {
+    restStartRef.current += delta * 1000;
+    setRestLeft((s) => Math.max(0, s + delta));
+  }, []);
+
   const handleKg = (v: number) => setOverrideKg(v);
   const handleReps = (v: number) => setOverrideReps(v);
   const resetToLast = () => {
@@ -263,9 +272,7 @@ export function SessionFocus({
             restLeft={restLeft}
             onStartRest={startRest}
             onStopRest={() => setRestOpen(false)}
-            onAdjustRest={(d) =>
-              setRestLeft((s) => Math.max(0, Math.min(restTotal, s + d)))
-            }
+            onAdjustRest={adjustRest}
           />
         ) : (
           <HistoryView
@@ -684,7 +691,7 @@ function RestRunning({
   onAdjust: (delta: number) => void;
 }) {
   const C = 2 * Math.PI * 28;
-  const offset = C * (1 - left / total);
+  const offset = C * (1 - Math.min(1, left / total));
   const mm = Math.floor(left / 60);
   const ss = String(Math.floor(left % 60)).padStart(2, "0");
   return (
