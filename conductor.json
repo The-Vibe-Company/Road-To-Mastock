@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "setup": "set -euo pipefail\n\ncd \"$CONDUCTOR_WORKSPACE_PATH\"\n\nlink_shared_env() {\n  local name=\"$1\"\n  local source_path=\"$CONDUCTOR_ROOT_PATH/$name\"\n\n  if [ ! -f \"$source_path\" ]; then\n    return 0\n  fi\n\n  if [ -L \"$name\" ] && [ \"$(readlink \"$name\")\" != \"$source_path\" ]; then\n    rm -f \"$name\"\n  fi\n\n  if [ ! -e \"$name\" ] && [ ! -L \"$name\" ]; then\n    ln -s \"$source_path\" \"$name\"\n  fi\n}\n\nlink_shared_env .env\nlink_shared_env .env.local\nlink_shared_env .env.development.local\n\ncorepack pnpm install --frozen-lockfile --prefer-offline",
+    "run": "cd \"$CONDUCTOR_WORKSPACE_PATH\"\nexec corepack pnpm exec next dev --hostname 0.0.0.0 --port \"${CONDUCTOR_PORT:-3000}\""
+  },
+  "runScriptMode": "nonconcurrent"
+}
