@@ -34,10 +34,11 @@ export async function GET(request: NextRequest) {
 function normalizeGroups(input: unknown): string[] | undefined {
   if (input === undefined) return undefined;
   if (!Array.isArray(input)) return undefined;
-  return input
+  const cleaned = input
     .filter((v): v is string => typeof v === "string")
     .map((v) => v.trim())
     .filter(Boolean);
+  return Array.from(new Set(cleaned));
 }
 
 export async function POST(request: Request) {
@@ -50,9 +51,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "Name is required" }, { status: 400 });
   }
 
+  const fallbackSingle =
+    typeof body.muscleGroup === "string" ? body.muscleGroup.trim() : "";
   const groups =
     normalizeGroups(body.muscleGroups) ??
-    (body.muscleGroup?.trim() ? [body.muscleGroup.trim()] : []);
+    (fallbackSingle ? [fallbackSingle] : []);
 
   const [result] = await db
     .insert(exercises)
@@ -69,6 +72,9 @@ export async function POST(request: Request) {
       .select()
       .from(exercises)
       .where(ilike(exercises.name, body.name.trim()));
+    if (!existing) {
+      return Response.json({ error: "Conflict resolution failed" }, { status: 500 });
+    }
     const eg = resolveMuscleGroups(existing.muscleGroups, existing.muscleGroup);
     return Response.json({
       id: existing.id,

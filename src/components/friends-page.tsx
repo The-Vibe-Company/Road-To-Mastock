@@ -122,7 +122,7 @@ export function FriendsPage() {
     setPendingAction(key);
     try {
       await fetch(`/api/friends/${friendshipId}`, { method: "DELETE" });
-      refresh();
+      await refresh();
     } finally {
       setPendingAction(null);
     }

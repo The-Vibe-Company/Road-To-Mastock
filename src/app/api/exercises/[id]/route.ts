@@ -7,10 +7,11 @@ import { resolveMuscleGroups } from "@/lib/muscle-groups";
 function normalizeGroups(input: unknown): string[] | undefined {
   if (input === undefined) return undefined;
   if (!Array.isArray(input)) return undefined;
-  return input
+  const cleaned = input
     .filter((v): v is string => typeof v === "string")
     .map((v) => v.trim())
     .filter(Boolean);
+  return Array.from(new Set(cleaned));
 }
 
 export async function PATCH(
@@ -31,7 +32,7 @@ export async function PATCH(
     updates.muscleGroups = groups;
     updates.muscleGroup = groups[0] ?? null;
   } else if (body.muscleGroup !== undefined) {
-    const single = body.muscleGroup?.trim() || null;
+    const single = typeof body.muscleGroup === "string" ? body.muscleGroup.trim() || null : null;
     updates.muscleGroup = single;
     updates.muscleGroups = single ? [single] : [];
   }
