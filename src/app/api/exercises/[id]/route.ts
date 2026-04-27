@@ -31,8 +31,11 @@ export async function PATCH(
   if (groups !== undefined) {
     updates.muscleGroups = groups;
     updates.muscleGroup = groups[0] ?? null;
-  } else if (body.muscleGroup !== undefined) {
-    const single = typeof body.muscleGroup === "string" ? body.muscleGroup.trim() || null : null;
+  } else if (body.muscleGroup === null) {
+    updates.muscleGroup = null;
+    updates.muscleGroups = [];
+  } else if (typeof body.muscleGroup === "string") {
+    const single = body.muscleGroup.trim() || null;
     updates.muscleGroup = single;
     updates.muscleGroups = single ? [single] : [];
   }
