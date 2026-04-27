@@ -37,10 +37,11 @@ export function FriendsPage() {
   const [addSuccess, setAddSuccess] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
-  const refresh = () => {
-    fetch("/api/friends")
-      .then((r) => r.json())
-      .then((d) => { setData(d); setLoading(false); });
+  const refresh = async () => {
+    const res = await fetch("/api/friends");
+    const d = await res.json();
+    setData(d);
+    setLoading(false);
   };
 
   useEffect(() => { refresh(); }, []);
@@ -76,7 +77,7 @@ export function FriendsPage() {
         setAddEmail("");
         setSearchQuery("");
         setSearchResults([]);
-        refresh();
+        await refresh();
       }
     } finally {
       setPendingAction(null);
@@ -93,7 +94,7 @@ export function FriendsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "accept" }),
       });
-      refresh();
+      await refresh();
     } finally {
       setPendingAction(null);
     }
@@ -109,7 +110,7 @@ export function FriendsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "decline" }),
       });
-      refresh();
+      await refresh();
     } finally {
       setPendingAction(null);
     }
