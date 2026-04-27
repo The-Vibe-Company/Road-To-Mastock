@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
-import { Plus, BookOpen, Users, Settings } from "lucide-react";
+import { BookOpen, Users, Settings } from "lucide-react";
 import { getAuthUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
 import { HomeTabs } from "@/components/home-tabs";
+import { NewSessionButton } from "@/components/new-session-button";
 
 export const dynamic = "force-dynamic";
 
@@ -125,15 +126,7 @@ export default async function Home() {
 
       {/* FAB */}
       <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
-        <Link href="/sessions/new">
-          <Button
-            size="lg"
-            className="h-14 rounded-2xl bg-gradient-orange-intense px-8 text-base font-bold tracking-tight text-black shadow-2xl glow-orange"
-          >
-            <Plus className="size-5" strokeWidth={3} />
-            Nouvelle séance
-          </Button>
-        </Link>
+        <NewSessionButton />
       </div>
     </div>
   );

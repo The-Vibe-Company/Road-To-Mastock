@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { sessions, sessionExercises, sets, exercises, exerciseWeights } from "@/lib/db/schema";
 import { eq, and, sql, inArray, asc } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
+import { resolveMuscleGroups } from "@/lib/muscle-groups";
 
 export async function GET(
   _request: Request,
@@ -28,6 +29,7 @@ export async function GET(
       exerciseId: exercises.id,
       exerciseName: exercises.name,
       muscleGroup: exercises.muscleGroup,
+      muscleGroups: exercises.muscleGroups,
       sortOrder: sessionExercises.sortOrder,
       locked: sessionExercises.locked,
       notes: sessionExercises.notes,
@@ -49,6 +51,7 @@ export async function GET(
       exerciseId: number;
       name: string;
       muscleGroup: string | null;
+      muscleGroups: string[];
       sortOrder: number;
       locked: boolean;
       notes: string | null;
@@ -58,11 +61,13 @@ export async function GET(
 
   for (const row of exercisesWithSets) {
     if (!grouped.has(row.sessionExerciseId)) {
+      const groups = resolveMuscleGroups(row.muscleGroups, row.muscleGroup);
       grouped.set(row.sessionExerciseId, {
         sessionExerciseId: row.sessionExerciseId,
         exerciseId: row.exerciseId,
         name: row.exerciseName,
-        muscleGroup: row.muscleGroup,
+        muscleGroup: groups[0] ?? null,
+        muscleGroups: groups,
         sortOrder: row.sortOrder ?? 0,
         locked: row.locked,
         notes: row.notes,

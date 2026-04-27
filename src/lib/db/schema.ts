@@ -24,6 +24,7 @@ export const exercises = pgTable("exercises", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
   muscleGroup: text("muscle_group"),
+  muscleGroups: text("muscle_groups").array(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

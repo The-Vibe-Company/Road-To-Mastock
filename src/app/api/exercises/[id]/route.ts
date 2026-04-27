@@ -2,6 +2,17 @@ import { db } from "@/lib/db";
 import { exercises } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
+import { resolveMuscleGroups } from "@/lib/muscle-groups";
+
+function normalizeGroups(input: unknown): string[] | undefined {
+  if (input === undefined) return undefined;
+  if (!Array.isArray(input)) return undefined;
+  const cleaned = input
+    .filter((v): v is string => typeof v === "string")
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return Array.from(new Set(cleaned));
+}
 
 export async function PATCH(
   request: Request,
@@ -13,9 +24,21 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
-  const updates: Record<string, string | null> = {};
+  const updates: Record<string, string | string[] | null> = {};
   if (body.name?.trim()) updates.name = body.name.trim();
-  if (body.muscleGroup !== undefined) updates.muscleGroup = body.muscleGroup?.trim() || null;
+
+  const groups = normalizeGroups(body.muscleGroups);
+  if (groups !== undefined) {
+    updates.muscleGroups = groups;
+    updates.muscleGroup = groups[0] ?? null;
+  } else if (body.muscleGroup === null) {
+    updates.muscleGroup = null;
+    updates.muscleGroups = [];
+  } else if (typeof body.muscleGroup === "string") {
+    const single = body.muscleGroup.trim() || null;
+    updates.muscleGroup = single;
+    updates.muscleGroups = single ? [single] : [];
+  }
 
   if (Object.keys(updates).length === 0) {
     return Response.json({ error: "Nothing to update" }, { status: 400 });
@@ -31,5 +54,11 @@ export async function PATCH(
     return Response.json({ error: "Exercise not found" }, { status: 404 });
   }
 
-  return Response.json(updated);
+  const ug = resolveMuscleGroups(updated.muscleGroups, updated.muscleGroup);
+  return Response.json({
+    id: updated.id,
+    name: updated.name,
+    muscleGroup: ug[0] ?? null,
+    muscleGroups: ug,
+  });
 }
