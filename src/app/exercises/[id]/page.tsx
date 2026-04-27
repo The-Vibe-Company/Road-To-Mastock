@@ -10,6 +10,7 @@ interface ExerciseInfo {
   id: number;
   name: string;
   muscleGroup: string | null;
+  muscleGroups: string[];
 }
 
 interface SessionHistory {
@@ -78,9 +79,11 @@ export default function ExerciseDetail({
 
       <div className="mb-6">
         <h1 className="text-2xl font-black tracking-tight">{exercise.name}</h1>
-        {exercise.muscleGroup && (
-          <div className="mt-2">
-            <Badge variant="secondary" className="font-bold">{exercise.muscleGroup}</Badge>
+        {exercise.muscleGroups.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {exercise.muscleGroups.map((mg) => (
+              <Badge key={mg} variant="secondary" className="font-bold">{mg}</Badge>
+            ))}
           </div>
         )}
       </div>

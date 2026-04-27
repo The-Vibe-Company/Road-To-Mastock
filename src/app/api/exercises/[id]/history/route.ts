@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { exercises, sessions, sessionExercises, sets } from "@/lib/db/schema";
 import { eq, asc, and } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
+import { resolveMuscleGroups } from "@/lib/muscle-groups";
 
 export async function GET(
   _request: Request,
@@ -68,5 +69,14 @@ export async function GET(
 
   const history = Object.values(bySession);
 
-  return Response.json({ exercise, history });
+  const groups = resolveMuscleGroups(exercise.muscleGroups, exercise.muscleGroup);
+  return Response.json({
+    exercise: {
+      id: exercise.id,
+      name: exercise.name,
+      muscleGroup: groups[0] ?? null,
+      muscleGroups: groups,
+    },
+    history,
+  });
 }

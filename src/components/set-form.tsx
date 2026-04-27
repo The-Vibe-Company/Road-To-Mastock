@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 
 interface SetFormProps {
-  onAdd: (weightKg: number, reps: number) => void;
+  onAdd: (weightKg: number, reps: number) => void | Promise<void>;
   lastWeight?: number;
   lastReps?: number;
   knownWeights?: number[];
@@ -26,6 +26,7 @@ export function SetForm({ onAdd, lastWeight, lastReps, knownWeights = [] }: SetF
 
   const [weight, setWeight] = useState(suggestedWeight?.toString() || "");
   const [reps, setReps] = useState(lastReps?.toString() || "10");
+  const [submitting, setSubmitting] = useState(false);
 
   // Update suggestions when lastWeight/lastReps change (new set added)
   useEffect(() => {
@@ -36,12 +37,18 @@ export function SetForm({ onAdd, lastWeight, lastReps, knownWeights = [] }: SetF
     setReps("10");
   }, [lastWeight, lastReps, knownWeights]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     const w = parseFloat(weight);
     const r = parseInt(reps);
     if (isNaN(w) || isNaN(r) || w < 0 || r <= 0) return;
-    onAdd(w, r);
+    setSubmitting(true);
+    try {
+      await onAdd(w, r);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -79,9 +86,14 @@ export function SetForm({ onAdd, lastWeight, lastReps, knownWeights = [] }: SetF
       <Button
         type="submit"
         size="icon"
-        className="h-11 w-11 shrink-0 rounded-xl bg-gradient-orange-intense text-black shadow-lg"
+        disabled={submitting}
+        className="h-11 w-11 shrink-0 rounded-xl bg-gradient-orange-intense text-black shadow-lg disabled:opacity-100"
       >
-        <Check className="size-5" strokeWidth={3} />
+        {submitting ? (
+          <Loader2 className="size-5 animate-spin" strokeWidth={3} />
+        ) : (
+          <Check className="size-5" strokeWidth={3} />
+        )}
       </Button>
     </form>
   );

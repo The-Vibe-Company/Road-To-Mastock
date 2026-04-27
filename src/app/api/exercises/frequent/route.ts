@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { exercises, sessionExercises, sessions } from "@/lib/db/schema";
 import { eq, desc, count } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
+import { resolveMuscleGroups } from "@/lib/muscle-groups";
 
 export async function GET() {
   const auth = await getAuthUser();
@@ -12,6 +13,7 @@ export async function GET() {
       id: exercises.id,
       name: exercises.name,
       muscleGroup: exercises.muscleGroup,
+      muscleGroups: exercises.muscleGroups,
       useCount: count(sessionExercises.id),
     })
     .from(sessionExercises)
@@ -22,5 +24,16 @@ export async function GET() {
     .orderBy(desc(count(sessionExercises.id)))
     .limit(10);
 
-  return Response.json(result);
+  return Response.json(
+    result.map((r) => {
+      const groups = resolveMuscleGroups(r.muscleGroups, r.muscleGroup);
+      return {
+        id: r.id,
+        name: r.name,
+        muscleGroup: groups[0] ?? null,
+        muscleGroups: groups,
+        useCount: r.useCount,
+      };
+    }),
+  );
 }

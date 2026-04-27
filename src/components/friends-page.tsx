@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Users, Check, X, Eye, Search, Clock, Trash2 } from "lucide-react";
+import { UserPlus, Users, Check, X, Eye, Search, Clock, Trash2, Loader2 } from "lucide-react";
 import { BackButton } from "./back-button";
 
 interface Friend {
@@ -35,6 +35,7 @@ export function FriendsPage() {
   const [addEmail, setAddEmail] = useState("");
   const [addError, setAddError] = useState("");
   const [addSuccess, setAddSuccess] = useState("");
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   const refresh = () => {
     fetch("/api/friends")
@@ -56,46 +57,74 @@ export function FriendsPage() {
   }, [searchQuery]);
 
   const handleAdd = async (email: string) => {
+    const key = `add:${email}`;
+    if (pendingAction) return;
+    setPendingAction(key);
     setAddError("");
     setAddSuccess("");
-    const res = await fetch("/api/friends", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    const body = await res.json();
-    if (!res.ok) {
-      setAddError(body.error);
-    } else {
-      setAddSuccess("Demande envoyee !");
-      setAddEmail("");
-      setSearchQuery("");
-      setSearchResults([]);
-      refresh();
+    try {
+      const res = await fetch("/api/friends", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setAddError(body.error);
+      } else {
+        setAddSuccess("Demande envoyee !");
+        setAddEmail("");
+        setSearchQuery("");
+        setSearchResults([]);
+        refresh();
+      }
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleAccept = async (friendshipId: number) => {
-    await fetch(`/api/friends/${friendshipId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "accept" }),
-    });
-    refresh();
+    const key = `accept:${friendshipId}`;
+    if (pendingAction) return;
+    setPendingAction(key);
+    try {
+      await fetch(`/api/friends/${friendshipId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "accept" }),
+      });
+      refresh();
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   const handleDecline = async (friendshipId: number) => {
-    await fetch(`/api/friends/${friendshipId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "decline" }),
-    });
-    refresh();
+    const key = `decline:${friendshipId}`;
+    if (pendingAction) return;
+    setPendingAction(key);
+    try {
+      await fetch(`/api/friends/${friendshipId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "decline" }),
+      });
+      refresh();
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   const handleRemove = async (friendshipId: number) => {
-    await fetch(`/api/friends/${friendshipId}`, { method: "DELETE" });
-    refresh();
+    const key = `remove:${friendshipId}`;
+    if (pendingAction) return;
+    setPendingAction(key);
+    try {
+      await fetch(`/api/friends/${friendshipId}`, { method: "DELETE" });
+      refresh();
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   if (loading) {
@@ -150,9 +179,14 @@ export function FriendsPage() {
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => handleAdd(user.email)}
+                        disabled={pendingAction !== null}
                         className="text-primary hover:text-primary/80"
                       >
-                        <UserPlus className="size-4" />
+                        {pendingAction === `add:${user.email}` ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <UserPlus className="size-4" />
+                        )}
                       </Button>
                     </div>
                   ))}
@@ -187,17 +221,27 @@ export function FriendsPage() {
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => handleAccept(f.friendshipId)}
+                        disabled={pendingAction !== null}
                         className="text-primary hover:text-primary/80"
                       >
-                        <Check className="size-4" />
+                        {pendingAction === `accept:${f.friendshipId}` ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Check className="size-4" />
+                        )}
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => handleDecline(f.friendshipId)}
+                        disabled={pendingAction !== null}
                         className="text-muted-foreground hover:text-red-500"
                       >
-                        <X className="size-4" />
+                        {pendingAction === `decline:${f.friendshipId}` ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <X className="size-4" />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -228,9 +272,14 @@ export function FriendsPage() {
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => handleRemove(f.friendshipId)}
+                      disabled={pendingAction !== null}
                       className="text-muted-foreground hover:text-red-500"
                     >
-                      <X className="size-4" />
+                      {pendingAction === `remove:${f.friendshipId}` ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <X className="size-4" />
+                      )}
                     </Button>
                   </div>
                 ))}
@@ -272,9 +321,14 @@ export function FriendsPage() {
                         variant="ghost"
                         size="icon-xs"
                         onClick={() => handleRemove(f.friendshipId)}
+                        disabled={pendingAction !== null}
                         className="text-muted-foreground hover:text-red-500"
                       >
-                        <Trash2 className="size-4" />
+                        {pendingAction === `remove:${f.friendshipId}` ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-4" />
+                        )}
                       </Button>
                     </div>
                   </div>

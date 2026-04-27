@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function NewSession() {
   const router = useRouter();
   const [error, setError] = useState(false);
+  const startedRef = useRef(false);
 
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
     fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

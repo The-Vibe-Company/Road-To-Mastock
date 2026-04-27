@@ -11,12 +11,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Flame, Sparkles } from "lucide-react";
+import { Plus, Search, Flame, Sparkles, Loader2 } from "lucide-react";
+import { MUSCLE_GROUPS } from "@/lib/muscle-groups";
 
 interface Exercise {
   id: number;
   name: string;
   muscleGroup: string | null;
+  muscleGroups: string[];
 }
 
 interface FrequentExercise extends Exercise {
@@ -26,14 +28,8 @@ interface FrequentExercise extends Exercise {
 interface ExercisePickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (exercise: Exercise) => void;
+  onSelect: (exercise: Exercise) => void | Promise<void>;
 }
-
-const MUSCLE_GROUPS = [
-  "Pectoraux", "Dos", "Épaules", "Biceps", "Triceps",
-  "Quadriceps", "Ischio-jambiers", "Fessiers", "Mollets",
-  "Abdominaux", "Cardio",
-];
 
 export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerProps) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -41,11 +37,13 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newMuscle, setNewMuscle] = useState<string | null>(null);
+  const [newMuscles, setNewMuscles] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  const [selectingId, setSelectingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (open) {
+      setSelectingId(null);
       fetch("/api/exercises")
         .then((r) => r.json())
         .then(setExercises);
@@ -57,20 +55,39 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
     }
   }, [open]);
 
+  const handleSelect = async (exercise: Exercise) => {
+    if (selectingId !== null) return;
+    setSelectingId(exercise.id);
+    try {
+      await onSelect(exercise);
+    } finally {
+      setSelectingId(null);
+    }
+  };
+
   const handleCreate = async () => {
     if (!newName.trim() || creating) return;
     setCreating(true);
     const res = await fetch("/api/exercises", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName.trim(), muscleGroup: newMuscle }),
+      body: JSON.stringify({ name: newName.trim(), muscleGroups: newMuscles }),
     });
     const exercise = await res.json();
-    setCreating(false);
     setNewName("");
-    setNewMuscle(null);
+    setNewMuscles([]);
     setShowCreate(false);
-    onSelect(exercise);
+    try {
+      await onSelect(exercise);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const toggleNewMuscle = (mg: string) => {
+    setNewMuscles((prev) =>
+      prev.includes(mg) ? prev.filter((m) => m !== mg) : [...prev, mg]
+    );
   };
 
   const filtered = search
@@ -81,9 +98,11 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
 
   const grouped = filtered.reduce(
     (acc, e) => {
-      const key = e.muscleGroup || "Autre";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(e);
+      const tags = e.muscleGroups.length > 0 ? e.muscleGroups : ["Autre"];
+      for (const key of tags) {
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(e);
+      }
       return acc;
     },
     {} as Record<string, Exercise[]>
@@ -136,14 +155,14 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
                 className="mb-3 h-11 bg-secondary/50 font-medium"
                 autoFocus
               />
-              <p className="mb-2 text-xs font-bold text-muted-foreground">Muscle ciblé</p>
+              <p className="mb-2 text-xs font-bold text-muted-foreground">Muscles ciblés</p>
               <div className="mb-4 flex flex-wrap gap-1.5">
                 {MUSCLE_GROUPS.map((mg) => (
                   <button
                     key={mg}
-                    onClick={() => setNewMuscle(newMuscle === mg ? null : mg)}
+                    onClick={() => toggleNewMuscle(mg)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${
-                      newMuscle === mg
+                      newMuscles.includes(mg)
                         ? "bg-gradient-orange-intense text-black shadow-lg"
                         : "bg-secondary/50 text-muted-foreground hover:bg-accent"
                     }`}
@@ -175,21 +194,26 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
                   {frequentExercises.map((ex) => (
                     <button
                       key={ex.id}
-                      onClick={() => onSelect(ex)}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-3.5 text-left transition-all hover:bg-accent active:scale-[0.97]"
+                      onClick={() => handleSelect(ex)}
+                      disabled={selectingId !== null}
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-3.5 text-left transition-all hover:bg-accent active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <p className="font-bold">{ex.name}</p>
-                        {ex.muscleGroup && (
-                          <Badge variant="outline" className="text-[10px]">{ex.muscleGroup}</Badge>
-                        )}
+                        {ex.muscleGroups.map((mg) => (
+                          <Badge key={mg} variant="outline" className="text-[10px]">{mg}</Badge>
+                        ))}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-muted-foreground">
                           {ex.useCount}x
                         </span>
                         <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-                          <Plus className="size-4 text-primary" />
+                          {selectingId === ex.id ? (
+                            <Loader2 className="size-4 animate-spin text-primary" />
+                          ) : (
+                            <Plus className="size-4 text-primary" />
+                          )}
                         </div>
                       </div>
                     </button>
@@ -208,17 +232,24 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
                   {exs.map((ex) => (
                     <button
                       key={ex.id}
-                      onClick={() => onSelect(ex)}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-3.5 text-left transition-all hover:bg-accent active:scale-[0.97]"
+                      onClick={() => handleSelect(ex)}
+                      disabled={selectingId !== null}
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-3.5 text-left transition-all hover:bg-accent active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <p className="font-bold">{ex.name}</p>
-                        {ex.muscleGroup && (
-                          <Badge variant="outline" className="text-[10px]">{ex.muscleGroup}</Badge>
-                        )}
+                        {ex.muscleGroups
+                          .filter((mg) => mg !== group)
+                          .map((mg) => (
+                            <Badge key={mg} variant="outline" className="text-[10px]">{mg}</Badge>
+                          ))}
                       </div>
                       <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-                        <Plus className="size-4 text-primary" />
+                        {selectingId === ex.id ? (
+                          <Loader2 className="size-4 animate-spin text-primary" />
+                        ) : (
+                          <Plus className="size-4 text-primary" />
+                        )}
                       </div>
                     </button>
                   ))}

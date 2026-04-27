@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ExercisePicker } from "./exercise-picker";
 import { ExerciseBlock } from "./exercise-block";
 import { DatePicker } from "./date-picker";
-import { Plus, Trash2, Dumbbell, Activity, Weight, Layers, CalendarDays } from "lucide-react";
+import { Plus, Trash2, Dumbbell, Activity, Weight, Layers, CalendarDays, Loader2 } from "lucide-react";
 import { BackButton } from "./back-button";
 
 interface ExerciseSet {
@@ -26,6 +26,7 @@ interface SessionExercise {
   exerciseId: number;
   name: string;
   muscleGroup: string | null;
+  muscleGroups: string[];
   locked: boolean;
   notes: string | null;
   record: number | null;
@@ -62,6 +63,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
     id: number;
     name: string;
     muscleGroup: string | null;
+    muscleGroups: string[];
   }) => {
     await fetch("/api/session-exercises", {
       method: "POST",
@@ -175,8 +177,11 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
     ]);
   };
 
+  const [deletingSession, setDeletingSession] = useState(false);
   const handleDeleteSession = async () => {
+    if (deletingSession) return;
     if (!confirm("Supprimer cette séance ?")) return;
+    setDeletingSession(true);
     await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
     router.push("/");
   };
@@ -287,7 +292,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
               sessionExerciseId={ex.sessionExerciseId}
               exerciseId={ex.exerciseId}
               name={ex.name}
-              muscleGroup={ex.muscleGroup}
+              muscleGroups={ex.muscleGroups}
               locked={ex.locked}
               notes={ex.notes}
               record={ex.record}
@@ -324,8 +329,13 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
             size="icon"
             className="h-12 w-12"
             onClick={handleDeleteSession}
+            disabled={deletingSession}
           >
-            <Trash2 className="size-5" />
+            {deletingSession ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <Trash2 className="size-5" />
+            )}
           </Button>
         </div>
       </div>

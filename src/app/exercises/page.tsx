@@ -8,29 +8,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronRight, Plus, Pencil, Check, X } from "lucide-react";
 import { BackButton } from "@/components/back-button";
+import { MUSCLE_GROUPS } from "@/lib/muscle-groups";
 
 interface Exercise {
   id: number;
   name: string;
   muscleGroup: string | null;
+  muscleGroups: string[];
 }
-
-const MUSCLE_GROUPS = [
-  "Pectoraux", "Dos", "Épaules", "Biceps", "Triceps",
-  "Quadriceps", "Ischio-jambiers", "Fessiers", "Mollets",
-  "Abdominaux", "Cardio",
-];
 
 export default function ExerciseCatalog() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newMuscle, setNewMuscle] = useState<string | null>(null);
+  const [newMuscles, setNewMuscles] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
-  const [editMuscle, setEditMuscle] = useState<string | null>(null);
+  const [editMuscles, setEditMuscles] = useState<string[]>([]);
   const [savingEdit, setSavingEdit] = useState(false);
 
   const refresh = useCallback(() => {
@@ -50,11 +46,11 @@ export default function ExerciseCatalog() {
     await fetch("/api/exercises", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName.trim(), muscleGroup: newMuscle }),
+      body: JSON.stringify({ name: newName.trim(), muscleGroups: newMuscles }),
     });
     setCreating(false);
     setNewName("");
-    setNewMuscle(null);
+    setNewMuscles([]);
     setShowCreate(false);
     refresh();
   };
@@ -67,33 +63,47 @@ export default function ExerciseCatalog() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: editName.trim(),
-        muscleGroup: editMuscle,
+        muscleGroups: editMuscles,
       }),
     });
     setSavingEdit(false);
     setEditingId(null);
     setEditName("");
-    setEditMuscle(null);
+    setEditMuscles([]);
     refresh();
   };
 
   const startEdit = (ex: Exercise) => {
     setEditingId(ex.id);
     setEditName(ex.name);
-    setEditMuscle(ex.muscleGroup);
+    setEditMuscles(ex.muscleGroups);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditName("");
-    setEditMuscle(null);
+    setEditMuscles([]);
+  };
+
+  const toggleNew = (mg: string) => {
+    setNewMuscles((prev) =>
+      prev.includes(mg) ? prev.filter((m) => m !== mg) : [...prev, mg]
+    );
+  };
+
+  const toggleEdit = (mg: string) => {
+    setEditMuscles((prev) =>
+      prev.includes(mg) ? prev.filter((m) => m !== mg) : [...prev, mg]
+    );
   };
 
   const grouped: Record<string, Exercise[]> = {};
   for (const ex of exercises) {
-    const key = ex.muscleGroup || "Autre";
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(ex);
+    const tags = ex.muscleGroups.length > 0 ? ex.muscleGroups : ["Autre"];
+    for (const key of tags) {
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(ex);
+    }
   }
   // Sort groups alphabetically, and exercises within each group
   const sortedGroups = Object.entries(grouped)
@@ -133,14 +143,14 @@ export default function ExerciseCatalog() {
             className="mb-3 h-11 bg-secondary/50 font-medium"
             autoFocus
           />
-          <p className="mb-2 text-xs font-bold text-muted-foreground">Muscle ciblé</p>
+          <p className="mb-2 text-xs font-bold text-muted-foreground">Muscles ciblés</p>
           <div className="mb-4 flex flex-wrap gap-1.5">
             {MUSCLE_GROUPS.map((mg) => (
               <button
                 key={mg}
-                onClick={() => setNewMuscle(newMuscle === mg ? null : mg)}
+                onClick={() => toggleNew(mg)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${
-                  newMuscle === mg
+                  newMuscles.includes(mg)
                     ? "bg-gradient-orange-intense text-black shadow-lg"
                     : "bg-secondary/50 text-muted-foreground hover:bg-accent"
                 }`}
@@ -174,7 +184,7 @@ export default function ExerciseCatalog() {
               </CardHeader>
               <CardContent className="space-y-0.5">
                 {exs.map((ex) => (
-                  <div key={ex.id}>
+                  <div key={`${muscleGroup}-${ex.id}`}>
                     {editingId === ex.id ? (
                       <form
                         className="space-y-3 rounded-xl border border-primary/20 bg-secondary/30 p-3"
@@ -188,15 +198,15 @@ export default function ExerciseCatalog() {
                           autoFocus
                         />
                         <div>
-                          <p className="mb-2 text-xs font-bold text-muted-foreground">Muscle ciblé</p>
+                          <p className="mb-2 text-xs font-bold text-muted-foreground">Muscles ciblés</p>
                           <div className="flex flex-wrap gap-1.5">
                             {MUSCLE_GROUPS.map((mg) => (
                               <button
                                 key={mg}
                                 type="button"
-                                onClick={() => setEditMuscle(editMuscle === mg ? null : mg)}
+                                onClick={() => toggleEdit(mg)}
                                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all active:scale-95 ${
-                                  editMuscle === mg
+                                  editMuscles.includes(mg)
                                     ? "bg-gradient-orange-intense text-black shadow-lg"
                                     : "bg-secondary/50 text-muted-foreground hover:bg-accent"
                                 }`}
@@ -232,7 +242,14 @@ export default function ExerciseCatalog() {
                           href={`/exercises/${ex.id}`}
                           className="flex flex-1 items-center justify-between rounded-xl px-3 py-3 transition-all hover:bg-accent active:scale-[0.97]"
                         >
-                          <p className="font-bold">{ex.name}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="font-bold">{ex.name}</p>
+                            {ex.muscleGroups
+                              .filter((mg) => mg !== muscleGroup)
+                              .map((mg) => (
+                                <Badge key={mg} variant="outline" className="text-[10px]">{mg}</Badge>
+                              ))}
+                          </div>
                           <ChevronRight className="size-4 text-primary/40" />
                         </Link>
                         <button

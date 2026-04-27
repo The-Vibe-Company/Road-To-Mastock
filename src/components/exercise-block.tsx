@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { SetForm } from "./set-form";
 import { SetRow } from "./set-row";
 import { RestTimer } from "./rest-timer";
-import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History } from "lucide-react";
+import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2 } from "lucide-react";
 
 interface ExerciseSet {
   id: number;
@@ -26,16 +26,16 @@ interface ExerciseBlockProps {
   sessionExerciseId: number;
   exerciseId: number;
   name: string;
-  muscleGroup: string | null;
+  muscleGroups: string[];
   locked: boolean;
   notes: string | null;
   record: number | null;
   lastPerf: LastPerf | null;
   knownWeights: number[];
   sets: ExerciseSet[];
-  onAddSet: (sessionExerciseId: number, weightKg: number, reps: number) => void;
-  onDeleteSet: (setId: number) => void;
-  onRemoveExercise: (sessionExerciseId: number) => void;
+  onAddSet: (sessionExerciseId: number, weightKg: number, reps: number) => void | Promise<void>;
+  onDeleteSet: (setId: number) => void | Promise<void>;
+  onRemoveExercise: (sessionExerciseId: number) => void | Promise<void>;
   onToggleLock: (sessionExerciseId: number, locked: boolean) => void;
   onUpdateNotes: (sessionExerciseId: number, notes: string) => void;
   canMoveUp: boolean;
@@ -54,7 +54,7 @@ export function ExerciseBlock({
   sessionExerciseId,
   exerciseId,
   name,
-  muscleGroup,
+  muscleGroups,
   locked,
   notes,
   record,
@@ -79,18 +79,34 @@ export function ExerciseBlock({
   const [showTimer, setShowTimer] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteSetId, setDeleteSetId] = useState<number | null>(null);
+  const [deletingSet, setDeletingSet] = useState(false);
+  const [deletingExercise, setDeletingExercise] = useState(false);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const notesVisible = !!savedNotes || showNotes;
 
-  const handleAddSet = (w: number, r: number) => {
-    onAddSet(sessionExerciseId, w, r);
+  const handleAddSet = async (w: number, r: number) => {
+    await onAddSet(sessionExerciseId, w, r);
     setShowTimer(true);
   };
 
-  const handleConfirmDeleteSet = () => {
-    if (deleteSetId !== null) {
-      onDeleteSet(deleteSetId);
+  const handleConfirmDeleteSet = async () => {
+    if (deleteSetId === null || deletingSet) return;
+    setDeletingSet(true);
+    try {
+      await onDeleteSet(deleteSetId);
       setDeleteSetId(null);
+    } finally {
+      setDeletingSet(false);
+    }
+  };
+
+  const handleConfirmDeleteExercise = async () => {
+    if (deletingExercise) return;
+    setDeletingExercise(true);
+    try {
+      await onRemoveExercise(sessionExerciseId);
+    } finally {
+      setDeletingExercise(false);
     }
   };
 
@@ -108,9 +124,9 @@ export function ExerciseBlock({
                 {medal.label}
               </Badge>
             )}
-            {muscleGroup && (
-              <Badge variant="secondary" className="text-[10px] font-bold">{muscleGroup}</Badge>
-            )}
+            {muscleGroups.map((mg) => (
+              <Badge key={mg} variant="secondary" className="text-[10px] font-bold">{mg}</Badge>
+            ))}
             {totalVolume > 0 && (
               <Badge variant="outline" className="border-primary/20 text-[10px] text-primary">
                 {Math.round(totalVolume)} kg vol.
@@ -232,6 +248,7 @@ export function ExerciseBlock({
                 variant="outline"
                 className="flex-1 h-10 border-primary/30 text-sm font-bold"
                 onClick={() => setDeleteSetId(null)}
+                disabled={deletingSet}
               >
                 Annuler
               </Button>
@@ -239,8 +256,9 @@ export function ExerciseBlock({
                 variant="destructive"
                 className="flex-1 h-10 text-sm font-bold"
                 onClick={handleConfirmDeleteSet}
+                disabled={deletingSet}
               >
-                Supprimer
+                {deletingSet ? <Loader2 className="size-4 animate-spin" /> : "Supprimer"}
               </Button>
             </div>
           </div>
@@ -274,15 +292,17 @@ export function ExerciseBlock({
               variant="outline"
               className="flex-1 h-10 border-primary/30 text-sm font-bold"
               onClick={() => setShowDeleteConfirm(false)}
+              disabled={deletingExercise}
             >
               Annuler
             </Button>
             <Button
               variant="destructive"
               className="flex-1 h-10 text-sm font-bold"
-              onClick={() => onRemoveExercise(sessionExerciseId)}
+              onClick={handleConfirmDeleteExercise}
+              disabled={deletingExercise}
             >
-              Supprimer
+              {deletingExercise ? <Loader2 className="size-4 animate-spin" /> : "Supprimer"}
             </Button>
           </div>
         </div>
