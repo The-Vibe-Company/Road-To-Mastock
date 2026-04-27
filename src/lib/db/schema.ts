@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   accentColor: text("accent_color").default("orange"),
   theme: text("theme").default("dark"),
+  cardsTokens: integer("cards_tokens").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -35,6 +36,8 @@ export const sessions = pgTable("sessions", {
     .references(() => users.id, { onDelete: "cascade" }),
   date: date("date").notNull().defaultNow(),
   notes: text("notes"),
+  terminatedAt: timestamp("terminated_at", { withTimezone: true }),
+  tokensGrantedAt: timestamp("tokens_granted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -84,3 +87,42 @@ export const sets = pgTable("sets", {
   weightKg: real("weight_kg").notNull(),
   reps: integer("reps").notNull(),
 });
+
+export const animals = pgTable("animals", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  rarity: text("rarity").notNull(),
+  scientificName: text("scientific_name"),
+  imageUrl: text("image_url"),
+  description: text("description"),
+});
+
+export const userCards = pgTable(
+  "user_cards",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    animalId: integer("animal_id")
+      .notNull()
+      .references(() => animals.id),
+    count: integer("count").notNull().default(1),
+    firstObtainedAt: timestamp("first_obtained_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [unique().on(t.userId, t.animalId)],
+);
+
+export const userShards = pgTable(
+  "user_shards",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    rarity: text("rarity").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [unique().on(t.userId, t.rarity)],
+);

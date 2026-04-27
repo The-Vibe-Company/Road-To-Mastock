@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ExercisePicker } from "./exercise-picker";
 import { ExerciseBlock } from "./exercise-block";
 import { DatePicker } from "./date-picker";
+import { TerminateSessionButton } from "./terminate-session-button";
 import { Plus, Trash2, Dumbbell, Activity, Weight, Layers, CalendarDays, Loader2 } from "lucide-react";
 import { BackButton } from "./back-button";
 
@@ -278,6 +279,8 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
           </div>
         )}
       </div>
+
+      <TerminateSessionButton sessionId={sessionId} />
 
       {/* Exercises */}
       {exercises.length === 0 ? (

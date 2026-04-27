@@ -9,6 +9,8 @@
     "lint": "eslint",
     "db:push": "drizzle-kit push",
     "db:seed": "npx tsx src/lib/db/seed.ts",
+    "db:seed:animals": "npx tsx src/lib/db/seed-animals.ts",
+    "cards:download-phylopic": "npx tsx scripts/download-phylopic.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

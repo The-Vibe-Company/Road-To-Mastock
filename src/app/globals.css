@@ -260,4 +260,21 @@
     pointer-events: none;
     z-index: 0;
   }
+
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  .animate-spin-slow {
+    animation: spin-slow 1s linear infinite;
+  }
+
+  @keyframes card-reveal {
+    0%   { transform: scale(0.4) rotateY(180deg); opacity: 0; }
+    60%  { transform: scale(1.08) rotateY(0deg); opacity: 1; }
+    100% { transform: scale(1) rotateY(0deg); opacity: 1; }
+  }
+  .animate-card-reveal {
+    animation: card-reveal 0.6s ease-out;
+  }
 }
