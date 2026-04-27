@@ -6,7 +6,7 @@ import { resolveMuscleGroups } from "@/lib/muscle-groups";
 
 function normalizeGroups(input: unknown): string[] | undefined {
   if (input === undefined) return undefined;
-  if (!Array.isArray(input)) return [];
+  if (!Array.isArray(input)) return undefined;
   return input
     .filter((v): v is string => typeof v === "string")
     .map((v) => v.trim())

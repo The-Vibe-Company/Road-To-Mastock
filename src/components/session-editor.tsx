@@ -182,8 +182,16 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
     if (deletingSession) return;
     if (!confirm("Supprimer cette séance ?")) return;
     setDeletingSession(true);
-    await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
-    router.push("/");
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
+      if (!res.ok) {
+        setDeletingSession(false);
+        return;
+      }
+      router.push("/");
+    } catch {
+      setDeletingSession(false);
+    }
   };
 
   if (loading) {

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
 function normalizeGroups(input: unknown): string[] | undefined {
   if (input === undefined) return undefined;
-  if (!Array.isArray(input)) return [];
+  if (!Array.isArray(input)) return undefined;
   return input
     .filter((v): v is string => typeof v === "string")
     .map((v) => v.trim())
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
   const groups =
     normalizeGroups(body.muscleGroups) ??
-    (body.muscleGroup ? [body.muscleGroup.trim()] : []);
+    (body.muscleGroup?.trim() ? [body.muscleGroup.trim()] : []);
 
   const [result] = await db
     .insert(exercises)

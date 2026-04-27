@@ -183,9 +183,22 @@ export default function ExerciseCatalog() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-0.5">
-                {exs.map((ex) => (
+                {exs.map((ex) => {
+                  const primaryGroup = ex.muscleGroups[0] ?? "Autre";
+                  const isEditing = editingId === ex.id;
+                  if (isEditing && primaryGroup !== muscleGroup) {
+                    return (
+                      <div
+                        key={`${muscleGroup}-${ex.id}`}
+                        className="rounded-xl px-3 py-3 text-xs italic text-muted-foreground"
+                      >
+                        {ex.name} — modification en cours dans {primaryGroup}…
+                      </div>
+                    );
+                  }
+                  return (
                   <div key={`${muscleGroup}-${ex.id}`}>
-                    {editingId === ex.id ? (
+                    {isEditing ? (
                       <form
                         className="space-y-3 rounded-xl border border-primary/20 bg-secondary/30 p-3"
                         onSubmit={(e) => { e.preventDefault(); handleSaveEdit(ex.id); }}
@@ -261,7 +274,8 @@ export default function ExerciseCatalog() {
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           ))}
