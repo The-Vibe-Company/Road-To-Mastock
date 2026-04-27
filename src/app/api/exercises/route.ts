@@ -53,9 +53,13 @@ export async function POST(request: Request) {
 
   const fallbackSingle =
     typeof body.muscleGroup === "string" ? body.muscleGroup.trim() : "";
+  const normalized = normalizeGroups(body.muscleGroups);
   const groups =
-    normalizeGroups(body.muscleGroups) ??
-    (fallbackSingle ? [fallbackSingle] : []);
+    normalized && normalized.length > 0
+      ? normalized
+      : fallbackSingle
+        ? [fallbackSingle]
+        : [];
 
   const [result] = await db
     .insert(exercises)
