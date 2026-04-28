@@ -51,18 +51,14 @@ export function CardDetailModal({
   const colors = RARITY_COLORS[creature.rarity];
   const number =
     creature.kind === "animal" ? creature.cardNumber ?? null : creature.pokedexNumber ?? null;
+  // Show pokémon types as subtitle; no scientific name for animals.
   const subtitle =
-    creature.kind === "animal"
-      ? creature.scientificName
-      : [creature.primaryType, creature.secondaryType].filter(Boolean).join(" · ");
+    creature.kind === "pokemon"
+      ? [creature.primaryType, creature.secondaryType].filter(Boolean).join(" · ")
+      : null;
   const flavorText = creature.flavor ?? creature.description ?? null;
   const height = formatHeight(creature.heightCm);
   const weight = formatWeight(creature.weightKg);
-  const stats = [
-    height && { Icon: Ruler, label: "Taille", value: height },
-    weight && { Icon: Weight, label: "Poids", value: weight },
-    creature.habitat && { Icon: MapPin, label: "Milieu", value: creature.habitat },
-  ].filter(Boolean) as { Icon: typeof Ruler; label: string; value: string }[];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/85 backdrop-blur-sm">
@@ -95,26 +91,52 @@ export function CardDetailModal({
           </p>
           <h2 className="mt-1 text-2xl font-black tracking-tight">{creature.name}</h2>
           {subtitle && (
-            <p className={`mt-1 ${creature.kind === "animal" ? "italic" : "uppercase tracking-widest"} text-xs text-muted-foreground`}>
+            <p className="mt-1 text-xs uppercase tracking-widest text-muted-foreground">
               {subtitle}
             </p>
           )}
         </div>
 
-        {stats.length > 0 && (
-          <div className="grid w-full grid-cols-3 gap-2">
-            {stats.map(({ Icon, label, value }) => (
-              <div
-                key={label}
-                className={`rounded-xl ${colors.bg} ring-1 ${colors.ring} px-2 py-3 text-center`}
-              >
-                <Icon className={`mx-auto size-4 ${colors.text}`} />
-                <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                  {label}
-                </p>
-                <p className={`mt-0.5 text-sm font-black ${colors.text}`}>{value}</p>
+        {(height || weight || creature.habitat) && (
+          <div className="w-full space-y-2">
+            {(height || weight) && (
+              <div className={`flex items-center justify-around gap-2 rounded-xl ${colors.bg} ring-1 ${colors.ring} px-3 py-3`}>
+                {height && (
+                  <div className="flex items-center gap-2">
+                    <Ruler className={`size-4 ${colors.text}`} />
+                    <div className="text-left">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground leading-none">
+                        Taille
+                      </p>
+                      <p className={`mt-0.5 text-sm font-black ${colors.text} leading-none`}>{height}</p>
+                    </div>
+                  </div>
+                )}
+                {height && weight && <div className="h-7 w-px bg-border/60" />}
+                {weight && (
+                  <div className="flex items-center gap-2">
+                    <Weight className={`size-4 ${colors.text}`} />
+                    <div className="text-left">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground leading-none">
+                        Poids
+                      </p>
+                      <p className={`mt-0.5 text-sm font-black ${colors.text} leading-none`}>{weight}</p>
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
+            )}
+            {creature.habitat && (
+              <div className={`flex items-center gap-3 rounded-xl ${colors.bg} ring-1 ${colors.ring} px-4 py-3`}>
+                <MapPin className={`size-4 shrink-0 ${colors.text}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground leading-none">
+                    Milieu
+                  </p>
+                  <p className={`mt-1 text-sm font-black ${colors.text}`}>{creature.habitat}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
