@@ -132,12 +132,8 @@ export function CreatureCard({
         )}
       </div>
 
-      {/* Duplicate count badge */}
-      {count != null && count > 1 && (
-        <span className={`absolute right-1.5 ${size === "lg" ? "top-9" : "top-6"} rounded-md bg-black/60 px-1.5 py-0.5 font-black text-white ${size === "lg" ? "text-xs" : "text-[9px]"}`}>
-          ×{count}
-        </span>
-      )}
+      {/* count is now tracked silently (used for stats) but not displayed —
+         a duplicate pull grants a fragment instead, so "×N" was misleading. */}
 
       {/* Premium foil corner for epic+ */}
       {isPolished && (

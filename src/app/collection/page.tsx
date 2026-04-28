@@ -354,8 +354,8 @@ export default function CollectionPage() {
         })}
       </div>
 
-      {/* Fusion bar (only when a specific rarity is selected) */}
-      {fusionRarity && FUSION_NEXT[fusionRarity] && (
+      {/* Fusion bar — single tier when filter active, summary when "Tout" */}
+      {fusionRarity && FUSION_NEXT[fusionRarity] ? (
         <div className="mb-5 flex items-center justify-between rounded-2xl bg-secondary/30 px-4 py-3 ring-1 ring-border">
           <div className="flex items-center gap-2.5">
             <Flame className={`size-4 ${TIER_TEXT[fusionRarity]}`} />
@@ -373,7 +373,43 @@ export default function CollectionPage() {
             {fusing === fusionRarity ? "Fusion..." : `Fusionner ${FUSION_COST}→1`}
           </Button>
         </div>
-      )}
+      ) : activeFilter === "all" && Object.values(section.shards).some((n) => n > 0) ? (
+        <div className="mb-5 rounded-2xl bg-secondary/30 px-4 py-3 ring-1 ring-border">
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            <Flame className="size-3.5" />
+            Fragments
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {[...RARITIES].reverse().map((r) => {
+              const n = section.shards[r] || 0;
+              if (n === 0) return null;
+              const next = FUSION_NEXT[r];
+              const fuseable = next && n >= FUSION_COST;
+              return (
+                <div
+                  key={r}
+                  className={`flex items-center gap-2 rounded-lg ${TIER_FILL[r]} ring-1 px-2.5 py-1.5`}
+                >
+                  <span className={`size-2 rounded-full ${TIER_DOT[r]}`} />
+                  <span className={`text-xs font-bold ${TIER_TEXT[r]}`}>
+                    <span className="font-mono tabular-nums">{n}</span>{" "}
+                    <span className="opacity-70">{RARITY_LABELS[r].toLowerCase()}</span>
+                  </span>
+                  {fuseable && (
+                    <button
+                      onClick={() => handleFuse(r)}
+                      disabled={fusing !== null}
+                      className="ml-1 rounded-md bg-gradient-orange-intense px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-black disabled:opacity-40"
+                    >
+                      {fusing === r ? "..." : `Fuser ${FUSION_COST}→1`}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {/* Cards display */}
       {activeFilter === "all" ? (
