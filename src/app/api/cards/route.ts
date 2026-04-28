@@ -29,6 +29,7 @@ export async function GET() {
       slug: animals.slug,
       name: animals.name,
       rarity: animals.rarity,
+      cardNumber: animals.cardNumber,
       scientificName: animals.scientificName,
       imageUrl: animals.imageUrl,
       description: animals.description,

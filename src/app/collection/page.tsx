@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
-import { Sparkles, Lock, Flame, Gift, PawPrint, Zap } from "lucide-react";
+import { Lock, Flame, Gift, PawPrint, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/back-button";
 import { PackOpenModal, type OpenResult } from "@/components/pack-open-modal";
+import { CreatureCard } from "@/components/creature-card";
 import {
   RARITIES,
   RARITY_COLORS,
@@ -24,6 +24,7 @@ interface AnimalCard {
   slug: string;
   name: string;
   rarity: Rarity;
+  cardNumber: number | null;
   scientificName: string | null;
   imageUrl: string | null;
   description: string | null;
@@ -250,33 +251,24 @@ export default function CollectionPage() {
       ) : (
         <div className="grid grid-cols-3 gap-2">
           {tabCards.map((c) => {
-            const colors = RARITY_COLORS[c.rarity];
+            const number =
+              activeCategory === "animal"
+                ? (c as AnimalCard).cardNumber
+                : (c as PokemonCard).pokedexNumber;
+            const isPokemon = activeCategory === "pokemon";
             return (
-              <div
+              <CreatureCard
                 key={c.id}
-                className={`relative aspect-[3/4] rounded-xl ring-1 ${colors.bg} ${colors.ring} flex flex-col items-center justify-center gap-1 p-2`}
-              >
-                {c.imageUrl ? (
-                  <Image
-                    src={c.imageUrl}
-                    alt={c.name}
-                    width={96}
-                    height={96}
-                    className="size-20 object-contain"
-                    unoptimized
-                  />
-                ) : (
-                  <Sparkles className={`size-10 ${colors.text}`} />
-                )}
-                <p className={`mt-1 line-clamp-2 px-1 text-center text-[10px] font-bold leading-tight ${colors.text}`}>
-                  {c.name}
-                </p>
-                {c.count > 1 && (
-                  <span className="absolute right-1.5 top-1.5 rounded-md bg-black/40 px-1.5 py-0.5 text-[9px] font-black text-white">
-                    ×{c.count}
-                  </span>
-                )}
-              </div>
+                name={c.name}
+                rarity={c.rarity}
+                imageUrl={c.imageUrl}
+                number={number}
+                category={activeCategory}
+                primaryType={isPokemon ? (c as PokemonCard).primaryType : undefined}
+                secondaryType={isPokemon ? (c as PokemonCard).secondaryType : undefined}
+                count={c.count}
+                size="sm"
+              />
             );
           })}
         </div>

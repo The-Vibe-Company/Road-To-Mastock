@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { X, Sparkles, PawPrint, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CreatureCard } from "@/components/creature-card";
 import { RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
 
 type Category = "animal" | "pokemon";
@@ -18,6 +18,7 @@ interface CreatureBase {
 }
 interface AnimalCreature extends CreatureBase {
   kind: "animal";
+  cardNumber: number | null;
   scientificName: string | null;
   description: string | null;
 }
@@ -108,31 +109,26 @@ export function PackOpenModal({
 
         {stage === "reveal" && (
           <>
-            <div
-              className={`flex size-64 flex-col items-center justify-center gap-2 rounded-3xl ring-4 ${colors.bg} ${colors.ring} shadow-2xl animate-card-reveal`}
-            >
-              {result.creature.imageUrl ? (
-                <Image
-                  src={result.creature.imageUrl}
-                  alt={result.creature.name}
-                  width={200}
-                  height={200}
-                  className="size-52 object-contain"
-                  unoptimized
-                />
-              ) : (
-                <div className={`flex size-44 items-center justify-center rounded-2xl ${colors.bg}`}>
-                  <Sparkles className={`size-20 ${colors.text}`} />
-                </div>
-              )}
-              <p className={`text-[10px] font-black uppercase tracking-widest ${colors.text}`}>
-                {RARITY_LABELS[result.rarity]}
-              </p>
+            <div className="w-72 animate-card-reveal">
+              <CreatureCard
+                name={result.creature.name}
+                rarity={result.rarity}
+                imageUrl={result.creature.imageUrl}
+                number={
+                  result.creature.kind === "animal"
+                    ? result.creature.cardNumber
+                    : result.creature.pokedexNumber
+                }
+                category={result.category}
+                primaryType={result.creature.kind === "pokemon" ? result.creature.primaryType : undefined}
+                secondaryType={result.creature.kind === "pokemon" ? result.creature.secondaryType : undefined}
+                size="lg"
+              />
             </div>
 
             <div className="text-center">
-              <p className={`text-2xl font-black tracking-tight ${colors.text}`}>
-                {result.creature.name}
+              <p className={`text-xs font-black uppercase tracking-widest ${colors.text}`}>
+                {RARITY_LABELS[result.rarity]} · {categoryLabel}
               </p>
               {result.creature.kind === "animal" && result.creature.scientificName && (
                 <p className="mt-1 text-xs italic text-muted-foreground">
@@ -142,17 +138,6 @@ export function PackOpenModal({
               {result.creature.kind === "animal" && result.creature.description && (
                 <p className="mt-2 text-sm text-muted-foreground">
                   {result.creature.description}
-                </p>
-              )}
-              {result.creature.kind === "pokemon" && result.creature.pokedexNumber && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  N°{result.creature.pokedexNumber.toString().padStart(4, "0")}
-                  {result.creature.primaryType && (
-                    <span className="ml-2">
-                      {result.creature.primaryType}
-                      {result.creature.secondaryType && ` · ${result.creature.secondaryType}`}
-                    </span>
-                  )}
                 </p>
               )}
               {result.isDuplicate && (

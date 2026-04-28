@@ -277,4 +277,25 @@
   .animate-card-reveal {
     animation: card-reveal 0.6s ease-out;
   }
+
+  @keyframes holo-shimmer-anim {
+    0%   { background-position: 0% 0%; opacity: 0.35; }
+    50%  { opacity: 0.6; }
+    100% { background-position: 200% 0%; opacity: 0.35; }
+  }
+  .holo-shimmer {
+    background: linear-gradient(
+      115deg,
+      transparent 0%,
+      rgba(255,255,255,0.10) 25%,
+      rgba(255,200,255,0.18) 35%,
+      rgba(180,220,255,0.20) 45%,
+      rgba(255,235,180,0.18) 55%,
+      rgba(255,255,255,0.10) 65%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    mix-blend-mode: screen;
+    animation: holo-shimmer-anim 3s linear infinite;
+  }
 }

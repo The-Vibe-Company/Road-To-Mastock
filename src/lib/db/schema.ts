@@ -93,6 +93,7 @@ export const animals = pgTable("animals", {
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   rarity: text("rarity").notNull(),
+  cardNumber: integer("card_number"),
   scientificName: text("scientific_name"),
   imageUrl: text("image_url"),
   description: text("description"),
