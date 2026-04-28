@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { X, Sparkles, PawPrint, Zap, Crown, Star, ChevronRight } from "lucide-react";
+import { X, Sparkles, PawPrint, Zap, Crown, Star, ChevronRight, Gem } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreatureCard } from "@/components/creature-card";
-import { RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
+import { FUSION_NEXT, RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
 
 type Category = "animal" | "pokemon";
-type Stage = "category" | "rarity" | "creature";
+type Stage = "category" | "rarity" | "creature" | "duplicate";
 
 interface CreatureBase {
   id: number;
@@ -81,10 +81,12 @@ export function PackOpenModal({
     else if (stage === "rarity") setStage("creature");
   };
 
-  // Click anywhere except the close button advances the stage
+  // Click anywhere except the close button advances the stage (only stages 1-2)
   const handleBackdropClick = () => {
     if (stage === "category" || stage === "rarity") advance();
   };
+
+  const nextRarity = FUSION_NEXT[result.rarity];
 
   return (
     <div
@@ -178,12 +180,83 @@ export function PackOpenModal({
                 {RARITY_LABELS[result.rarity]} · {categoryLabel}
               </p>
               {result.isDuplicate && (
-                <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5">
-                  <Sparkles className="size-3.5 text-primary" />
-                  <span className="text-xs font-bold text-primary">
-                    Doublon — +1 fragment {RARITY_LABELS[result.rarity].toLowerCase()} {categoryLabel.toLowerCase()}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Tu possèdes déjà cette carte
+                </p>
+              )}
+            </div>
+
+            <Button
+              onClick={() => (result.isDuplicate ? setStage("duplicate") : onClose())}
+              className="h-12 w-full rounded-2xl bg-gradient-orange-intense text-base font-bold text-black"
+            >
+              {result.isDuplicate ? "Voir ma récompense" : "Continuer"}
+            </Button>
+          </div>
+        )}
+
+        {/* STAGE 4 — Duplicate fragment reward */}
+        {stage === "duplicate" && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex w-full flex-col items-center gap-6 animate-card-reveal"
+          >
+            <div className="text-center">
+              <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+                Doublon
+              </p>
+              <p className="mt-2 text-2xl font-black tracking-tight">
+                Cette carte se transforme
+              </p>
+            </div>
+
+            {/* Transformation viz: card → ✨ → fragment */}
+            <div className="flex items-center gap-3">
+              <div className="w-24 opacity-50 grayscale">
+                <CreatureCard
+                  name={result.creature.name}
+                  rarity={result.rarity}
+                  imageUrl={result.creature.imageUrl}
+                  number={
+                    result.creature.kind === "animal"
+                      ? result.creature.cardNumber
+                      : result.creature.pokedexNumber
+                  }
+                  category={result.category}
+                  size="sm"
+                />
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                <ChevronRight className={`size-6 ${colors.text}`} />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                  devient
+                </span>
+              </div>
+              <div
+                className={`relative flex size-24 items-center justify-center rounded-2xl ring-2 ${colors.ring} ${colors.bg} ${RARITY_GLOW[result.rarity]}`}
+              >
+                {isHolo && (
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl holo-shimmer" />
+                )}
+                <Gem className={`size-12 ${colors.text}`} strokeWidth={1.5} />
+              </div>
+            </div>
+
+            <div className="text-center">
+              <p className={`text-3xl font-black tracking-tighter ${colors.text}`}>
+                +1 fragment
+              </p>
+              <p className={`mt-1 text-xs font-black uppercase tracking-widest ${colors.text}`}>
+                {RARITY_LABELS[result.rarity]} · {categoryLabel}
+              </p>
+              {nextRarity && (
+                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                  Combine <span className="font-mono tabular-nums">3</span> fragments {RARITY_LABELS[result.rarity].toLowerCase()}{" "}
+                  pour fusionner en une carte{" "}
+                  <span className={`font-bold ${RARITY_COLORS[nextRarity].text}`}>
+                    {RARITY_LABELS[nextRarity].toLowerCase()}
                   </span>
-                </div>
+                </p>
               )}
             </div>
 
