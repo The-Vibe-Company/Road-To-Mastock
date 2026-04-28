@@ -9,20 +9,29 @@ import {
 } from "@/lib/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
-import { rollRarity } from "@/lib/rarities";
+import {
+  rollCategoryForPack,
+  rollPackType,
+  rollRarityForPack,
+  type PackType,
+} from "@/lib/pack-types";
 
-const POKEMON_PROBABILITY = 0.25;
-
-// Debug mode (set in .env.local for testing — leave unset in prod):
-//   CARDS_DEBUG_FORCE_ANIMAL_SLUG=domestic-cat
-//   CARDS_DEBUG_FORCE_POKEMON_SLUG=pikachu
+// Debug knobs (leave unset in prod):
+//   CARDS_DEBUG_FORCE_PACK_TYPE=basic|animal_only|pokemon_only|premium|mythic
+//   CARDS_DEBUG_FORCE_ANIMAL_SLUG=<slug>
+//   CARDS_DEBUG_FORCE_POKEMON_SLUG=<slug>
 //   CARDS_DEBUG_FREE_TOKENS=true
+const DEBUG_FORCE_PACK = process.env.CARDS_DEBUG_FORCE_PACK_TYPE as PackType | undefined;
 const DEBUG_FORCE_ANIMAL = process.env.CARDS_DEBUG_FORCE_ANIMAL_SLUG;
 const DEBUG_FORCE_POKEMON = process.env.CARDS_DEBUG_FORCE_POKEMON_SLUG;
 const DEBUG_FREE_TOKENS = process.env.CARDS_DEBUG_FREE_TOKENS === "true";
 
-// POST: spends 1 token to open a pack. First rolls category (75% animal /
-// 25% pokemon), then rarity, then a random creature in that pool.
+// POST: spends 1 token to open a pack.
+// 1. Roll pack type (64% basic / 15% animal-only / 15% pokemon-only / 5% premium / 1% mythic).
+// 2. Roll category from pack type (forced for animal/pokemon-only, weighted otherwise).
+// 3. Roll rarity from pack type (premium drops commons, mythic only legendary+).
+// 4. Pick a random creature in (category, rarity).
+// 5. Insert in user collection. If duplicate, also grant 1 fragment.
 export async function POST() {
   const auth = await getAuthUser();
   if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -47,11 +56,12 @@ export async function POST() {
     tokensRemaining = decremented.tokens;
   }
 
-  // Determine category
-  let category: "animal" | "pokemon";
-  if (DEBUG_FORCE_ANIMAL) category = "animal";
-  else if (DEBUG_FORCE_POKEMON) category = "pokemon";
-  else category = Math.random() < POKEMON_PROBABILITY ? "pokemon" : "animal";
+  const packType: PackType = DEBUG_FORCE_PACK ?? rollPackType();
+  const category = DEBUG_FORCE_ANIMAL
+    ? "animal"
+    : DEBUG_FORCE_POKEMON
+      ? "pokemon"
+      : rollCategoryForPack(packType);
 
   if (category === "animal") {
     let picked;
@@ -68,15 +78,24 @@ export async function POST() {
         );
       }
     } else {
-      const rarity = rollRarity();
-      const candidates = await db.select().from(animals).where(eq(animals.rarity, rarity));
+      const rarity = rollRarityForPack(packType);
+      const candidates = await db
+        .select()
+        .from(animals)
+        .where(eq(animals.rarity, rarity));
       if (candidates.length === 0) {
         await refund(auth.userId);
         return Response.json({ error: `No animals for rarity ${rarity}` }, { status: 500 });
       }
       picked = candidates[Math.floor(Math.random() * candidates.length)];
     }
-    const rarity = picked.rarity as "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
+    const rarity = picked.rarity as
+      | "common"
+      | "uncommon"
+      | "rare"
+      | "epic"
+      | "legendary"
+      | "mythic";
 
     const [card] = await db
       .insert(userCards)
@@ -101,6 +120,7 @@ export async function POST() {
     }
 
     return Response.json({
+      packType,
       category,
       rarity,
       creature: { ...picked, kind: "animal" },
@@ -125,15 +145,24 @@ export async function POST() {
       );
     }
   } else {
-    const rarity = rollRarity();
-    const candidates = await db.select().from(pokemon).where(eq(pokemon.rarity, rarity));
+    const rarity = rollRarityForPack(packType);
+    const candidates = await db
+      .select()
+      .from(pokemon)
+      .where(eq(pokemon.rarity, rarity));
     if (candidates.length === 0) {
       await refund(auth.userId);
       return Response.json({ error: `No pokemon for rarity ${rarity}` }, { status: 500 });
     }
     picked = candidates[Math.floor(Math.random() * candidates.length)];
   }
-  const rarity = picked.rarity as "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
+  const rarity = picked.rarity as
+    | "common"
+    | "uncommon"
+    | "rare"
+    | "epic"
+    | "legendary"
+    | "mythic";
 
   const [card] = await db
     .insert(userPokemonCards)
@@ -158,6 +187,7 @@ export async function POST() {
   }
 
   return Response.json({
+    packType,
     category,
     rarity,
     creature: { ...picked, kind: "pokemon" },

@@ -12,6 +12,8 @@ import {
   RARITY_LABELS,
   FUSION_COST,
   FUSION_NEXT,
+  CONVERSION_BATCH,
+  CONVERSION_RATE,
   type Rarity,
 } from "@/lib/rarities";
 
@@ -102,6 +104,7 @@ export default function CollectionPage() {
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const [opening, setOpening] = useState(false);
   const [fusing, setFusing] = useState<Rarity | null>(null);
+  const [converting, setConverting] = useState<Rarity | null>(null);
   const [modalResult, setModalResult] = useState<OpenResult | null>(null);
   const [detailCreature, setDetailCreature] = useState<DetailedCreature | null>(null);
 
@@ -140,6 +143,22 @@ export default function CollectionPage() {
       await refresh();
     } finally {
       setFusing(null);
+    }
+  };
+
+  const handleConvert = async (rarity: Rarity) => {
+    if (converting) return;
+    setConverting(rarity);
+    try {
+      const r = await fetch("/api/cards/convert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rarity, category: activeCategory }),
+      });
+      if (!r.ok) return;
+      await refresh();
+    } finally {
+      setConverting(null);
     }
   };
 
@@ -247,7 +266,7 @@ export default function CollectionPage() {
               {data.tokens > 0 ? "Pack disponible" : "Aucun pack"}
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-              75% animal · 25% pokémon
+              Pack surprise — basic, animal, pokémon, premium ou mythique
             </p>
             <Button
               onClick={handleOpenPack}
@@ -379,31 +398,45 @@ export default function CollectionPage() {
             <Flame className="size-3.5" />
             Fragments
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-col gap-1.5">
             {[...RARITIES].reverse().map((r) => {
               const n = section.shards[r] || 0;
               if (n === 0) return null;
               const next = FUSION_NEXT[r];
               const fuseable = next && n >= FUSION_COST;
+              const convBatch = CONVERSION_BATCH[r];
+              const convReward = CONVERSION_RATE[r];
+              const convertible = n >= convBatch;
               return (
                 <div
                   key={r}
-                  className={`flex items-center gap-2 rounded-lg ${TIER_FILL[r]} ring-1 px-2.5 py-1.5`}
+                  className={`flex flex-wrap items-center gap-2 rounded-lg ${TIER_FILL[r]} ring-1 px-2.5 py-1.5`}
                 >
                   <span className={`size-2 rounded-full ${TIER_DOT[r]}`} />
                   <span className={`text-xs font-bold ${TIER_TEXT[r]}`}>
                     <span className="font-mono tabular-nums">{n}</span>{" "}
                     <span className="opacity-70">{RARITY_LABELS[r].toLowerCase()}</span>
                   </span>
-                  {fuseable && (
-                    <button
-                      onClick={() => handleFuse(r)}
-                      disabled={fusing !== null}
-                      className="ml-1 rounded-md bg-gradient-orange-intense px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-black disabled:opacity-40"
-                    >
-                      {fusing === r ? "..." : `Fuser ${FUSION_COST}→1`}
-                    </button>
-                  )}
+                  <div className="ml-auto flex gap-1.5">
+                    {fuseable && (
+                      <button
+                        onClick={() => handleFuse(r)}
+                        disabled={fusing !== null || converting !== null}
+                        className="rounded-md bg-gradient-orange-intense px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-black disabled:opacity-40"
+                      >
+                        {fusing === r ? "..." : `Fuser ${FUSION_COST}→1`}
+                      </button>
+                    )}
+                    {convertible && (
+                      <button
+                        onClick={() => handleConvert(r)}
+                        disabled={converting !== null || fusing !== null}
+                        className="rounded-md bg-secondary px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-foreground/80 ring-1 ring-border disabled:opacity-40"
+                      >
+                        {converting === r ? "..." : `${convBatch}→${convReward} jeton${convReward > 1 ? "s" : ""}`}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}

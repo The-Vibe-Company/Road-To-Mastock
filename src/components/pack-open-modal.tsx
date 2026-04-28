@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { X, Sparkles, PawPrint, Zap, Crown, Star, ChevronRight, Gem } from "lucide-react";
+import { X, Sparkles, PawPrint, Zap, Crown, Star, ChevronRight, Gem, Package, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreatureCard } from "@/components/creature-card";
 import { FUSION_NEXT, RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
+import { PACK_LABELS, type PackType } from "@/lib/pack-types";
 
 type Category = "animal" | "pokemon";
-type Stage = "category" | "rarity" | "creature" | "duplicate";
+type Stage = "pack" | "category" | "rarity" | "creature" | "duplicate";
 
 interface CreatureBase {
   id: number;
@@ -32,6 +33,7 @@ interface PokemonCreature extends CreatureBase {
 type Creature = AnimalCreature | PokemonCreature;
 
 export interface OpenResult {
+  packType: PackType;
   category: Category;
   rarity: Rarity;
   creature: Creature;
@@ -42,6 +44,14 @@ export interface OpenResult {
 const CATEGORY_LABELS: Record<Category, string> = {
   animal: "Animal",
   pokemon: "Pokémon",
+};
+
+const PACK_ACCENT: Record<PackType, { ring: string; bg: string; text: string; glow: string; icon: typeof Package }> = {
+  basic:        { ring: "ring-zinc-400/60",  bg: "bg-zinc-500/15",  text: "text-zinc-200",  glow: "shadow-[0_0_60px_-10px_rgba(161,161,170,0.5)]", icon: Package },
+  animal_only:  { ring: "ring-emerald-400/60", bg: "bg-emerald-500/15", text: "text-emerald-200", glow: "shadow-[0_0_70px_-8px_rgba(52,211,153,0.7)]", icon: PawPrint },
+  pokemon_only: { ring: "ring-sky-400/60",   bg: "bg-sky-500/15",   text: "text-sky-200",   glow: "shadow-[0_0_70px_-8px_rgba(56,189,248,0.7)]", icon: Zap },
+  premium:      { ring: "ring-amber-400/70", bg: "bg-amber-500/15", text: "text-amber-200", glow: "shadow-[0_0_90px_-6px_rgba(251,191,36,0.85)]", icon: Gift },
+  mythic:       { ring: "ring-rose-400/80",  bg: "bg-rose-500/20",  text: "text-rose-200",  glow: "shadow-[0_0_120px_-2px_rgba(244,114,182,0.95)]", icon: Crown },
 };
 
 const RARITY_ICON: Record<Rarity, typeof Star> = {
@@ -69,21 +79,24 @@ export function PackOpenModal({
   result: OpenResult;
   onClose: () => void;
 }) {
-  const [stage, setStage] = useState<Stage>("category");
+  const [stage, setStage] = useState<Stage>("pack");
   const colors = RARITY_COLORS[result.rarity];
   const CategoryIcon = result.category === "animal" ? PawPrint : Zap;
   const RarityIcon = RARITY_ICON[result.rarity];
   const categoryLabel = CATEGORY_LABELS[result.category];
   const isHolo = result.rarity === "legendary" || result.rarity === "mythic";
+  const packAccent = PACK_ACCENT[result.packType];
+  const PackIcon = packAccent.icon;
+  const isPremiumPack = result.packType === "premium" || result.packType === "mythic";
 
   const advance = () => {
-    if (stage === "category") setStage("rarity");
+    if (stage === "pack") setStage("category");
+    else if (stage === "category") setStage("rarity");
     else if (stage === "rarity") setStage("creature");
   };
 
-  // Click anywhere except the close button advances the stage (only stages 1-2)
   const handleBackdropClick = () => {
-    if (stage === "category" || stage === "rarity") advance();
+    if (stage === "pack" || stage === "category" || stage === "rarity") advance();
   };
 
   const nextRarity = FUSION_NEXT[result.rarity];
@@ -105,6 +118,32 @@ export function PackOpenModal({
       </button>
 
       <div className="flex w-full max-w-sm flex-col items-center gap-6 px-6">
+        {/* STAGE 0 — Pack type reveal */}
+        {stage === "pack" && (
+          <div key="pack" className="flex flex-col items-center gap-6 animate-card-reveal">
+            <div className="relative flex size-56 items-center justify-center">
+              {isPremiumPack && (
+                <div className="pointer-events-none absolute inset-0 rounded-full holo-shimmer" />
+              )}
+              <div className={`absolute inset-0 rounded-full ${packAccent.bg} blur-3xl animate-pulse`} />
+              <div
+                className={`relative flex size-56 items-center justify-center rounded-full ring-4 ${packAccent.ring} ${packAccent.bg} ${packAccent.glow}`}
+              >
+                <PackIcon className={`size-28 ${packAccent.text}`} strokeWidth={2} />
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+                Tu reçois
+              </p>
+              <p className={`mt-2 text-4xl font-black tracking-tighter ${packAccent.text}`}>
+                {PACK_LABELS[result.packType]}
+              </p>
+            </div>
+            <TapHint />
+          </div>
+        )}
+
         {/* STAGE 1 — Category */}
         {stage === "category" && (
           <div key="category" className="flex flex-col items-center gap-6 animate-card-reveal">

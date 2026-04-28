@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Lock, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, Lock, Loader2, Sparkles, Flame, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SessionState {
@@ -11,10 +11,16 @@ interface SessionState {
   hasSets: boolean;
 }
 
+interface BonusInfo {
+  total: number;
+  firstOfWeek: boolean;
+  thirdOfWeek: boolean;
+}
+
 export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   const [state, setState] = useState<SessionState | null>(null);
   const [busy, setBusy] = useState(false);
-  const [grantedThisClick, setGrantedThisClick] = useState(false);
+  const [bonus, setBonus] = useState<BonusInfo | null>(null);
 
   const refresh = async () => {
     const r = await fetch(`/api/sessions/${sessionId}`);
@@ -37,12 +43,18 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   const handleTerminate = async () => {
     if (busy || !state) return;
     setBusy(true);
-    setGrantedThisClick(false);
+    setBonus(null);
     try {
       const r = await fetch(`/api/sessions/${sessionId}/terminate`, { method: "POST" });
       if (!r.ok) return;
       const data = await r.json();
-      if (data.tokenGranted) setGrantedThisClick(true);
+      if (data.tokenGranted) {
+        setBonus({
+          total: data.totalGranted ?? 1,
+          firstOfWeek: !!data.firstOfWeekBonus,
+          thirdOfWeek: !!data.thirdOfWeekBonus,
+        });
+      }
       await refresh();
     } finally {
       setBusy(false);
@@ -78,14 +90,32 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
             Rouvrir
           </button>
         </div>
-        {grantedThisClick && (
-          <Link
-            href="/collection"
-            className="flex items-center gap-2 rounded-xl bg-gradient-orange-intense px-3 py-2 text-sm font-black text-black"
-          >
-            <Sparkles className="size-4" strokeWidth={3} />
-            +1 jeton — ouvre ton pack
-          </Link>
+        {bonus && (
+          <div className="flex flex-col gap-1.5">
+            <Link
+              href="/collection"
+              className="flex items-center gap-2 rounded-xl bg-gradient-orange-intense px-3 py-2 text-sm font-black text-black"
+            >
+              <Sparkles className="size-4" strokeWidth={3} />
+              +{bonus.total} jeton{bonus.total > 1 ? "s" : ""} — ouvre ton pack
+            </Link>
+            {(bonus.firstOfWeek || bonus.thirdOfWeek) && (
+              <div className="flex flex-wrap gap-1.5">
+                {bonus.firstOfWeek && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-300 ring-1 ring-amber-500/40">
+                    <Flame className="size-3" />
+                    1ʳᵉ de la semaine · +1 bonus
+                  </span>
+                )}
+                {bonus.thirdOfWeek && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-rose-500/15 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-rose-300 ring-1 ring-rose-500/40">
+                    <Trophy className="size-3" />
+                    3 séances cette semaine · +1 bonus
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
     );
