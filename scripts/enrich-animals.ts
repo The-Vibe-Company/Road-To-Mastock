@@ -12,7 +12,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { config } from "dotenv";
 import { sql } from "drizzle-orm";
 
-config({ path: ".env.local" });
+config({ path: ".env.local", override: true });
 
 interface AnimalRow {
   id: number;
