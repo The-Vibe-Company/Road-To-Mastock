@@ -13,34 +13,70 @@ import { rollRarity } from "@/lib/rarities";
 
 const POKEMON_PROBABILITY = 0.25;
 
+// Debug mode (set in .env.local for testing — leave unset in prod):
+//   CARDS_DEBUG_FORCE_ANIMAL_SLUG=domestic-cat
+//   CARDS_DEBUG_FORCE_POKEMON_SLUG=pikachu
+//   CARDS_DEBUG_FREE_TOKENS=true
+const DEBUG_FORCE_ANIMAL = process.env.CARDS_DEBUG_FORCE_ANIMAL_SLUG;
+const DEBUG_FORCE_POKEMON = process.env.CARDS_DEBUG_FORCE_POKEMON_SLUG;
+const DEBUG_FREE_TOKENS = process.env.CARDS_DEBUG_FREE_TOKENS === "true";
+
 // POST: spends 1 token to open a pack. First rolls category (75% animal /
 // 25% pokemon), then rarity, then a random creature in that pool.
 export async function POST() {
   const auth = await getAuthUser();
   if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Atomic spend: only succeed if user has at least 1 token
-  const [decremented] = await db
-    .update(users)
-    .set({ cardsTokens: sql`${users.cardsTokens} - 1` })
-    .where(and(eq(users.id, auth.userId), sql`${users.cardsTokens} >= 1`))
-    .returning({ tokens: users.cardsTokens });
-
-  if (!decremented) {
-    return Response.json({ error: "Pas de jeton disponible" }, { status: 400 });
+  // Spend 1 token (skip if debug free tokens)
+  let tokensRemaining: number;
+  if (DEBUG_FREE_TOKENS) {
+    const [u] = await db
+      .select({ tokens: users.cardsTokens })
+      .from(users)
+      .where(eq(users.id, auth.userId));
+    tokensRemaining = u?.tokens ?? 0;
+  } else {
+    const [decremented] = await db
+      .update(users)
+      .set({ cardsTokens: sql`${users.cardsTokens} - 1` })
+      .where(and(eq(users.id, auth.userId), sql`${users.cardsTokens} >= 1`))
+      .returning({ tokens: users.cardsTokens });
+    if (!decremented) {
+      return Response.json({ error: "Pas de jeton disponible" }, { status: 400 });
+    }
+    tokensRemaining = decremented.tokens;
   }
 
-  const category: "animal" | "pokemon" =
-    Math.random() < POKEMON_PROBABILITY ? "pokemon" : "animal";
-  const rarity = rollRarity();
+  // Determine category
+  let category: "animal" | "pokemon";
+  if (DEBUG_FORCE_ANIMAL) category = "animal";
+  else if (DEBUG_FORCE_POKEMON) category = "pokemon";
+  else category = Math.random() < POKEMON_PROBABILITY ? "pokemon" : "animal";
 
   if (category === "animal") {
-    const candidates = await db.select().from(animals).where(eq(animals.rarity, rarity));
-    if (candidates.length === 0) {
-      await refund(auth.userId);
-      return Response.json({ error: `No animals for rarity ${rarity}` }, { status: 500 });
+    let picked;
+    if (DEBUG_FORCE_ANIMAL) {
+      [picked] = await db
+        .select()
+        .from(animals)
+        .where(eq(animals.slug, DEBUG_FORCE_ANIMAL));
+      if (!picked) {
+        await refund(auth.userId);
+        return Response.json(
+          { error: `Debug slug not found: ${DEBUG_FORCE_ANIMAL}` },
+          { status: 500 },
+        );
+      }
+    } else {
+      const rarity = rollRarity();
+      const candidates = await db.select().from(animals).where(eq(animals.rarity, rarity));
+      if (candidates.length === 0) {
+        await refund(auth.userId);
+        return Response.json({ error: `No animals for rarity ${rarity}` }, { status: 500 });
+      }
+      picked = candidates[Math.floor(Math.random() * candidates.length)];
     }
-    const picked = candidates[Math.floor(Math.random() * candidates.length)];
+    const rarity = picked.rarity as "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 
     const [card] = await db
       .insert(userCards)
@@ -70,17 +106,34 @@ export async function POST() {
       creature: { ...picked, kind: "animal" },
       isDuplicate,
       shardsGranted,
-      tokens: decremented.tokens,
+      tokens: tokensRemaining,
     });
   }
 
   // pokemon
-  const candidates = await db.select().from(pokemon).where(eq(pokemon.rarity, rarity));
-  if (candidates.length === 0) {
-    await refund(auth.userId);
-    return Response.json({ error: `No pokemon for rarity ${rarity}` }, { status: 500 });
+  let picked;
+  if (DEBUG_FORCE_POKEMON) {
+    [picked] = await db
+      .select()
+      .from(pokemon)
+      .where(eq(pokemon.slug, DEBUG_FORCE_POKEMON));
+    if (!picked) {
+      await refund(auth.userId);
+      return Response.json(
+        { error: `Debug slug not found: ${DEBUG_FORCE_POKEMON}` },
+        { status: 500 },
+      );
+    }
+  } else {
+    const rarity = rollRarity();
+    const candidates = await db.select().from(pokemon).where(eq(pokemon.rarity, rarity));
+    if (candidates.length === 0) {
+      await refund(auth.userId);
+      return Response.json({ error: `No pokemon for rarity ${rarity}` }, { status: 500 });
+    }
+    picked = candidates[Math.floor(Math.random() * candidates.length)];
   }
-  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  const rarity = picked.rarity as "common" | "uncommon" | "rare" | "epic" | "legendary" | "mythic";
 
   const [card] = await db
     .insert(userPokemonCards)
@@ -110,11 +163,12 @@ export async function POST() {
     creature: { ...picked, kind: "pokemon" },
     isDuplicate,
     shardsGranted,
-    tokens: decremented.tokens,
+    tokens: tokensRemaining,
   });
 }
 
 async function refund(userId: number) {
+  if (DEBUG_FREE_TOKENS) return;
   await db
     .update(users)
     .set({ cardsTokens: sql`${users.cardsTokens} + 1` })
