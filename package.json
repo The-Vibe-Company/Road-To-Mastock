@@ -10,7 +10,12 @@
     "db:push": "drizzle-kit push",
     "db:seed": "npx tsx src/lib/db/seed.ts",
     "db:seed:animals": "npx tsx src/lib/db/seed-animals.ts",
-    "cards:download-phylopic": "npx tsx scripts/download-phylopic.ts",
+    "cards:dump-json": "npx tsx scripts/dump-animals-json.ts",
+    "cards:generate": "python3 scripts/generate-cards.py",
+    "cards:sync-images": "npx tsx scripts/sync-card-images.ts",
+    "pokemon:fetch": "npx tsx scripts/fetch-pokemon.ts",
+    "pokemon:seed": "npx tsx scripts/seed-pokemon.ts",
+    "pokemon:download-artwork": "npx tsx scripts/download-pokemon-artwork.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

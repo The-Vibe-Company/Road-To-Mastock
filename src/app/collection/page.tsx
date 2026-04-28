@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Sparkles, Lock, Flame, Gift } from "lucide-react";
+import { Sparkles, Lock, Flame, Gift, PawPrint, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/back-button";
-import { PackOpenModal } from "@/components/pack-open-modal";
+import { PackOpenModal, type OpenResult } from "@/components/pack-open-modal";
 import {
   RARITIES,
   RARITY_COLORS,
@@ -15,8 +15,10 @@ import {
   type Rarity,
 } from "@/lib/rarities";
 
-interface OwnedCard {
-  animalId: number;
+type Category = "animal" | "pokemon";
+
+interface AnimalCard {
+  id: number;
   count: number;
   firstObtainedAt: string;
   slug: string;
@@ -27,31 +29,37 @@ interface OwnedCard {
   description: string | null;
 }
 
-interface CollectionData {
-  cards: OwnedCard[];
-  totalsByRarity: Record<Rarity, number>;
-  shards: Record<Rarity, number>;
-  tokens: number;
+interface PokemonCard {
+  id: number;
+  count: number;
+  firstObtainedAt: string;
+  slug: string;
+  name: string;
+  rarity: Rarity;
+  pokedexNumber: number | null;
+  primaryType: string | null;
+  secondaryType: string | null;
+  imageUrl: string | null;
 }
 
-interface OpenResult {
-  animal: {
-    id: number;
-    slug: string;
-    name: string;
-    rarity: Rarity;
-    scientificName: string | null;
-    imageUrl: string | null;
-    description: string | null;
+interface CollectionData {
+  animals: {
+    cards: AnimalCard[];
+    totalsByRarity: Record<Rarity, number>;
+    shards: Record<Rarity, number>;
   };
-  isDuplicate: boolean;
-  shardsGranted: number;
-  rarity: Rarity;
+  pokemon: {
+    cards: PokemonCard[];
+    totalsByRarity: Record<Rarity, number>;
+    shards: Record<Rarity, number>;
+  };
+  tokens: number;
 }
 
 export default function CollectionPage() {
   const [data, setData] = useState<CollectionData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState<Category>("animal");
   const [activeRarity, setActiveRarity] = useState<Rarity>("common");
   const [opening, setOpening] = useState(false);
   const [fusing, setFusing] = useState<Rarity | null>(null);
@@ -87,7 +95,7 @@ export default function CollectionPage() {
       const r = await fetch("/api/cards/fusion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromRarity: rarity }),
+        body: JSON.stringify({ fromRarity: rarity, category: activeCategory }),
       });
       if (!r.ok) return;
       setModalResult(await r.json());
@@ -107,23 +115,20 @@ export default function CollectionPage() {
 
   if (!data) return null;
 
-  const cardsByRarity: Record<Rarity, OwnedCard[]> = {
-    common: [],
-    uncommon: [],
-    rare: [],
-    epic: [],
-    legendary: [],
-    mythic: [],
+  const section = activeCategory === "animal" ? data.animals : data.pokemon;
+  const cardsByRarity: Record<Rarity, (AnimalCard | PokemonCard)[]> = {
+    common: [], uncommon: [], rare: [], epic: [], legendary: [], mythic: [],
   };
-  for (const c of data.cards) cardsByRarity[c.rarity].push(c);
+  for (const c of section.cards) cardsByRarity[c.rarity].push(c);
 
   const tabCards = cardsByRarity[activeRarity];
-  const tabTotal = data.totalsByRarity[activeRarity] || 0;
+  const tabTotal = section.totalsByRarity[activeRarity] || 0;
   const tabOwned = tabCards.length;
-  const tabShards = data.shards[activeRarity] || 0;
+  const tabShards = section.shards[activeRarity] || 0;
   const canFuse = FUSION_NEXT[activeRarity] !== null && tabShards >= FUSION_COST;
-  const totalUnique = data.cards.length;
-  const totalAll = Object.values(data.totalsByRarity).reduce((a, b) => a + b, 0);
+
+  const totalUnique = section.cards.length;
+  const totalAll = Object.values(section.totalsByRarity).reduce((a, b) => a + b, 0);
 
   return (
     <div className="min-h-dvh px-4 pb-12 pt-6">
@@ -132,7 +137,7 @@ export default function CollectionPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-black tracking-tight">Collection</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {totalUnique} animaux uniques sur {totalAll}
+          {totalUnique} {activeCategory === "animal" ? "animaux" : "pokémon"} uniques sur {totalAll}
         </p>
       </div>
 
@@ -146,9 +151,7 @@ export default function CollectionPage() {
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Jetons
             </p>
-            <p className="text-xl font-black tracking-tight">
-              {data.tokens}
-            </p>
+            <p className="text-xl font-black tracking-tight">{data.tokens}</p>
           </div>
           <Button
             onClick={handleOpenPack}
@@ -158,11 +161,37 @@ export default function CollectionPage() {
             {opening ? "Ouverture..." : "Ouvrir un pack"}
           </Button>
         </div>
-        {data.tokens === 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Termine une séance pour gagner un jeton.
-          </p>
-        )}
+        <p className="mt-2 text-xs text-muted-foreground">
+          {data.tokens === 0
+            ? "Termine une séance pour gagner un jeton."
+            : "75% animal · 25% pokémon"}
+        </p>
+      </div>
+
+      {/* Category tabs */}
+      <div className="mb-4 flex gap-1.5 rounded-2xl bg-secondary/30 p-1">
+        <button
+          onClick={() => setActiveCategory("animal")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold transition-all active:scale-95 ${
+            activeCategory === "animal"
+              ? "bg-gradient-orange-intense text-black shadow-lg"
+              : "text-muted-foreground hover:bg-accent"
+          }`}
+        >
+          <PawPrint className="size-4" />
+          Animaux <span className="text-[10px] opacity-70">{data.animals.cards.length}/{Object.values(data.animals.totalsByRarity).reduce((a, b) => a + b, 0)}</span>
+        </button>
+        <button
+          onClick={() => setActiveCategory("pokemon")}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold transition-all active:scale-95 ${
+            activeCategory === "pokemon"
+              ? "bg-gradient-orange-intense text-black shadow-lg"
+              : "text-muted-foreground hover:bg-accent"
+          }`}
+        >
+          <Zap className="size-4" />
+          Pokémon <span className="text-[10px] opacity-70">{data.pokemon.cards.length}/{Object.values(data.pokemon.totalsByRarity).reduce((a, b) => a + b, 0)}</span>
+        </button>
       </div>
 
       {/* Rarity tabs */}
@@ -170,7 +199,7 @@ export default function CollectionPage() {
         {RARITIES.map((r) => {
           const colors = RARITY_COLORS[r];
           const owned = cardsByRarity[r].length;
-          const total = data.totalsByRarity[r] || 0;
+          const total = section.totalsByRarity[r] || 0;
           const isActive = activeRarity === r;
           return (
             <button
@@ -215,7 +244,7 @@ export default function CollectionPage() {
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <Lock className="size-8 text-muted-foreground/40" />
           <p className="text-sm text-muted-foreground">
-            Aucun animal {RARITY_LABELS[activeRarity].toLowerCase()} pour le moment
+            Aucun {activeCategory === "animal" ? "animal" : "pokémon"} {RARITY_LABELS[activeRarity].toLowerCase()} pour le moment
           </p>
         </div>
       ) : (
@@ -224,16 +253,16 @@ export default function CollectionPage() {
             const colors = RARITY_COLORS[c.rarity];
             return (
               <div
-                key={c.animalId}
+                key={c.id}
                 className={`relative aspect-[3/4] rounded-xl ring-1 ${colors.bg} ${colors.ring} flex flex-col items-center justify-center gap-1 p-2`}
               >
                 {c.imageUrl ? (
                   <Image
                     src={c.imageUrl}
                     alt={c.name}
-                    width={80}
-                    height={80}
-                    className={`size-16 object-contain ${colors.text}`}
+                    width={96}
+                    height={96}
+                    className="size-20 object-contain"
                     unoptimized
                   />
                 ) : (

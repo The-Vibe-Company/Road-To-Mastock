@@ -122,7 +122,35 @@ export const userShards = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     rarity: text("rarity").notNull(),
+    category: text("category").notNull().default("animal"),
     count: integer("count").notNull().default(0),
   },
-  (t) => [unique().on(t.userId, t.rarity)],
+  (t) => [unique().on(t.userId, t.rarity, t.category)],
+);
+
+export const pokemon = pgTable("pokemon", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  rarity: text("rarity").notNull(),
+  pokedexNumber: integer("pokedex_number"),
+  primaryType: text("primary_type"),
+  secondaryType: text("secondary_type"),
+  imageUrl: text("image_url"),
+});
+
+export const userPokemonCards = pgTable(
+  "user_pokemon_cards",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    pokemonId: integer("pokemon_id")
+      .notNull()
+      .references(() => pokemon.id),
+    count: integer("count").notNull().default(1),
+    firstObtainedAt: timestamp("first_obtained_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [unique().on(t.userId, t.pokemonId)],
 );
