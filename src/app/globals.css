@@ -4,6 +4,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tailwind v4 dropped the default cursor: pointer on buttons in preflight.
+   Restore it globally so every <button> and role="button" feels clickable. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
 @theme inline {
   --font-sans: var(--font-sans);
   --font-heading: var(--font-sans);
