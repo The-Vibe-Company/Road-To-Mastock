@@ -16,6 +16,9 @@
     "pokemon:fetch": "npx tsx scripts/fetch-pokemon.ts",
     "pokemon:seed": "npx tsx scripts/seed-pokemon.ts",
     "pokemon:download-artwork": "npx tsx scripts/download-pokemon-artwork.ts",
+    "pokemon:enrich": "npx tsx scripts/enrich-pokemon.ts",
+    "animals:enrich": "npx tsx scripts/enrich-animals.ts",
+    "cards:assign-numbers": "npx tsx scripts/assign-card-numbers.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
