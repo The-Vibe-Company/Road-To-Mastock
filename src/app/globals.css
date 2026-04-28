@@ -4,6 +4,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tailwind v4 dropped the default cursor: pointer on buttons in preflight.
+   Restore it globally so every <button> and role="button" feels clickable. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
 @theme inline {
   --font-sans: var(--font-sans);
   --font-heading: var(--font-sans);
@@ -259,5 +272,43 @@
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
     pointer-events: none;
     z-index: 0;
+  }
+
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  .animate-spin-slow {
+    animation: spin-slow 1s linear infinite;
+  }
+
+  @keyframes card-reveal {
+    0%   { transform: scale(0.4) rotateY(180deg); opacity: 0; }
+    60%  { transform: scale(1.08) rotateY(0deg); opacity: 1; }
+    100% { transform: scale(1) rotateY(0deg); opacity: 1; }
+  }
+  .animate-card-reveal {
+    animation: card-reveal 0.6s ease-out;
+  }
+
+  @keyframes holo-shimmer-anim {
+    0%   { background-position: 0% 0%; opacity: 0.35; }
+    50%  { opacity: 0.6; }
+    100% { background-position: 200% 0%; opacity: 0.35; }
+  }
+  .holo-shimmer {
+    background: linear-gradient(
+      115deg,
+      transparent 0%,
+      rgba(255,255,255,0.10) 25%,
+      rgba(255,200,255,0.18) 35%,
+      rgba(180,220,255,0.20) 45%,
+      rgba(255,235,180,0.18) 55%,
+      rgba(255,255,255,0.10) 65%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    mix-blend-mode: screen;
+    animation: holo-shimmer-anim 3s linear infinite;
   }
 }

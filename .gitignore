@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Card artwork (regenerated via scripts; too heavy for git)
+public/cards/animals/
+public/cards/pokemon/
+logs/
+.claude/scheduled_tasks.lock

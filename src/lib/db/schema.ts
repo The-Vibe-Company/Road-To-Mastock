@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   accentColor: text("accent_color").default("orange"),
   theme: text("theme").default("dark"),
+  cardsTokens: integer("cards_tokens").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -35,6 +36,8 @@ export const sessions = pgTable("sessions", {
     .references(() => users.id, { onDelete: "cascade" }),
   date: date("date").notNull().defaultNow(),
   notes: text("notes"),
+  terminatedAt: timestamp("terminated_at", { withTimezone: true }),
+  tokensGrantedAt: timestamp("tokens_granted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -84,3 +87,79 @@ export const sets = pgTable("sets", {
   weightKg: real("weight_kg").notNull(),
   reps: integer("reps").notNull(),
 });
+
+export const animals = pgTable("animals", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  rarity: text("rarity").notNull(),
+  cardNumber: integer("card_number"),
+  scientificName: text("scientific_name"),
+  imageUrl: text("image_url"),
+  description: text("description"),
+  flavor: text("flavor"),
+  heightCm: real("height_cm"),
+  weightKg: real("weight_kg"),
+  habitat: text("habitat"),
+});
+
+export const userCards = pgTable(
+  "user_cards",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    animalId: integer("animal_id")
+      .notNull()
+      .references(() => animals.id),
+    count: integer("count").notNull().default(1),
+    firstObtainedAt: timestamp("first_obtained_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [unique().on(t.userId, t.animalId)],
+);
+
+export const userShards = pgTable(
+  "user_shards",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    rarity: text("rarity").notNull(),
+    category: text("category").notNull().default("animal"),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [unique().on(t.userId, t.rarity, t.category)],
+);
+
+export const pokemon = pgTable("pokemon", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  rarity: text("rarity").notNull(),
+  pokedexNumber: integer("pokedex_number"),
+  primaryType: text("primary_type"),
+  secondaryType: text("secondary_type"),
+  imageUrl: text("image_url"),
+  flavor: text("flavor"),
+  heightCm: real("height_cm"),
+  weightKg: real("weight_kg"),
+  habitat: text("habitat"),
+});
+
+export const userPokemonCards = pgTable(
+  "user_pokemon_cards",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    pokemonId: integer("pokemon_id")
+      .notNull()
+      .references(() => pokemon.id),
+    count: integer("count").notNull().default(1),
+    firstObtainedAt: timestamp("first_obtained_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [unique().on(t.userId, t.pokemonId)],
+);

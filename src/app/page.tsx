@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Users, Settings } from "lucide-react";
+import { BookOpen, Users, Settings, Sparkles } from "lucide-react";
 import { getAuthUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
@@ -87,6 +87,15 @@ export default async function Home() {
                 className="size-10 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary"
               >
                 <Users className="size-5" />
+              </Button>
+            </Link>
+            <Link href="/collection">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-10 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              >
+                <Sparkles className="size-5" />
               </Button>
             </Link>
             <Link href="/exercises">
