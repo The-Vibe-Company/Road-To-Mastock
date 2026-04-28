@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/back-button";
 import { PackOpenModal, type OpenResult } from "@/components/pack-open-modal";
 import { CreatureCard } from "@/components/creature-card";
+import { CardDetailModal, type DetailedCreature } from "@/components/card-detail-modal";
 import {
   RARITIES,
   RARITY_COLORS,
@@ -28,6 +29,10 @@ interface AnimalCard {
   scientificName: string | null;
   imageUrl: string | null;
   description: string | null;
+  flavor: string | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  habitat: string | null;
 }
 
 interface PokemonCard {
@@ -41,6 +46,10 @@ interface PokemonCard {
   primaryType: string | null;
   secondaryType: string | null;
   imageUrl: string | null;
+  flavor: string | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  habitat: string | null;
 }
 
 interface CollectionData {
@@ -65,6 +74,7 @@ export default function CollectionPage() {
   const [opening, setOpening] = useState(false);
   const [fusing, setFusing] = useState<Rarity | null>(null);
   const [modalResult, setModalResult] = useState<OpenResult | null>(null);
+  const [detailCreature, setDetailCreature] = useState<DetailedCreature | null>(null);
 
   const refresh = async () => {
     const r = await fetch("/api/cards");
@@ -180,7 +190,10 @@ export default function CollectionPage() {
           }`}
         >
           <PawPrint className="size-4" />
-          Animaux <span className="text-[10px] opacity-70">{data.animals.cards.length}/{Object.values(data.animals.totalsByRarity).reduce((a, b) => a + b, 0)}</span>
+          <span>Animaux</span>
+          <span className="tabular-nums text-[10px] opacity-70 min-w-[3.5rem] text-left">
+            {data.animals.cards.length}/{Object.values(data.animals.totalsByRarity).reduce((a, b) => a + b, 0)}
+          </span>
         </button>
         <button
           onClick={() => setActiveCategory("pokemon")}
@@ -191,7 +204,10 @@ export default function CollectionPage() {
           }`}
         >
           <Zap className="size-4" />
-          Pokémon <span className="text-[10px] opacity-70">{data.pokemon.cards.length}/{Object.values(data.pokemon.totalsByRarity).reduce((a, b) => a + b, 0)}</span>
+          <span>Pokémon</span>
+          <span className="tabular-nums text-[10px] opacity-70 min-w-[3.5rem] text-left">
+            {data.pokemon.cards.length}/{Object.values(data.pokemon.totalsByRarity).reduce((a, b) => a + b, 0)}
+          </span>
         </button>
       </div>
 
@@ -213,7 +229,9 @@ export default function CollectionPage() {
               }`}
             >
               {RARITY_LABELS[r]}
-              <span className="ml-1.5 opacity-70">{owned}/{total}</span>
+              <span className="ml-1.5 tabular-nums opacity-70 inline-block min-w-[2.75rem] text-left">
+                {owned}/{total}
+              </span>
             </button>
           );
         })}
@@ -251,24 +269,66 @@ export default function CollectionPage() {
       ) : (
         <div className="grid grid-cols-3 gap-2">
           {tabCards.map((c) => {
-            const number =
-              activeCategory === "animal"
-                ? (c as AnimalCard).cardNumber
-                : (c as PokemonCard).pokedexNumber;
             const isPokemon = activeCategory === "pokemon";
+            const number = isPokemon
+              ? (c as PokemonCard).pokedexNumber
+              : (c as AnimalCard).cardNumber;
             return (
-              <CreatureCard
+              <button
                 key={c.id}
-                name={c.name}
-                rarity={c.rarity}
-                imageUrl={c.imageUrl}
-                number={number}
-                category={activeCategory}
-                primaryType={isPokemon ? (c as PokemonCard).primaryType : undefined}
-                secondaryType={isPokemon ? (c as PokemonCard).secondaryType : undefined}
-                count={c.count}
-                size="sm"
-              />
+                onClick={() => {
+                  if (isPokemon) {
+                    const p = c as PokemonCard;
+                    setDetailCreature({
+                      kind: "pokemon",
+                      id: p.id,
+                      slug: p.slug,
+                      name: p.name,
+                      rarity: p.rarity,
+                      imageUrl: p.imageUrl,
+                      count: p.count,
+                      flavor: p.flavor,
+                      heightCm: p.heightCm,
+                      weightKg: p.weightKg,
+                      habitat: p.habitat,
+                      pokedexNumber: p.pokedexNumber,
+                      primaryType: p.primaryType,
+                      secondaryType: p.secondaryType,
+                    });
+                  } else {
+                    const a = c as AnimalCard;
+                    setDetailCreature({
+                      kind: "animal",
+                      id: a.id,
+                      slug: a.slug,
+                      name: a.name,
+                      rarity: a.rarity,
+                      imageUrl: a.imageUrl,
+                      count: a.count,
+                      flavor: a.flavor,
+                      heightCm: a.heightCm,
+                      weightKg: a.weightKg,
+                      habitat: a.habitat,
+                      cardNumber: a.cardNumber,
+                      scientificName: a.scientificName,
+                      description: a.description,
+                    });
+                  }
+                }}
+                className="block w-full transition-transform active:scale-95"
+              >
+                <CreatureCard
+                  name={c.name}
+                  rarity={c.rarity}
+                  imageUrl={c.imageUrl}
+                  number={number}
+                  category={activeCategory}
+                  primaryType={isPokemon ? (c as PokemonCard).primaryType : undefined}
+                  secondaryType={isPokemon ? (c as PokemonCard).secondaryType : undefined}
+                  count={c.count}
+                  size="sm"
+                />
+              </button>
             );
           })}
         </div>
@@ -276,6 +336,13 @@ export default function CollectionPage() {
 
       {modalResult && (
         <PackOpenModal result={modalResult} onClose={() => setModalResult(null)} />
+      )}
+
+      {detailCreature && (
+        <CardDetailModal
+          creature={detailCreature}
+          onClose={() => setDetailCreature(null)}
+        />
       )}
     </div>
   );

@@ -33,6 +33,10 @@ export async function GET() {
       scientificName: animals.scientificName,
       imageUrl: animals.imageUrl,
       description: animals.description,
+      flavor: animals.flavor,
+      heightCm: animals.heightCm,
+      weightKg: animals.weightKg,
+      habitat: animals.habitat,
     })
     .from(userCards)
     .innerJoin(animals, eq(userCards.animalId, animals.id))
@@ -50,6 +54,10 @@ export async function GET() {
       primaryType: pokemon.primaryType,
       secondaryType: pokemon.secondaryType,
       imageUrl: pokemon.imageUrl,
+      flavor: pokemon.flavor,
+      heightCm: pokemon.heightCm,
+      weightKg: pokemon.weightKg,
+      habitat: pokemon.habitat,
     })
     .from(userPokemonCards)
     .innerJoin(pokemon, eq(userPokemonCards.pokemonId, pokemon.id))

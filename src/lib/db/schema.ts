@@ -97,6 +97,10 @@ export const animals = pgTable("animals", {
   scientificName: text("scientific_name"),
   imageUrl: text("image_url"),
   description: text("description"),
+  flavor: text("flavor"),
+  heightCm: real("height_cm"),
+  weightKg: real("weight_kg"),
+  habitat: text("habitat"),
 });
 
 export const userCards = pgTable(
@@ -138,6 +142,10 @@ export const pokemon = pgTable("pokemon", {
   primaryType: text("primary_type"),
   secondaryType: text("secondary_type"),
   imageUrl: text("image_url"),
+  flavor: text("flavor"),
+  heightCm: real("height_cm"),
+  weightKg: real("weight_kg"),
+  habitat: text("habitat"),
 });
 
 export const userPokemonCards = pgTable(
