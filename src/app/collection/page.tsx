@@ -306,44 +306,52 @@ export default function CollectionPage() {
         })}
       </div>
 
-      {/* Filter chips */}
-      <div className="-mx-4 mb-5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex gap-1.5 pb-1">
-          <button
-            onClick={() => setActiveFilter("all")}
-            className={`flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all active:scale-95 ${
-              activeFilter === "all"
-                ? "bg-primary text-black shadow-lg shadow-primary/30"
-                : "bg-secondary/40 text-muted-foreground hover:bg-accent"
-            }`}
-          >
-            <span className={`size-1.5 rounded-full ${activeFilter === "all" ? "bg-black" : "bg-primary"}`} />
-            <span>Tout</span>
-            <span className={`font-mono text-[10px] tabular-nums ${activeFilter === "all" ? "text-black/70" : "opacity-60"}`}>
-              <span className="inline-block w-6 text-right">{section.cards.length}</span>
-            </span>
-          </button>
-          {[...RARITIES].reverse().map((r) => {
-            const isActive = activeFilter === r;
-            return (
-              <button
-                key={r}
-                onClick={() => setActiveFilter(r)}
-                className={`flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all active:scale-95 ${
-                  isActive
-                    ? `${TIER_FILL[r]} ring-1 ${TIER_TEXT[r]} shadow-lg`
-                    : "bg-secondary/40 text-muted-foreground hover:bg-accent"
-                }`}
-              >
-                <span className={`size-1.5 rounded-full ${TIER_DOT[r]}`} />
-                <span>{RARITY_LABELS[r]}</span>
-                <span className="opacity-60">
-                  <StableCount owned={cardsByRarity[r].length} total={section.totalsByRarity[r] || 0} />
-                </span>
-              </button>
-            );
-          })}
-        </div>
+      {/* Filter row — pills that expand only when active. One line, no scroll. */}
+      <div className="mb-5 flex items-center gap-1.5">
+        <button
+          onClick={() => setActiveFilter("all")}
+          className={`flex h-9 items-center gap-1.5 overflow-hidden rounded-xl text-xs font-bold transition-all active:scale-95 ${
+            activeFilter === "all"
+              ? "bg-primary px-3 text-black shadow-md shadow-primary/30"
+              : "size-9 justify-center bg-secondary/40 text-muted-foreground hover:bg-accent"
+          }`}
+          title={`Tout — ${section.cards.length}`}
+        >
+          <span className={`size-2 shrink-0 rounded-full ${activeFilter === "all" ? "bg-black" : "bg-primary"}`} />
+          {activeFilter === "all" && (
+            <>
+              <span>Tout</span>
+              <span className="font-mono tabular-nums opacity-70">{section.cards.length}</span>
+            </>
+          )}
+        </button>
+        {[...RARITIES].reverse().map((r) => {
+          const isActive = activeFilter === r;
+          const owned = cardsByRarity[r].length;
+          const total = section.totalsByRarity[r] || 0;
+          return (
+            <button
+              key={r}
+              onClick={() => setActiveFilter(r)}
+              className={`flex h-9 items-center gap-1.5 overflow-hidden rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                isActive
+                  ? `flex-1 justify-center px-3 ${TIER_FILL[r]} ring-1 ${TIER_TEXT[r]} shadow-md`
+                  : "size-9 justify-center bg-secondary/40 text-muted-foreground hover:bg-accent"
+              }`}
+              title={`${RARITY_LABELS[r]} — ${owned}/${total}`}
+            >
+              <span className={`size-2 shrink-0 rounded-full ${TIER_DOT[r]}`} />
+              {isActive && (
+                <>
+                  <span className="truncate">{RARITY_LABELS[r]}</span>
+                  <span className="font-mono tabular-nums opacity-70">
+                    {owned}/{total}
+                  </span>
+                </>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Fusion bar (only when a specific rarity is selected) */}
