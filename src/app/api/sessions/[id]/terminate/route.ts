@@ -44,8 +44,9 @@ export async function POST(
 
   let tokenGranted = false;
   let specialTokenGranted = false;
-  // 1ʳᵉ et 4ᵉ séance terminée de la semaine ISO → jeton spécial à la place
-  // du jeton normal. Sessions 2/3/5+ → jeton normal classique.
+  // 1ʳᵉ séance terminée de la semaine ISO (basée sur sessions.date, pas la
+  // date de termination) → jeton spécial à la place du jeton normal.
+  // Sessions 2+ de la semaine → jeton normal classique.
   let weekPosition: number | null = null;
 
   if (!session.tokensGrantedAt) {
@@ -64,21 +65,23 @@ export async function POST(
       )
       .returning();
     if (updated) {
-      // Compte les AUTRES sessions de la semaine courante dont le jeton
-      // a déjà été grant — ce qui détermine la position de cette séance.
+      // Compte les AUTRES sessions ayant déjà reçu un jeton et dont la
+      // DATE de séance (pas la date de termination) tombe dans la même
+      // semaine ISO que la session courante. Ainsi, terminer en batch
+      // 5 sessions de 5 semaines distinctes donne 5 specials, pas 1.
       const countRes = (await db.execute(sql`
         SELECT COUNT(*)::int AS "countBefore"
         FROM sessions
         WHERE user_id = ${auth.userId}
           AND tokens_granted_at IS NOT NULL
           AND id != ${sessionId}
-          AND DATE_TRUNC('week', tokens_granted_at) = DATE_TRUNC('week', NOW())
+          AND DATE_TRUNC('week', date::timestamp) = DATE_TRUNC('week', ${session.date}::timestamp)
       `)) as unknown as { rows?: { countBefore: number }[] };
       const rows = (countRes.rows ?? countRes) as unknown as { countBefore: number }[];
       const previousThisWeek = Number(rows[0]?.countBefore ?? 0);
       weekPosition = previousThisWeek + 1;
 
-      const isSpecialPosition = weekPosition === 1 || weekPosition === 4;
+      const isSpecialPosition = weekPosition === 1;
       if (isSpecialPosition) {
         await db
           .update(users)
