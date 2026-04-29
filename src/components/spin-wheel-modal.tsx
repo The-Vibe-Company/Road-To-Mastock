@@ -73,11 +73,20 @@ export function SpinWheelModal({
 
         <div className="w-full">
           {phase === "ready" && (
-            <div className="flex h-44 items-center justify-center gap-3">
-              <JackpotCoin reward={1} size={88} />
-              <JackpotCoin reward={2} size={88} />
-              <JackpotCoin reward={3} size={88} />
-              <JackpotCoin reward={4} size={88} />
+            <div className="flex items-end justify-center gap-3 py-3">
+              {[
+                { r: 1, pct: 20 },
+                { r: 2, pct: 60 },
+                { r: 3, pct: 19 },
+                { r: 4, pct: 1 },
+              ].map(({ r, pct }) => (
+                <div key={r} className="flex flex-col items-center gap-1.5">
+                  <JackpotCoin reward={r as 1 | 2 | 3 | 4} size={72} />
+                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                    {pct}%
+                  </span>
+                </div>
+              ))}
             </div>
           )}
           {phase !== "ready" && reward !== null && (
