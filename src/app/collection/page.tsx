@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flame, PawPrint, Zap, Vault, Sparkles } from "lucide-react";
+import { Flame, Gift, Lock, PawPrint, Zap, Vault, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/back-button";
 import { PackOpenModal, type OpenResult } from "@/components/pack-open-modal";
 import { CreatureCard } from "@/components/creature-card";
 import { CardDetailModal, type DetailedCreature } from "@/components/card-detail-modal";
+import { SpinWheelModal } from "@/components/spin-wheel-modal";
 import {
   RARITIES,
   RARITY_LABELS,
@@ -85,6 +86,7 @@ interface CollectionData {
   animals: { cards: AnimalCard[]; totalsByRarity: Record<Rarity, number>; shards: Record<Rarity, number> };
   pokemon: { cards: PokemonCard[]; totalsByRarity: Record<Rarity, number>; shards: Record<Rarity, number> };
   tokens: number;
+  specialTokens: number;
 }
 
 function StableCount({ owned, total }: { owned: number; total: number }) {
@@ -107,6 +109,7 @@ export default function CollectionPage() {
   const [converting, setConverting] = useState<Rarity | null>(null);
   const [modalResult, setModalResult] = useState<OpenResult | null>(null);
   const [detailCreature, setDetailCreature] = useState<DetailedCreature | null>(null);
+  const [showSpinWheel, setShowSpinWheel] = useState(false);
 
   const refresh = async () => {
     const r = await fetch("/api/cards");
@@ -278,6 +281,29 @@ export default function CollectionPage() {
             </Button>
           </div>
         </div>
+
+        {/* Special token row */}
+        {data.specialTokens > 0 && (
+          <div className="relative mx-5 mb-3 flex items-center gap-3 rounded-2xl bg-amber-500/10 px-3 py-2.5 ring-1 ring-amber-500/40 shadow-[0_0_28px_-8px_rgba(251,191,36,0.6)]">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/20 ring-1 ring-amber-500/50">
+              <Star className="size-4 text-amber-300" strokeWidth={2.5} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-300/80">
+                Jeton{data.specialTokens > 1 ? "s" : ""} spécial{data.specialTokens > 1 ? "ux" : ""} ×{data.specialTokens}
+              </p>
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                Tourne la roue : 1, 2, 3 ou 4 jetons normaux
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowSpinWheel(true)}
+              className="h-9 rounded-lg bg-amber-400 px-3 text-[10px] font-black uppercase tracking-wider text-black hover:bg-amber-300"
+            >
+              Tourner
+            </Button>
+          </div>
+        )}
 
         <div className="relative px-5 pb-4">
           <div className="mb-1.5 flex items-center justify-between text-[10px] font-mono tabular-nums uppercase tracking-widest text-muted-foreground">
@@ -489,6 +515,12 @@ export default function CollectionPage() {
       )}
       {detailCreature && (
         <CardDetailModal creature={detailCreature} onClose={() => setDetailCreature(null)} />
+      )}
+      {showSpinWheel && (
+        <SpinWheelModal
+          onClose={() => setShowSpinWheel(false)}
+          onAfterSpin={refresh}
+        />
       )}
     </div>
   );
