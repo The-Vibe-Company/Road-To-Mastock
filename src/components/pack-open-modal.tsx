@@ -1,16 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { X, Sparkles, PawPrint, Zap, Crown, Star, ChevronRight, Gem, Package, Gift } from "lucide-react";
+import { X, Sparkles, ChevronRight, Gem } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreatureCard } from "@/components/creature-card";
-import { SlotReveal, type SlotItem } from "@/components/slot-reveal";
+import { SlotReel, type ReelItem } from "@/components/slot-reel";
+import { AnimalEmblem } from "@/components/emblems/animal-emblem";
+import { PokemonEmblem } from "@/components/emblems/pokemon-emblem";
+import { RarityEmblem } from "@/components/emblems/rarity-emblem";
+import { HelpCircle } from "lucide-react";
 import { FUSION_NEXT, RARITIES, RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
-import { PACK_DESCRIPTIONS, PACK_LABELS, PACK_TYPES, type PackType } from "@/lib/pack-types";
+import {
+  PACK_DESCRIPTIONS,
+  PACK_LABELS,
+  PACK_TYPES,
+  PACK_TYPE_WEIGHTS,
+  PACK_RARITY_WEIGHTS,
+  PACK_CATEGORY_PROB_POKEMON,
+  type PackType,
+} from "@/lib/pack-types";
 
 type Category = "animal" | "pokemon";
 type Stage = "pack" | "category" | "rarity" | "creature" | "duplicate";
+type Phase = "ready" | "spinning" | "result";
 
 interface CreatureBase {
   id: number;
@@ -48,57 +61,32 @@ const CATEGORY_LABELS: Record<Category, string> = {
   pokemon: "Pokémon",
 };
 
-const RARITY_ICON: Record<Rarity, typeof Star> = {
-  common: Star,
-  uncommon: Star,
-  rare: Star,
-  epic: Sparkles,
-  legendary: Crown,
-  mythic: Crown,
+const TIER_BACK_GRADIENT: Record<Rarity, string> = {
+  common:    "from-zinc-700 via-zinc-900 to-zinc-950",
+  uncommon:  "from-emerald-700 via-emerald-900 to-emerald-950",
+  rare:      "from-sky-700 via-sky-900 to-sky-950",
+  epic:      "from-violet-700 via-violet-900 to-violet-950",
+  legendary: "from-amber-700 via-amber-900 to-amber-950",
+  mythic:    "from-rose-700 via-fuchsia-900 to-rose-950",
+};
+const TIER_BACK_RING: Record<Rarity, string> = {
+  common:    "ring-zinc-500/50",
+  uncommon:  "ring-emerald-500/60",
+  rare:      "ring-sky-500/70",
+  epic:      "ring-violet-500/70",
+  legendary: "ring-amber-500/80",
+  mythic:    "ring-rose-500",
 };
 
-const PACK_FALLBACK_ICON: Record<PackType, typeof Package> = {
-  basic: Package,
-  animal_only: PawPrint,
-  pokemon_only: Zap,
-  premium: Gift,
-  mythic: Crown,
+const PACK_HALO: Record<PackType, string> = {
+  basic:        "bg-orange-500/30",
+  animal_only:  "bg-emerald-500/35",
+  pokemon_only: "bg-sky-500/35",
+  premium:      "bg-amber-500/45",
+  mythic:       "bg-rose-500/55",
 };
 
-const PACK_TINT: Record<PackType, string> = {
-  basic:        "from-zinc-700 via-zinc-900 to-black",
-  animal_only:  "from-emerald-700 via-emerald-950 to-black",
-  pokemon_only: "from-sky-700 via-sky-950 to-black",
-  premium:      "from-amber-600 via-amber-900 to-black",
-  mythic:       "from-rose-600 via-fuchsia-900 to-black",
-};
-
-const PACK_RING: Record<PackType, string> = {
-  basic:        "ring-zinc-400/40",
-  animal_only:  "ring-emerald-400/60",
-  pokemon_only: "ring-sky-400/60",
-  premium:      "ring-amber-400/70",
-  mythic:       "ring-rose-400/80",
-};
-
-const PACK_GLOW: Record<PackType, string> = {
-  basic:        "",
-  animal_only:  "shadow-[0_0_50px_-10px_rgba(52,211,153,0.6)]",
-  pokemon_only: "shadow-[0_0_50px_-10px_rgba(56,189,248,0.6)]",
-  premium:      "shadow-[0_0_70px_-8px_rgba(251,191,36,0.7)]",
-  mythic:       "shadow-[0_0_90px_-4px_rgba(244,114,182,0.85)]",
-};
-
-const TIER_BIG_BG: Record<Rarity, string> = {
-  common:    "bg-zinc-500/20",
-  uncommon:  "bg-emerald-500/20",
-  rare:      "bg-sky-500/20",
-  epic:      "bg-violet-500/20",
-  legendary: "bg-amber-500/20",
-  mythic:    "bg-rose-500/25",
-};
-
-const TIER_BIG_RING: Record<Rarity, string> = {
+const TIER_RING_BIG: Record<Rarity, string> = {
   common:    "ring-zinc-400/40",
   uncommon:  "ring-emerald-400/50",
   rare:      "ring-sky-400/60",
@@ -106,8 +94,15 @@ const TIER_BIG_RING: Record<Rarity, string> = {
   legendary: "ring-amber-400/80",
   mythic:    "ring-rose-400",
 };
-
-const TIER_BIG_GLOW: Record<Rarity, string> = {
+const TIER_BG_BIG: Record<Rarity, string> = {
+  common:    "bg-zinc-500/20",
+  uncommon:  "bg-emerald-500/20",
+  rare:      "bg-sky-500/20",
+  epic:      "bg-violet-500/20",
+  legendary: "bg-amber-500/20",
+  mythic:    "bg-rose-500/25",
+};
+const TIER_GLOW_BIG: Record<Rarity, string> = {
   common:    "",
   uncommon:  "shadow-[0_0_50px_-10px_rgba(52,211,153,0.5)]",
   rare:      "shadow-[0_0_60px_-8px_rgba(56,189,248,0.7)]",
@@ -116,82 +111,163 @@ const TIER_BIG_GLOW: Record<Rarity, string> = {
   mythic:    "shadow-[0_0_110px_-2px_rgba(244,114,182,0.95)]",
 };
 
-// ─── Pack art tile (used inside SlotReveal items) ────────────────────────
+// ─── Pack tile (full size for the SlotReel) ──────────────────────────────
 function PackTile({ packType }: { packType: PackType }) {
-  const FallbackIcon = PACK_FALLBACK_ICON[packType];
   const isHolo = packType === "premium" || packType === "mythic";
-  const [errored, setErrored] = useState(false);
   return (
-    <div
-      className={`relative h-72 w-52 overflow-hidden rounded-3xl border-2 bg-gradient-to-b ${PACK_TINT[packType]} ring-2 ${PACK_RING[packType]} ${PACK_GLOW[packType]} border-white/5`}
-    >
-      {!errored ? (
-        <Image
-          src={`/cards/packs/${packType}.png`}
-          alt={PACK_LABELS[packType]}
-          fill
-          unoptimized
-          className="object-cover"
-          onError={() => setErrored(true)}
-        />
-      ) : (
-        <div className="flex size-full items-center justify-center">
-          <FallbackIcon className="size-24 text-white/80" strokeWidth={1.5} />
-        </div>
-      )}
+    <div className="relative h-72 w-52">
+      <div className={`absolute inset-0 -m-6 rounded-full ${PACK_HALO[packType]} blur-3xl`} />
+      <Image
+        src={`/cards/packs/${packType}.png`}
+        alt={PACK_LABELS[packType]}
+        fill
+        unoptimized
+        className="relative object-contain drop-shadow-[0_8px_28px_rgba(0,0,0,0.7)]"
+      />
       {isHolo && (
-        <div className="pointer-events-none absolute inset-0 holo-shimmer" />
+        <div className="pointer-events-none absolute inset-0 holo-shimmer rounded-2xl" />
       )}
-      <div className="pointer-events-none absolute right-0 top-0 size-16 bg-gradient-to-bl from-white/20 via-transparent to-transparent" />
     </div>
   );
 }
 
-// ─── Category badge tile ─────────────────────────────────────────────────
-function CategoryTile({ category }: { category: Category }) {
-  const Icon = category === "animal" ? PawPrint : Zap;
-  const tint = category === "animal" ? "bg-emerald-500/15 ring-emerald-400/60" : "bg-sky-500/15 ring-sky-400/60";
-  const text = category === "animal" ? "text-emerald-200" : "text-sky-200";
-  return (
-    <div className={`relative flex size-56 items-center justify-center rounded-full ring-4 ${tint}`}>
-      <div className="absolute inset-0 rounded-full bg-current opacity-5 blur-3xl" />
-      <Icon className={`size-28 ${text}`} strokeWidth={2} />
-    </div>
-  );
-}
-
-// ─── Rarity badge tile ───────────────────────────────────────────────────
-function RarityTile({ rarity }: { rarity: Rarity }) {
-  const Icon = RARITY_ICON[rarity];
-  const colors = RARITY_COLORS[rarity];
+function CardBack({ rarity }: { rarity: Rarity }) {
   const isHolo = rarity === "legendary" || rarity === "mythic";
   return (
     <div
-      className={`relative flex size-56 items-center justify-center rounded-full ring-4 ${TIER_BIG_RING[rarity]} ${TIER_BIG_BG[rarity]} ${TIER_BIG_GLOW[rarity]}`}
+      className={`relative aspect-[3/4] w-72 overflow-hidden rounded-xl border-2 border-white/5 bg-gradient-to-b shadow-2xl ring-2 ${TIER_BACK_GRADIENT[rarity]} ${TIER_BACK_RING[rarity]} ${TIER_GLOW_BIG[rarity]}`}
     >
       {isHolo && (
-        <div className="pointer-events-none absolute inset-0 rounded-full holo-shimmer" />
+        <div className="pointer-events-none absolute inset-0 holo-shimmer" />
       )}
-      <Icon className={`size-28 ${colors.text}`} strokeWidth={2} />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.08)_0%,transparent_60%)]" />
+      {/* Center : rarity emblem dimmed + a subtle ? glyph */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="opacity-40">
+          <RarityEmblem rarity={rarity} size={180} />
+        </div>
+      </div>
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <HelpCircle className="size-12 text-white/15" strokeWidth={1.5} />
+      </div>
     </div>
   );
 }
 
-const PACK_ITEMS: SlotItem[] = PACK_TYPES.map((t) => ({
+function PackTileMini({ packType }: { packType: PackType }) {
+  return (
+    <div className="relative aspect-[2/3] w-full">
+      <div className={`absolute inset-0 -m-2 rounded-full ${PACK_HALO[packType]} blur-2xl opacity-80`} />
+      <Image
+        src={`/cards/packs/${packType}.png`}
+        alt={PACK_LABELS[packType]}
+        fill
+        unoptimized
+        className="relative object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
+      />
+    </div>
+  );
+}
+
+const PACK_SHORT_NAME: Record<PackType, string> = {
+  basic:        "Basique",
+  animal_only:  "Animal",
+  pokemon_only: "Pokémon",
+  premium:      "Premium",
+  mythic:       "Mythique",
+};
+
+const PACK_ITEMS: ReelItem[] = PACK_TYPES.map((t) => ({
   key: t,
   render: () => <PackTile packType={t} />,
 }));
 
-const CATEGORY_ITEMS: SlotItem[] = [
-  { key: "animal",  render: () => <CategoryTile category="animal" /> },
-  { key: "pokemon", render: () => <CategoryTile category="pokemon" /> },
+const CATEGORY_ITEMS: ReelItem[] = [
+  { key: "animal",  render: () => <AnimalEmblem /> },
+  { key: "pokemon", render: () => <PokemonEmblem /> },
 ];
 
-const RARITY_ITEMS: SlotItem[] = RARITIES.map((r) => ({
+const RARITY_ITEMS: ReelItem[] = RARITIES.map((r) => ({
   key: r,
-  render: () => <RarityTile rarity={r} />,
+  render: () => <RarityEmblem rarity={r} />,
 }));
 
+// ─── Preview rows ────────────────────────────────────────────────────────
+function PackPreviewRow() {
+  return (
+    <div className="flex w-full items-end justify-between gap-2">
+      {PACK_TYPES.map((t) => (
+        <div key={t} className="flex flex-1 flex-col items-center gap-2">
+          <PackTileMini packType={t} />
+          <p className="text-[10px] font-black uppercase tracking-wider text-foreground/85 text-center leading-tight">
+            {PACK_SHORT_NAME[t]}
+          </p>
+          <span className="font-mono text-[11px] font-bold tabular-nums text-muted-foreground">
+            {PACK_TYPE_WEIGHTS[t]}%
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CategoryPreviewRow({ packType }: { packType: PackType }) {
+  const pPokemon = Math.round(PACK_CATEGORY_PROB_POKEMON[packType] * 100);
+  const pAnimal = 100 - pPokemon;
+  return (
+    <div className="flex w-full items-end justify-around gap-6">
+      <div className="flex flex-1 flex-col items-center gap-3">
+        <AnimalEmblem size={168} />
+        <p className="text-sm font-black uppercase tracking-wider text-foreground">
+          Animal
+        </p>
+        <span className="font-mono text-base font-black tabular-nums text-muted-foreground">
+          {pAnimal}%
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col items-center gap-3">
+        <PokemonEmblem size={168} />
+        <p className="text-sm font-black uppercase tracking-wider text-foreground">
+          Pokémon
+        </p>
+        <span className="font-mono text-base font-black tabular-nums text-muted-foreground">
+          {pPokemon}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function RarityPreviewRow({ packType }: { packType: PackType }) {
+  const weights = PACK_RARITY_WEIGHTS[packType];
+  const total = Object.values(weights).reduce((a, b) => a + b, 0);
+  return (
+    <div className="flex w-full items-end justify-between gap-1.5">
+      {RARITIES.map((r) => {
+        const pct = total > 0 ? Math.round((weights[r] / total) * 100) : 0;
+        const dim = weights[r] === 0;
+        return (
+          <div
+            key={r}
+            className={`flex flex-1 flex-col items-center gap-1.5 ${dim ? "opacity-25" : ""}`}
+          >
+            <div className="aspect-square w-full max-w-[58px]">
+              <RarityEmblem rarity={r} size={58} />
+            </div>
+            <p className="text-[9px] font-black uppercase tracking-wider text-foreground/80 text-center leading-tight">
+              {RARITY_LABELS[r]}
+            </p>
+            <span className="font-mono text-[10px] font-bold tabular-nums text-muted-foreground">
+              {pct}%
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────
 export function PackOpenModal({
   result,
   onClose,
@@ -199,7 +275,6 @@ export function PackOpenModal({
   result: OpenResult;
   onClose: () => void;
 }) {
-  // Forced packs (animal_only / pokemon_only) skip the category stage.
   const skipCategory = result.packType === "animal_only" || result.packType === "pokemon_only";
 
   const stageOrder = useMemo<Stage[]>(
@@ -208,27 +283,40 @@ export function PackOpenModal({
   );
 
   const [stage, setStage] = useState<Stage>("pack");
-  const [settled, setSettled] = useState(false);
+  const [phase, setPhase] = useState<Phase>("ready");
+
+  // Reset phase when stage changes (so creature also starts in 'ready' = card-back)
+  useEffect(() => {
+    if (stage === "pack" || stage === "category" || stage === "rarity" || stage === "creature") {
+      setPhase("ready");
+    }
+  }, [stage]);
 
   const colors = RARITY_COLORS[result.rarity];
   const categoryLabel = CATEGORY_LABELS[result.category];
   const isHolo = result.rarity === "legendary" || result.rarity === "mythic";
   const nextRarity = FUSION_NEXT[result.rarity];
 
-  const advance = () => {
-    if (stage === "creature" || stage === "duplicate") return;
+  const advanceStage = () => {
     const idx = stageOrder.indexOf(stage);
     const next = stageOrder[idx + 1];
-    if (next) {
-      setSettled(false);
-      setStage(next);
-    }
+    if (next) setStage(next);
   };
 
   const handleBackdropClick = () => {
-    if (!settled) return;
     if (stage === "creature" || stage === "duplicate") return;
-    advance();
+    if (phase === "result") advanceStage();
+  };
+
+  const triggerSpin = () => {
+    if (phase === "ready") setPhase("spinning");
+  };
+
+  // Action button label per stage
+  const stageActionLabel: Record<Exclude<Stage, "creature" | "duplicate">, string> = {
+    pack: "Ouvrir le pack",
+    category: "Révéler la catégorie",
+    rarity: "Tirer la rareté",
   };
 
   return (
@@ -247,21 +335,45 @@ export function PackOpenModal({
         <X className="size-5" />
       </button>
 
-      <div className="flex w-full max-w-sm flex-col items-center gap-6 px-6 py-12">
-        {/* STAGE 0 — Pack type slot reveal */}
+      <div className="flex w-full max-w-xl flex-col items-center gap-6 px-6 py-12">
+        {/* STAGE 0 — Pack */}
         {stage === "pack" && (
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-              Tu reçois
+              Pack
             </p>
-            <SlotReveal
-              items={PACK_ITEMS}
-              targetKey={result.packType}
-              onSettle={() => setSettled(true)}
-            />
-            <div className="text-center min-h-[5rem]">
-              {settled && (
-                <div className="animate-card-reveal">
+
+            {phase === "ready" && (
+              <>
+                <PackPreviewRow />
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerSpin();
+                  }}
+                  className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
+                >
+                  <Sparkles className="size-4" strokeWidth={3} />
+                  {stageActionLabel.pack}
+                </Button>
+              </>
+            )}
+
+            {phase === "spinning" && (
+              <SlotReel
+                items={PACK_ITEMS}
+                targetKey={result.packType}
+                itemWidth={232}
+                duration={3400}
+                loops={4}
+                onSettle={() => setPhase("result")}
+              />
+            )}
+
+            {phase === "result" && (
+              <div className="flex flex-col items-center gap-4 animate-card-reveal">
+                <PackTile packType={result.packType} />
+                <div className="text-center">
                   <p className="text-3xl font-black tracking-tighter">
                     {PACK_LABELS[result.packType]}
                   </p>
@@ -269,100 +381,169 @@ export function PackOpenModal({
                     {PACK_DESCRIPTIONS[result.packType]}
                   </p>
                 </div>
-              )}
-            </div>
-            {settled && <TapHint />}
+                <TapHint />
+              </div>
+            )}
           </>
         )}
 
-        {/* STAGE 1 — Category slot reveal (skipped for animal_only / pokemon_only) */}
+        {/* STAGE 1 — Category */}
         {stage === "category" && (
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-              C'est un...
+              Catégorie
             </p>
-            <SlotReveal
-              items={CATEGORY_ITEMS}
-              targetKey={result.category}
-              onSettle={() => setSettled(true)}
-            />
-            <div className="text-center min-h-[3rem]">
-              {settled && (
-                <p className="text-5xl font-black tracking-tighter text-primary animate-card-reveal">
+
+            {phase === "ready" && (
+              <>
+                <CategoryPreviewRow packType={result.packType} />
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerSpin();
+                  }}
+                  className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
+                >
+                  <Sparkles className="size-4" strokeWidth={3} />
+                  {stageActionLabel.category}
+                </Button>
+              </>
+            )}
+
+            {phase === "spinning" && (
+              <SlotReel
+                items={CATEGORY_ITEMS}
+                targetKey={result.category}
+                itemWidth={232}
+                duration={3000}
+                loops={6}
+                onSettle={() => setPhase("result")}
+              />
+            )}
+
+            {phase === "result" && (
+              <div className="flex flex-col items-center gap-4 animate-card-reveal">
+                {result.category === "animal" ? <AnimalEmblem /> : <PokemonEmblem />}
+                <p className="text-5xl font-black tracking-tighter text-primary">
                   {categoryLabel}
                 </p>
-              )}
-            </div>
-            {settled && <TapHint />}
+                <TapHint />
+              </div>
+            )}
           </>
         )}
 
-        {/* STAGE 2 — Rarity slot reveal */}
+        {/* STAGE 2 — Rarity */}
         {stage === "rarity" && (
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
               Rareté
             </p>
-            <SlotReveal
-              items={RARITY_ITEMS}
-              targetKey={result.rarity}
-              onSettle={() => setSettled(true)}
-            />
-            <div className="text-center min-h-[3rem]">
-              {settled && (
-                <p className={`text-5xl font-black tracking-tighter ${colors.text} animate-card-reveal`}>
+
+            {phase === "ready" && (
+              <>
+                <RarityPreviewRow packType={result.packType} />
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerSpin();
+                  }}
+                  className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
+                >
+                  <Sparkles className="size-4" strokeWidth={3} />
+                  {stageActionLabel.rarity}
+                </Button>
+              </>
+            )}
+
+            {phase === "spinning" && (
+              <SlotReel
+                items={RARITY_ITEMS}
+                targetKey={result.rarity}
+                itemWidth={232}
+                duration={3400}
+                loops={5}
+                onSettle={() => setPhase("result")}
+              />
+            )}
+
+            {phase === "result" && (
+              <div className="flex flex-col items-center gap-4 animate-card-reveal">
+                <RarityEmblem rarity={result.rarity} />
+                <p className={`text-5xl font-black tracking-tighter ${colors.text}`}>
                   {RARITY_LABELS[result.rarity]}
                 </p>
-              )}
-            </div>
-            {settled && <TapHint />}
+                <TapHint />
+              </div>
+            )}
           </>
         )}
 
-        {/* STAGE 3 — Creature reveal */}
+        {/* STAGE 3 — Creature */}
         {stage === "creature" && (
           <div
             onClick={(e) => e.stopPropagation()}
             className="flex w-full flex-col items-center gap-5"
           >
-            <div className="w-72 animate-card-reveal">
-              <CreatureCard
-                name={result.creature.name}
-                rarity={result.rarity}
-                imageUrl={result.creature.imageUrl}
-                number={
-                  result.creature.kind === "animal"
-                    ? result.creature.cardNumber
-                    : result.creature.pokedexNumber
-                }
-                category={result.category}
-                primaryType={result.creature.kind === "pokemon" ? result.creature.primaryType : undefined}
-                secondaryType={result.creature.kind === "pokemon" ? result.creature.secondaryType : undefined}
-                size="lg"
-              />
-            </div>
-
-            <div className="text-center">
-              <p className={`text-xs font-black uppercase tracking-widest ${colors.text}`}>
-                {RARITY_LABELS[result.rarity]} · {categoryLabel}
-              </p>
-              {result.isDuplicate && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Tu possèdes déjà cette carte
+            {phase === "ready" ? (
+              <>
+                <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+                  Ta carte
                 </p>
-              )}
-            </div>
+                <CardBack rarity={result.rarity} />
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPhase("result");
+                  }}
+                  className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
+                >
+                  <Sparkles className="size-3.5" strokeWidth={3} />
+                  Révéler la carte
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="w-72 animate-creature-reveal">
+                  <CreatureCard
+                    name={result.creature.name}
+                    rarity={result.rarity}
+                    imageUrl={result.creature.imageUrl}
+                    number={
+                      result.creature.kind === "animal"
+                        ? result.creature.cardNumber
+                        : result.creature.pokedexNumber
+                    }
+                    category={result.category}
+                    primaryType={result.creature.kind === "pokemon" ? result.creature.primaryType : undefined}
+                    secondaryType={result.creature.kind === "pokemon" ? result.creature.secondaryType : undefined}
+                    size="lg"
+                  />
+                </div>
 
-            <Button
-              onClick={() => (result.isDuplicate ? setStage("duplicate") : onClose())}
-              className="h-12 w-full rounded-2xl bg-gradient-orange-intense text-base font-bold text-black"
-            >
-              {result.isDuplicate ? "Voir ma récompense" : "Continuer"}
-            </Button>
+                <div className="text-center">
+                  <p className={`text-xs font-black uppercase tracking-widest ${colors.text}`}>
+                    {RARITY_LABELS[result.rarity]} · {categoryLabel}
+                  </p>
+                  {result.isDuplicate && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Tu possèdes déjà cette carte
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  onClick={() => (result.isDuplicate ? setStage("duplicate") : onClose())}
+                  className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
+                >
+                  {result.isDuplicate ? "Voir ma récompense" : "Continuer"}
+                </Button>
+              </>
+            )}
           </div>
         )}
 
-        {/* STAGE 4 — Duplicate reward */}
+        {/* STAGE 4 — Duplicate */}
         {stage === "duplicate" && (
           <div
             onClick={(e) => e.stopPropagation()}
@@ -399,7 +580,7 @@ export function PackOpenModal({
                 </span>
               </div>
               <div
-                className={`relative flex size-24 items-center justify-center rounded-2xl ring-2 ${TIER_BIG_RING[result.rarity]} ${TIER_BIG_BG[result.rarity]} ${TIER_BIG_GLOW[result.rarity]}`}
+                className={`relative flex size-24 items-center justify-center rounded-2xl ring-2 ${TIER_RING_BIG[result.rarity]} ${TIER_BG_BIG[result.rarity]} ${TIER_GLOW_BIG[result.rarity]}`}
               >
                 {isHolo && (
                   <div className="pointer-events-none absolute inset-0 rounded-2xl holo-shimmer" />
@@ -428,7 +609,7 @@ export function PackOpenModal({
 
             <Button
               onClick={onClose}
-              className="h-12 w-full rounded-2xl bg-gradient-orange-intense text-base font-bold text-black"
+              className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
             >
               Continuer
             </Button>
@@ -447,4 +628,3 @@ function TapHint() {
     </div>
   );
 }
-
