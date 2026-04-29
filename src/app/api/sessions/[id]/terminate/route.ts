@@ -43,8 +43,12 @@ export async function POST(
   }
 
   let tokenGranted = false;
+  let specialTokenGranted = false;
+  // 1ʳᵉ et 4ᵉ séance terminée de la semaine ISO → jeton spécial à la place
+  // du jeton normal. Sessions 2/3/5+ → jeton normal classique.
+  let weekPosition: number | null = null;
+
   if (!session.tokensGrantedAt) {
-    // Atomic update: only grant if tokens_granted_at is still NULL
     const [updated] = await db
       .update(sessions)
       .set({
@@ -60,13 +64,35 @@ export async function POST(
       )
       .returning();
     if (updated) {
-      tokenGranted = true;
-      await db
-        .update(users)
-        .set({ cardsTokens: sql`${users.cardsTokens} + 1` })
-        .where(eq(users.id, auth.userId));
+      // Compte les AUTRES sessions de la semaine courante dont le jeton
+      // a déjà été grant — ce qui détermine la position de cette séance.
+      const countRes = (await db.execute(sql`
+        SELECT COUNT(*)::int AS "countBefore"
+        FROM sessions
+        WHERE user_id = ${auth.userId}
+          AND tokens_granted_at IS NOT NULL
+          AND id != ${sessionId}
+          AND DATE_TRUNC('week', tokens_granted_at) = DATE_TRUNC('week', NOW())
+      `)) as unknown as { rows?: { countBefore: number }[] };
+      const rows = (countRes.rows ?? countRes) as unknown as { countBefore: number }[];
+      const previousThisWeek = Number(rows[0]?.countBefore ?? 0);
+      weekPosition = previousThisWeek + 1;
+
+      const isSpecialPosition = weekPosition === 1 || weekPosition === 4;
+      if (isSpecialPosition) {
+        await db
+          .update(users)
+          .set({ cardsSpecialTokens: sql`${users.cardsSpecialTokens} + 1` })
+          .where(eq(users.id, auth.userId));
+        specialTokenGranted = true;
+      } else {
+        await db
+          .update(users)
+          .set({ cardsTokens: sql`${users.cardsTokens} + 1` })
+          .where(eq(users.id, auth.userId));
+        tokenGranted = true;
+      }
     } else {
-      // Concurrent grant happened; just ensure terminatedAt is set
       await db
         .update(sessions)
         .set({ terminatedAt: new Date() })
@@ -80,14 +106,17 @@ export async function POST(
   }
 
   const [user] = await db
-    .select({ tokens: users.cardsTokens })
+    .select({ tokens: users.cardsTokens, specialTokens: users.cardsSpecialTokens })
     .from(users)
     .where(eq(users.id, auth.userId));
 
   return Response.json({
     terminated: true,
     tokenGranted,
+    specialTokenGranted,
+    weekPosition,
     tokens: user?.tokens ?? 0,
+    specialTokens: user?.specialTokens ?? 0,
   });
 }
 

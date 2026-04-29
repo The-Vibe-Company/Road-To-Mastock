@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   accentColor: text("accent_color").default("orange"),
   theme: text("theme").default("dark"),
   cardsTokens: integer("cards_tokens").notNull().default(0),
+  cardsSpecialTokens: integer("cards_special_tokens").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

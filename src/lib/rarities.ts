@@ -47,6 +47,27 @@ export const FUSION_NEXT: Record<Rarity, Rarity | null> = {
 
 export const FUSION_COST = 3;
 
+// Fragments → tokens conversion. The batch size is what gets consumed
+// in one click; the reward is the resulting tokens. Rates are tuned so
+// fusion stays more rewarding than conversion at low tiers, and so that
+// mythic shards (which can't fuse) still have a meaningful sink.
+export const CONVERSION_BATCH: Record<Rarity, number> = {
+  common:    5,
+  uncommon:  5,
+  rare:      5,
+  epic:      5,
+  legendary: 3,
+  mythic:    1,
+};
+export const CONVERSION_RATE: Record<Rarity, number> = {
+  common:    1,
+  uncommon:  2,
+  rare:      4,
+  epic:      8,
+  legendary: 10,
+  mythic:    10,
+};
+
 export const RARITY_COLORS: Record<Rarity, { bg: string; text: string; ring: string }> = {
   common:    { bg: "bg-zinc-500/15",   text: "text-zinc-300",   ring: "ring-zinc-500/30" },
   uncommon:  { bg: "bg-emerald-500/15", text: "text-emerald-300", ring: "ring-emerald-500/40" },

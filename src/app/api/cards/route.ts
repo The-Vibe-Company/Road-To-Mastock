@@ -95,7 +95,7 @@ export async function GET() {
   }
 
   const [user] = await db
-    .select({ tokens: users.cardsTokens })
+    .select({ tokens: users.cardsTokens, specialTokens: users.cardsSpecialTokens })
     .from(users)
     .where(eq(users.id, auth.userId));
 
@@ -111,5 +111,6 @@ export async function GET() {
       shards: shards.pokemon,
     },
     tokens: user?.tokens ?? 0,
+    specialTokens: user?.specialTokens ?? 0,
   });
 }

@@ -1,7 +1,13 @@
 /**
- * Grants N cards_tokens to a user. Useful for debug/testing.
+ * Grants tokens to a user. Supports both normal and special tokens.
  *
- * Usage: npx tsx scripts/grant-tokens.ts <email> <count>
+ * Usage:
+ *   npx tsx scripts/grant-tokens.ts <email> <normalCount> [specialCount]
+ *
+ * Examples:
+ *   npx tsx scripts/grant-tokens.ts antoine@quivr.app 10        // +10 normal
+ *   npx tsx scripts/grant-tokens.ts antoine@quivr.app 10 5      // +10 normal, +5 special
+ *   npx tsx scripts/grant-tokens.ts antoine@quivr.app 0 5       // +0 normal, +5 special
  */
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -12,9 +18,10 @@ config({ path: ".env.local", override: true });
 
 async function main() {
   const email = process.argv[2];
-  const count = parseInt(process.argv[3] ?? "99");
-  if (!email) {
-    console.error("Usage: npx tsx scripts/grant-tokens.ts <email> [count]");
+  const normal = parseInt(process.argv[3] ?? "0");
+  const special = parseInt(process.argv[4] ?? "0");
+  if (!email || (Number.isNaN(normal) && Number.isNaN(special))) {
+    console.error("Usage: npx tsx scripts/grant-tokens.ts <email> <normalCount> [specialCount]");
     process.exit(1);
   }
 
@@ -22,18 +29,29 @@ async function main() {
   const db = drizzle(dbSql);
 
   const result = (await db.execute(sql`
-    UPDATE users SET cards_tokens = cards_tokens + ${count}
+    UPDATE users SET
+      cards_tokens = cards_tokens + ${normal},
+      cards_special_tokens = cards_special_tokens + ${special}
     WHERE email = ${email}
-    RETURNING id, name, cards_tokens
-  `)) as unknown as { rows?: { id: number; name: string; cards_tokens: number }[] };
-  const updated = ((result.rows ?? result) as unknown as { id: number; name: string; cards_tokens: number }[])[0];
+    RETURNING id, name, cards_tokens, cards_special_tokens
+  `)) as unknown as {
+    rows?: { id: number; name: string; cards_tokens: number; cards_special_tokens: number }[];
+  };
+  const updated = ((result.rows ?? result) as unknown as {
+    id: number; name: string; cards_tokens: number; cards_special_tokens: number;
+  }[])[0];
 
   if (!updated) {
     console.error(`No user with email ${email}`);
     process.exit(1);
   }
 
-  console.log(`+${count} jetons → ${updated.name} <${email}> (total: ${updated.cards_tokens})`);
+  console.log(
+    `+${normal} jetons normaux, +${special} jetons spéciaux → ${updated.name} <${email}>`,
+  );
+  console.log(
+    `  totals: ${updated.cards_tokens} normaux · ${updated.cards_special_tokens} spéciaux`,
+  );
 }
 
 main().catch((e) => {

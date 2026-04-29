@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flame, PawPrint, Zap, Vault, Sparkles } from "lucide-react";
+import { Flame, Gift, Lock, PawPrint, Zap, Vault, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/back-button";
 import { PackOpenModal, type OpenResult } from "@/components/pack-open-modal";
 import { CreatureCard } from "@/components/creature-card";
 import { CardDetailModal, type DetailedCreature } from "@/components/card-detail-modal";
+import { SpinWheelModal } from "@/components/spin-wheel-modal";
 import {
   RARITIES,
   RARITY_LABELS,
   FUSION_COST,
   FUSION_NEXT,
+  CONVERSION_BATCH,
+  CONVERSION_RATE,
   type Rarity,
 } from "@/lib/rarities";
 
@@ -83,6 +86,7 @@ interface CollectionData {
   animals: { cards: AnimalCard[]; totalsByRarity: Record<Rarity, number>; shards: Record<Rarity, number> };
   pokemon: { cards: PokemonCard[]; totalsByRarity: Record<Rarity, number>; shards: Record<Rarity, number> };
   tokens: number;
+  specialTokens: number;
 }
 
 function StableCount({ owned, total }: { owned: number; total: number }) {
@@ -102,8 +106,10 @@ export default function CollectionPage() {
   const [activeFilter, setActiveFilter] = useState<Filter>("all");
   const [opening, setOpening] = useState(false);
   const [fusing, setFusing] = useState<Rarity | null>(null);
+  const [converting, setConverting] = useState<Rarity | null>(null);
   const [modalResult, setModalResult] = useState<OpenResult | null>(null);
   const [detailCreature, setDetailCreature] = useState<DetailedCreature | null>(null);
+  const [showSpinWheel, setShowSpinWheel] = useState(false);
 
   const refresh = async () => {
     const r = await fetch("/api/cards");
@@ -140,6 +146,22 @@ export default function CollectionPage() {
       await refresh();
     } finally {
       setFusing(null);
+    }
+  };
+
+  const handleConvert = async (rarity: Rarity) => {
+    if (converting) return;
+    setConverting(rarity);
+    try {
+      const r = await fetch("/api/cards/convert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rarity, category: activeCategory }),
+      });
+      if (!r.ok) return;
+      await refresh();
+    } finally {
+      setConverting(null);
     }
   };
 
@@ -247,7 +269,7 @@ export default function CollectionPage() {
               {data.tokens > 0 ? "Pack disponible" : "Aucun pack"}
             </p>
             <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-              75% animal · 25% pokémon
+              Pack surprise — basic, animal, pokémon, premium ou mythique
             </p>
             <Button
               onClick={handleOpenPack}
@@ -259,6 +281,29 @@ export default function CollectionPage() {
             </Button>
           </div>
         </div>
+
+        {/* Special token row */}
+        {data.specialTokens > 0 && (
+          <div className="relative mx-5 mb-3 flex items-center gap-3 rounded-2xl bg-amber-500/10 px-3 py-2.5 ring-1 ring-amber-500/40 shadow-[0_0_28px_-8px_rgba(251,191,36,0.6)]">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/20 ring-1 ring-amber-500/50">
+              <Star className="size-4 text-amber-300" strokeWidth={2.5} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-300/80">
+                Jeton{data.specialTokens > 1 ? "s" : ""} spécial{data.specialTokens > 1 ? "ux" : ""} ×{data.specialTokens}
+              </p>
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                Tourne la roue : 1, 2, 3 ou 4 jetons normaux
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowSpinWheel(true)}
+              className="h-9 rounded-lg bg-amber-400 px-3 text-[10px] font-black uppercase tracking-wider text-black hover:bg-amber-300"
+            >
+              Tourner
+            </Button>
+          </div>
+        )}
 
         <div className="relative px-5 pb-4">
           <div className="mb-1.5 flex items-center justify-between text-[10px] font-mono tabular-nums uppercase tracking-widest text-muted-foreground">
@@ -379,31 +424,45 @@ export default function CollectionPage() {
             <Flame className="size-3.5" />
             Fragments
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-col gap-1.5">
             {[...RARITIES].reverse().map((r) => {
               const n = section.shards[r] || 0;
               if (n === 0) return null;
               const next = FUSION_NEXT[r];
               const fuseable = next && n >= FUSION_COST;
+              const convBatch = CONVERSION_BATCH[r];
+              const convReward = CONVERSION_RATE[r];
+              const convertible = n >= convBatch;
               return (
                 <div
                   key={r}
-                  className={`flex items-center gap-2 rounded-lg ${TIER_FILL[r]} ring-1 px-2.5 py-1.5`}
+                  className={`flex flex-wrap items-center gap-2 rounded-lg ${TIER_FILL[r]} ring-1 px-2.5 py-1.5`}
                 >
                   <span className={`size-2 rounded-full ${TIER_DOT[r]}`} />
                   <span className={`text-xs font-bold ${TIER_TEXT[r]}`}>
                     <span className="font-mono tabular-nums">{n}</span>{" "}
                     <span className="opacity-70">{RARITY_LABELS[r].toLowerCase()}</span>
                   </span>
-                  {fuseable && (
-                    <button
-                      onClick={() => handleFuse(r)}
-                      disabled={fusing !== null}
-                      className="ml-1 rounded-md bg-gradient-orange-intense px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-black disabled:opacity-40"
-                    >
-                      {fusing === r ? "..." : `Fuser ${FUSION_COST}→1`}
-                    </button>
-                  )}
+                  <div className="ml-auto flex gap-1.5">
+                    {fuseable && (
+                      <button
+                        onClick={() => handleFuse(r)}
+                        disabled={fusing !== null || converting !== null}
+                        className="rounded-md bg-gradient-orange-intense px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-black disabled:opacity-40"
+                      >
+                        {fusing === r ? "..." : `Fuser ${FUSION_COST}→1`}
+                      </button>
+                    )}
+                    {convertible && (
+                      <button
+                        onClick={() => handleConvert(r)}
+                        disabled={converting !== null || fusing !== null}
+                        className="rounded-md bg-secondary px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-foreground/80 ring-1 ring-border disabled:opacity-40"
+                      >
+                        {converting === r ? "..." : `${convBatch}→${convReward} jeton${convReward > 1 ? "s" : ""}`}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -456,6 +515,12 @@ export default function CollectionPage() {
       )}
       {detailCreature && (
         <CardDetailModal creature={detailCreature} onClose={() => setDetailCreature(null)} />
+      )}
+      {showSpinWheel && (
+        <SpinWheelModal
+          onClose={() => setShowSpinWheel(false)}
+          onAfterSpin={refresh}
+        />
       )}
     </div>
   );

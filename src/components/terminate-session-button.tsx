@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Lock, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, Lock, Loader2, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SessionState {
@@ -11,10 +11,15 @@ interface SessionState {
   hasSets: boolean;
 }
 
+interface RewardInfo {
+  type: "normal" | "special";
+  weekPosition: number | null;
+}
+
 export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   const [state, setState] = useState<SessionState | null>(null);
   const [busy, setBusy] = useState(false);
-  const [grantedThisClick, setGrantedThisClick] = useState(false);
+  const [reward, setReward] = useState<RewardInfo | null>(null);
 
   const refresh = async () => {
     const r = await fetch(`/api/sessions/${sessionId}`);
@@ -37,12 +42,16 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   const handleTerminate = async () => {
     if (busy || !state) return;
     setBusy(true);
-    setGrantedThisClick(false);
+    setReward(null);
     try {
       const r = await fetch(`/api/sessions/${sessionId}/terminate`, { method: "POST" });
       if (!r.ok) return;
       const data = await r.json();
-      if (data.tokenGranted) setGrantedThisClick(true);
+      if (data.specialTokenGranted) {
+        setReward({ type: "special", weekPosition: data.weekPosition ?? null });
+      } else if (data.tokenGranted) {
+        setReward({ type: "normal", weekPosition: data.weekPosition ?? null });
+      }
       await refresh();
     } finally {
       setBusy(false);
@@ -78,14 +87,35 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
             Rouvrir
           </button>
         </div>
-        {grantedThisClick && (
-          <Link
-            href="/collection"
-            className="flex items-center gap-2 rounded-xl bg-gradient-orange-intense px-3 py-2 text-sm font-black text-black"
-          >
-            <Sparkles className="size-4" strokeWidth={3} />
-            +1 jeton — ouvre ton pack
-          </Link>
+        {reward && (
+          <div className="flex flex-col gap-1.5">
+            {reward.type === "special" ? (
+              <Link
+                href="/collection"
+                className="flex items-center gap-2 rounded-xl bg-amber-400 px-3 py-2 text-sm font-black text-black shadow-[0_0_28px_-8px_rgba(251,191,36,0.7)]"
+              >
+                <Star className="size-4" strokeWidth={3} />
+                +1 jeton spécial — tourne la roue
+              </Link>
+            ) : (
+              <Link
+                href="/collection"
+                className="flex items-center gap-2 rounded-xl bg-gradient-orange-intense px-3 py-2 text-sm font-black text-black"
+              >
+                <Sparkles className="size-4" strokeWidth={3} />
+                +1 jeton — ouvre ton pack
+              </Link>
+            )}
+            {reward.weekPosition !== null && (
+              <span className="inline-flex w-fit items-center gap-1 rounded-md bg-secondary/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground ring-1 ring-border">
+                {reward.weekPosition === 1
+                  ? "1ʳᵉ séance de la semaine"
+                  : reward.weekPosition === 4
+                    ? "4ᵉ séance de la semaine"
+                    : `Séance ${reward.weekPosition} de la semaine`}
+              </span>
+            )}
+          </div>
         )}
       </div>
     );
