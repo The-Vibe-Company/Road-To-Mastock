@@ -2,10 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { X, Sparkles, PawPrint, Zap, Crown, Star, ChevronRight, Gem, Package, Gift } from "lucide-react";
+import { X, Sparkles, ChevronRight, Gem } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreatureCard } from "@/components/creature-card";
 import { SlotReveal, type SlotItem } from "@/components/slot-reveal";
+import { AnimalEmblem } from "@/components/emblems/animal-emblem";
+import { PokemonEmblem } from "@/components/emblems/pokemon-emblem";
+import { RarityEmblem } from "@/components/emblems/rarity-emblem";
 import { FUSION_NEXT, RARITIES, RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
 import { PACK_DESCRIPTIONS, PACK_LABELS, PACK_TYPES, type PackType } from "@/lib/pack-types";
 
@@ -48,57 +51,16 @@ const CATEGORY_LABELS: Record<Category, string> = {
   pokemon: "Pokémon",
 };
 
-const RARITY_ICON: Record<Rarity, typeof Star> = {
-  common: Star,
-  uncommon: Star,
-  rare: Star,
-  epic: Sparkles,
-  legendary: Crown,
-  mythic: Crown,
+// Halo color per pack type for the bare-image reveal
+const PACK_HALO: Record<PackType, string> = {
+  basic:        "bg-orange-500/30",
+  animal_only:  "bg-emerald-500/35",
+  pokemon_only: "bg-sky-500/35",
+  premium:      "bg-amber-500/45",
+  mythic:       "bg-rose-500/55",
 };
 
-const PACK_FALLBACK_ICON: Record<PackType, typeof Package> = {
-  basic: Package,
-  animal_only: PawPrint,
-  pokemon_only: Zap,
-  premium: Gift,
-  mythic: Crown,
-};
-
-const PACK_TINT: Record<PackType, string> = {
-  basic:        "from-zinc-700 via-zinc-900 to-black",
-  animal_only:  "from-emerald-700 via-emerald-950 to-black",
-  pokemon_only: "from-sky-700 via-sky-950 to-black",
-  premium:      "from-amber-600 via-amber-900 to-black",
-  mythic:       "from-rose-600 via-fuchsia-900 to-black",
-};
-
-const PACK_RING: Record<PackType, string> = {
-  basic:        "ring-zinc-400/40",
-  animal_only:  "ring-emerald-400/60",
-  pokemon_only: "ring-sky-400/60",
-  premium:      "ring-amber-400/70",
-  mythic:       "ring-rose-400/80",
-};
-
-const PACK_GLOW: Record<PackType, string> = {
-  basic:        "",
-  animal_only:  "shadow-[0_0_50px_-10px_rgba(52,211,153,0.6)]",
-  pokemon_only: "shadow-[0_0_50px_-10px_rgba(56,189,248,0.6)]",
-  premium:      "shadow-[0_0_70px_-8px_rgba(251,191,36,0.7)]",
-  mythic:       "shadow-[0_0_90px_-4px_rgba(244,114,182,0.85)]",
-};
-
-const TIER_BIG_BG: Record<Rarity, string> = {
-  common:    "bg-zinc-500/20",
-  uncommon:  "bg-emerald-500/20",
-  rare:      "bg-sky-500/20",
-  epic:      "bg-violet-500/20",
-  legendary: "bg-amber-500/20",
-  mythic:    "bg-rose-500/25",
-};
-
-const TIER_BIG_RING: Record<Rarity, string> = {
+const TIER_RING_BIG: Record<Rarity, string> = {
   common:    "ring-zinc-400/40",
   uncommon:  "ring-emerald-400/50",
   rare:      "ring-sky-400/60",
@@ -106,8 +68,15 @@ const TIER_BIG_RING: Record<Rarity, string> = {
   legendary: "ring-amber-400/80",
   mythic:    "ring-rose-400",
 };
-
-const TIER_BIG_GLOW: Record<Rarity, string> = {
+const TIER_BG_BIG: Record<Rarity, string> = {
+  common:    "bg-zinc-500/20",
+  uncommon:  "bg-emerald-500/20",
+  rare:      "bg-sky-500/20",
+  epic:      "bg-violet-500/20",
+  legendary: "bg-amber-500/20",
+  mythic:    "bg-rose-500/25",
+};
+const TIER_GLOW_BIG: Record<Rarity, string> = {
   common:    "",
   uncommon:  "shadow-[0_0_50px_-10px_rgba(52,211,153,0.5)]",
   rare:      "shadow-[0_0_60px_-8px_rgba(56,189,248,0.7)]",
@@ -116,63 +85,22 @@ const TIER_BIG_GLOW: Record<Rarity, string> = {
   mythic:    "shadow-[0_0_110px_-2px_rgba(244,114,182,0.95)]",
 };
 
-// ─── Pack art tile (used inside SlotReveal items) ────────────────────────
+// ─── Pack tile: just the image with a colored halo, no frame ──────────────
 function PackTile({ packType }: { packType: PackType }) {
-  const FallbackIcon = PACK_FALLBACK_ICON[packType];
   const isHolo = packType === "premium" || packType === "mythic";
-  const [errored, setErrored] = useState(false);
   return (
-    <div
-      className={`relative h-72 w-52 overflow-hidden rounded-3xl border-2 bg-gradient-to-b ${PACK_TINT[packType]} ring-2 ${PACK_RING[packType]} ${PACK_GLOW[packType]} border-white/5`}
-    >
-      {!errored ? (
-        <Image
-          src={`/cards/packs/${packType}.png`}
-          alt={PACK_LABELS[packType]}
-          fill
-          unoptimized
-          className="object-cover"
-          onError={() => setErrored(true)}
-        />
-      ) : (
-        <div className="flex size-full items-center justify-center">
-          <FallbackIcon className="size-24 text-white/80" strokeWidth={1.5} />
-        </div>
-      )}
+    <div className="relative h-72 w-52">
+      <div className={`absolute inset-0 -m-6 rounded-full ${PACK_HALO[packType]} blur-3xl`} />
+      <Image
+        src={`/cards/packs/${packType}.png`}
+        alt={PACK_LABELS[packType]}
+        fill
+        unoptimized
+        className="relative object-contain drop-shadow-[0_8px_28px_rgba(0,0,0,0.7)]"
+      />
       {isHolo && (
-        <div className="pointer-events-none absolute inset-0 holo-shimmer" />
+        <div className="pointer-events-none absolute inset-0 holo-shimmer rounded-2xl" />
       )}
-      <div className="pointer-events-none absolute right-0 top-0 size-16 bg-gradient-to-bl from-white/20 via-transparent to-transparent" />
-    </div>
-  );
-}
-
-// ─── Category badge tile ─────────────────────────────────────────────────
-function CategoryTile({ category }: { category: Category }) {
-  const Icon = category === "animal" ? PawPrint : Zap;
-  const tint = category === "animal" ? "bg-emerald-500/15 ring-emerald-400/60" : "bg-sky-500/15 ring-sky-400/60";
-  const text = category === "animal" ? "text-emerald-200" : "text-sky-200";
-  return (
-    <div className={`relative flex size-56 items-center justify-center rounded-full ring-4 ${tint}`}>
-      <div className="absolute inset-0 rounded-full bg-current opacity-5 blur-3xl" />
-      <Icon className={`size-28 ${text}`} strokeWidth={2} />
-    </div>
-  );
-}
-
-// ─── Rarity badge tile ───────────────────────────────────────────────────
-function RarityTile({ rarity }: { rarity: Rarity }) {
-  const Icon = RARITY_ICON[rarity];
-  const colors = RARITY_COLORS[rarity];
-  const isHolo = rarity === "legendary" || rarity === "mythic";
-  return (
-    <div
-      className={`relative flex size-56 items-center justify-center rounded-full ring-4 ${TIER_BIG_RING[rarity]} ${TIER_BIG_BG[rarity]} ${TIER_BIG_GLOW[rarity]}`}
-    >
-      {isHolo && (
-        <div className="pointer-events-none absolute inset-0 rounded-full holo-shimmer" />
-      )}
-      <Icon className={`size-28 ${colors.text}`} strokeWidth={2} />
     </div>
   );
 }
@@ -183,13 +111,13 @@ const PACK_ITEMS: SlotItem[] = PACK_TYPES.map((t) => ({
 }));
 
 const CATEGORY_ITEMS: SlotItem[] = [
-  { key: "animal",  render: () => <CategoryTile category="animal" /> },
-  { key: "pokemon", render: () => <CategoryTile category="pokemon" /> },
+  { key: "animal",  render: () => <AnimalEmblem /> },
+  { key: "pokemon", render: () => <PokemonEmblem /> },
 ];
 
 const RARITY_ITEMS: SlotItem[] = RARITIES.map((r) => ({
   key: r,
-  render: () => <RarityTile rarity={r} />,
+  render: () => <RarityEmblem rarity={r} />,
 }));
 
 export function PackOpenModal({
@@ -248,7 +176,7 @@ export function PackOpenModal({
       </button>
 
       <div className="flex w-full max-w-sm flex-col items-center gap-6 px-6 py-12">
-        {/* STAGE 0 — Pack type slot reveal */}
+        {/* STAGE 0 — Pack type */}
         {stage === "pack" && (
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
@@ -275,7 +203,7 @@ export function PackOpenModal({
           </>
         )}
 
-        {/* STAGE 1 — Category slot reveal (skipped for animal_only / pokemon_only) */}
+        {/* STAGE 1 — Category (skipped for forced-category packs) */}
         {stage === "category" && (
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
@@ -297,7 +225,7 @@ export function PackOpenModal({
           </>
         )}
 
-        {/* STAGE 2 — Rarity slot reveal */}
+        {/* STAGE 2 — Rarity */}
         {stage === "rarity" && (
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
@@ -399,7 +327,7 @@ export function PackOpenModal({
                 </span>
               </div>
               <div
-                className={`relative flex size-24 items-center justify-center rounded-2xl ring-2 ${TIER_BIG_RING[result.rarity]} ${TIER_BIG_BG[result.rarity]} ${TIER_BIG_GLOW[result.rarity]}`}
+                className={`relative flex size-24 items-center justify-center rounded-2xl ring-2 ${TIER_RING_BIG[result.rarity]} ${TIER_BG_BIG[result.rarity]} ${TIER_GLOW_BIG[result.rarity]}`}
               >
                 {isHolo && (
                   <div className="pointer-events-none absolute inset-0 rounded-2xl holo-shimmer" />
@@ -447,4 +375,3 @@ function TapHint() {
     </div>
   );
 }
-
