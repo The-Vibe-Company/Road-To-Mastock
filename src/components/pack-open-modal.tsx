@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import Image from "next/image";
 import { X, Sparkles, PawPrint, Zap, Crown, Star, ChevronRight, Gem, Package, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreatureCard } from "@/components/creature-card";
-import { FUSION_NEXT, RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
-import { PACK_LABELS, type PackType } from "@/lib/pack-types";
+import { SlotReveal, type SlotItem } from "@/components/slot-reveal";
+import { FUSION_NEXT, RARITIES, RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
+import { PACK_DESCRIPTIONS, PACK_LABELS, PACK_TYPES, type PackType } from "@/lib/pack-types";
 
 type Category = "animal" | "pokemon";
 type Stage = "pack" | "category" | "rarity" | "creature" | "duplicate";
@@ -46,14 +48,6 @@ const CATEGORY_LABELS: Record<Category, string> = {
   pokemon: "Pokémon",
 };
 
-const PACK_ACCENT: Record<PackType, { ring: string; bg: string; text: string; glow: string; icon: typeof Package }> = {
-  basic:        { ring: "ring-zinc-400/60",  bg: "bg-zinc-500/15",  text: "text-zinc-200",  glow: "shadow-[0_0_60px_-10px_rgba(161,161,170,0.5)]", icon: Package },
-  animal_only:  { ring: "ring-emerald-400/60", bg: "bg-emerald-500/15", text: "text-emerald-200", glow: "shadow-[0_0_70px_-8px_rgba(52,211,153,0.7)]", icon: PawPrint },
-  pokemon_only: { ring: "ring-sky-400/60",   bg: "bg-sky-500/15",   text: "text-sky-200",   glow: "shadow-[0_0_70px_-8px_rgba(56,189,248,0.7)]", icon: Zap },
-  premium:      { ring: "ring-amber-400/70", bg: "bg-amber-500/15", text: "text-amber-200", glow: "shadow-[0_0_90px_-6px_rgba(251,191,36,0.85)]", icon: Gift },
-  mythic:       { ring: "ring-rose-400/80",  bg: "bg-rose-500/20",  text: "text-rose-200",  glow: "shadow-[0_0_120px_-2px_rgba(244,114,182,0.95)]", icon: Crown },
-};
-
 const RARITY_ICON: Record<Rarity, typeof Star> = {
   common: Star,
   uncommon: Star,
@@ -63,14 +57,140 @@ const RARITY_ICON: Record<Rarity, typeof Star> = {
   mythic: Crown,
 };
 
-const RARITY_GLOW: Record<Rarity, string> = {
-  common:    "shadow-[0_0_60px_-10px_rgba(161,161,170,0.5)]",
-  uncommon:  "shadow-[0_0_60px_-10px_rgba(52,211,153,0.6)]",
-  rare:      "shadow-[0_0_70px_-8px_rgba(56,189,248,0.7)]",
-  epic:      "shadow-[0_0_80px_-6px_rgba(167,139,250,0.8)]",
-  legendary: "shadow-[0_0_100px_-4px_rgba(251,191,36,0.85)]",
-  mythic:    "shadow-[0_0_120px_-2px_rgba(244,114,182,0.95)]",
+const PACK_FALLBACK_ICON: Record<PackType, typeof Package> = {
+  basic: Package,
+  animal_only: PawPrint,
+  pokemon_only: Zap,
+  premium: Gift,
+  mythic: Crown,
 };
+
+const PACK_TINT: Record<PackType, string> = {
+  basic:        "from-zinc-700 via-zinc-900 to-black",
+  animal_only:  "from-emerald-700 via-emerald-950 to-black",
+  pokemon_only: "from-sky-700 via-sky-950 to-black",
+  premium:      "from-amber-600 via-amber-900 to-black",
+  mythic:       "from-rose-600 via-fuchsia-900 to-black",
+};
+
+const PACK_RING: Record<PackType, string> = {
+  basic:        "ring-zinc-400/40",
+  animal_only:  "ring-emerald-400/60",
+  pokemon_only: "ring-sky-400/60",
+  premium:      "ring-amber-400/70",
+  mythic:       "ring-rose-400/80",
+};
+
+const PACK_GLOW: Record<PackType, string> = {
+  basic:        "",
+  animal_only:  "shadow-[0_0_50px_-10px_rgba(52,211,153,0.6)]",
+  pokemon_only: "shadow-[0_0_50px_-10px_rgba(56,189,248,0.6)]",
+  premium:      "shadow-[0_0_70px_-8px_rgba(251,191,36,0.7)]",
+  mythic:       "shadow-[0_0_90px_-4px_rgba(244,114,182,0.85)]",
+};
+
+const TIER_BIG_BG: Record<Rarity, string> = {
+  common:    "bg-zinc-500/20",
+  uncommon:  "bg-emerald-500/20",
+  rare:      "bg-sky-500/20",
+  epic:      "bg-violet-500/20",
+  legendary: "bg-amber-500/20",
+  mythic:    "bg-rose-500/25",
+};
+
+const TIER_BIG_RING: Record<Rarity, string> = {
+  common:    "ring-zinc-400/40",
+  uncommon:  "ring-emerald-400/50",
+  rare:      "ring-sky-400/60",
+  epic:      "ring-violet-400/70",
+  legendary: "ring-amber-400/80",
+  mythic:    "ring-rose-400",
+};
+
+const TIER_BIG_GLOW: Record<Rarity, string> = {
+  common:    "",
+  uncommon:  "shadow-[0_0_50px_-10px_rgba(52,211,153,0.5)]",
+  rare:      "shadow-[0_0_60px_-8px_rgba(56,189,248,0.7)]",
+  epic:      "shadow-[0_0_70px_-6px_rgba(167,139,250,0.8)]",
+  legendary: "shadow-[0_0_90px_-4px_rgba(251,191,36,0.85)]",
+  mythic:    "shadow-[0_0_110px_-2px_rgba(244,114,182,0.95)]",
+};
+
+// ─── Pack art tile (used inside SlotReveal items) ────────────────────────
+function PackTile({ packType }: { packType: PackType }) {
+  const FallbackIcon = PACK_FALLBACK_ICON[packType];
+  const isHolo = packType === "premium" || packType === "mythic";
+  const [errored, setErrored] = useState(false);
+  return (
+    <div
+      className={`relative h-72 w-52 overflow-hidden rounded-3xl border-2 bg-gradient-to-b ${PACK_TINT[packType]} ring-2 ${PACK_RING[packType]} ${PACK_GLOW[packType]} border-white/5`}
+    >
+      {!errored ? (
+        <Image
+          src={`/cards/packs/${packType}.png`}
+          alt={PACK_LABELS[packType]}
+          fill
+          unoptimized
+          className="object-cover"
+          onError={() => setErrored(true)}
+        />
+      ) : (
+        <div className="flex size-full items-center justify-center">
+          <FallbackIcon className="size-24 text-white/80" strokeWidth={1.5} />
+        </div>
+      )}
+      {isHolo && (
+        <div className="pointer-events-none absolute inset-0 holo-shimmer" />
+      )}
+      <div className="pointer-events-none absolute right-0 top-0 size-16 bg-gradient-to-bl from-white/20 via-transparent to-transparent" />
+    </div>
+  );
+}
+
+// ─── Category badge tile ─────────────────────────────────────────────────
+function CategoryTile({ category }: { category: Category }) {
+  const Icon = category === "animal" ? PawPrint : Zap;
+  const tint = category === "animal" ? "bg-emerald-500/15 ring-emerald-400/60" : "bg-sky-500/15 ring-sky-400/60";
+  const text = category === "animal" ? "text-emerald-200" : "text-sky-200";
+  return (
+    <div className={`relative flex size-56 items-center justify-center rounded-full ring-4 ${tint}`}>
+      <div className="absolute inset-0 rounded-full bg-current opacity-5 blur-3xl" />
+      <Icon className={`size-28 ${text}`} strokeWidth={2} />
+    </div>
+  );
+}
+
+// ─── Rarity badge tile ───────────────────────────────────────────────────
+function RarityTile({ rarity }: { rarity: Rarity }) {
+  const Icon = RARITY_ICON[rarity];
+  const colors = RARITY_COLORS[rarity];
+  const isHolo = rarity === "legendary" || rarity === "mythic";
+  return (
+    <div
+      className={`relative flex size-56 items-center justify-center rounded-full ring-4 ${TIER_BIG_RING[rarity]} ${TIER_BIG_BG[rarity]} ${TIER_BIG_GLOW[rarity]}`}
+    >
+      {isHolo && (
+        <div className="pointer-events-none absolute inset-0 rounded-full holo-shimmer" />
+      )}
+      <Icon className={`size-28 ${colors.text}`} strokeWidth={2} />
+    </div>
+  );
+}
+
+const PACK_ITEMS: SlotItem[] = PACK_TYPES.map((t) => ({
+  key: t,
+  render: () => <PackTile packType={t} />,
+}));
+
+const CATEGORY_ITEMS: SlotItem[] = [
+  { key: "animal",  render: () => <CategoryTile category="animal" /> },
+  { key: "pokemon", render: () => <CategoryTile category="pokemon" /> },
+];
+
+const RARITY_ITEMS: SlotItem[] = RARITIES.map((r) => ({
+  key: r,
+  render: () => <RarityTile rarity={r} />,
+}));
 
 export function PackOpenModal({
   result,
@@ -79,32 +199,42 @@ export function PackOpenModal({
   result: OpenResult;
   onClose: () => void;
 }) {
+  // Forced packs (animal_only / pokemon_only) skip the category stage.
+  const skipCategory = result.packType === "animal_only" || result.packType === "pokemon_only";
+
+  const stageOrder = useMemo<Stage[]>(
+    () => (skipCategory ? ["pack", "rarity", "creature"] : ["pack", "category", "rarity", "creature"]),
+    [skipCategory],
+  );
+
   const [stage, setStage] = useState<Stage>("pack");
+  const [settled, setSettled] = useState(false);
+
   const colors = RARITY_COLORS[result.rarity];
-  const CategoryIcon = result.category === "animal" ? PawPrint : Zap;
-  const RarityIcon = RARITY_ICON[result.rarity];
   const categoryLabel = CATEGORY_LABELS[result.category];
   const isHolo = result.rarity === "legendary" || result.rarity === "mythic";
-  const packAccent = PACK_ACCENT[result.packType];
-  const PackIcon = packAccent.icon;
-  const isPremiumPack = result.packType === "premium" || result.packType === "mythic";
+  const nextRarity = FUSION_NEXT[result.rarity];
 
   const advance = () => {
-    if (stage === "pack") setStage("category");
-    else if (stage === "category") setStage("rarity");
-    else if (stage === "rarity") setStage("creature");
+    if (stage === "creature" || stage === "duplicate") return;
+    const idx = stageOrder.indexOf(stage);
+    const next = stageOrder[idx + 1];
+    if (next) {
+      setSettled(false);
+      setStage(next);
+    }
   };
 
   const handleBackdropClick = () => {
-    if (stage === "pack" || stage === "category" || stage === "rarity") advance();
+    if (!settled) return;
+    if (stage === "creature" || stage === "duplicate") return;
+    advance();
   };
-
-  const nextRarity = FUSION_NEXT[result.rarity];
 
   return (
     <div
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-[100] flex select-none items-center justify-center bg-black/85 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex select-none items-center justify-center overflow-y-auto bg-black/85 backdrop-blur-sm"
     >
       <button
         onClick={(e) => {
@@ -117,78 +247,76 @@ export function PackOpenModal({
         <X className="size-5" />
       </button>
 
-      <div className="flex w-full max-w-sm flex-col items-center gap-6 px-6">
-        {/* STAGE 0 — Pack type reveal */}
+      <div className="flex w-full max-w-sm flex-col items-center gap-6 px-6 py-12">
+        {/* STAGE 0 — Pack type slot reveal */}
         {stage === "pack" && (
-          <div key="pack" className="flex flex-col items-center gap-6 animate-card-reveal">
-            <div className="relative flex size-56 items-center justify-center">
-              {isPremiumPack && (
-                <div className="pointer-events-none absolute inset-0 rounded-full holo-shimmer" />
+          <>
+            <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+              Tu reçois
+            </p>
+            <SlotReveal
+              items={PACK_ITEMS}
+              targetKey={result.packType}
+              onSettle={() => setSettled(true)}
+            />
+            <div className="text-center min-h-[5rem]">
+              {settled && (
+                <div className="animate-card-reveal">
+                  <p className="text-3xl font-black tracking-tighter">
+                    {PACK_LABELS[result.packType]}
+                  </p>
+                  <p className="mt-2 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                    {PACK_DESCRIPTIONS[result.packType]}
+                  </p>
+                </div>
               )}
-              <div className={`absolute inset-0 rounded-full ${packAccent.bg} blur-3xl animate-pulse`} />
-              <div
-                className={`relative flex size-56 items-center justify-center rounded-full ring-4 ${packAccent.ring} ${packAccent.bg} ${packAccent.glow}`}
-              >
-                <PackIcon className={`size-28 ${packAccent.text}`} strokeWidth={2} />
-              </div>
             </div>
-            <div className="text-center">
-              <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-                Tu reçois
-              </p>
-              <p className={`mt-2 text-4xl font-black tracking-tighter ${packAccent.text}`}>
-                {PACK_LABELS[result.packType]}
-              </p>
-            </div>
-            <TapHint />
-          </div>
+            {settled && <TapHint />}
+          </>
         )}
 
-        {/* STAGE 1 — Category */}
+        {/* STAGE 1 — Category slot reveal (skipped for animal_only / pokemon_only) */}
         {stage === "category" && (
-          <div key="category" className="flex flex-col items-center gap-6 animate-card-reveal">
-            <div className="relative flex size-56 items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-primary/15 blur-3xl animate-pulse" />
-              <div className="relative flex size-56 items-center justify-center rounded-full bg-gradient-orange-intense shadow-2xl glow-orange">
-                <CategoryIcon className="size-28 text-black" strokeWidth={2.2} />
-              </div>
+          <>
+            <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+              C'est un...
+            </p>
+            <SlotReveal
+              items={CATEGORY_ITEMS}
+              targetKey={result.category}
+              onSettle={() => setSettled(true)}
+            />
+            <div className="text-center min-h-[3rem]">
+              {settled && (
+                <p className="text-5xl font-black tracking-tighter text-primary animate-card-reveal">
+                  {categoryLabel}
+                </p>
+              )}
             </div>
-            <div className="text-center">
-              <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-                C'est un...
-              </p>
-              <p className="mt-2 text-5xl font-black tracking-tighter text-primary">
-                {categoryLabel}
-              </p>
-            </div>
-            <TapHint />
-          </div>
+            {settled && <TapHint />}
+          </>
         )}
 
-        {/* STAGE 2 — Rarity */}
+        {/* STAGE 2 — Rarity slot reveal */}
         {stage === "rarity" && (
-          <div key="rarity" className="flex flex-col items-center gap-6 animate-card-reveal">
-            <div className="relative flex size-56 items-center justify-center">
-              {isHolo && (
-                <div className="pointer-events-none absolute inset-0 rounded-full holo-shimmer" />
+          <>
+            <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+              Rareté
+            </p>
+            <SlotReveal
+              items={RARITY_ITEMS}
+              targetKey={result.rarity}
+              onSettle={() => setSettled(true)}
+            />
+            <div className="text-center min-h-[3rem]">
+              {settled && (
+                <p className={`text-5xl font-black tracking-tighter ${colors.text} animate-card-reveal`}>
+                  {RARITY_LABELS[result.rarity]}
+                </p>
               )}
-              <div className={`absolute inset-0 rounded-full ${colors.bg} blur-3xl animate-pulse`} />
-              <div
-                className={`relative flex size-56 items-center justify-center rounded-full ring-4 ${colors.ring} ${colors.bg} ${RARITY_GLOW[result.rarity]}`}
-              >
-                <RarityIcon className={`size-28 ${colors.text}`} strokeWidth={2.2} />
-              </div>
             </div>
-            <div className="text-center">
-              <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-                Rareté
-              </p>
-              <p className={`mt-2 text-5xl font-black tracking-tighter ${colors.text}`}>
-                {RARITY_LABELS[result.rarity]}
-              </p>
-            </div>
-            <TapHint />
-          </div>
+            {settled && <TapHint />}
+          </>
         )}
 
         {/* STAGE 3 — Creature reveal */}
@@ -234,7 +362,7 @@ export function PackOpenModal({
           </div>
         )}
 
-        {/* STAGE 4 — Duplicate fragment reward */}
+        {/* STAGE 4 — Duplicate reward */}
         {stage === "duplicate" && (
           <div
             onClick={(e) => e.stopPropagation()}
@@ -249,7 +377,6 @@ export function PackOpenModal({
               </p>
             </div>
 
-            {/* Transformation viz: card → ✨ → fragment */}
             <div className="flex items-center gap-3">
               <div className="w-24 opacity-50 grayscale">
                 <CreatureCard
@@ -272,7 +399,7 @@ export function PackOpenModal({
                 </span>
               </div>
               <div
-                className={`relative flex size-24 items-center justify-center rounded-2xl ring-2 ${colors.ring} ${colors.bg} ${RARITY_GLOW[result.rarity]}`}
+                className={`relative flex size-24 items-center justify-center rounded-2xl ring-2 ${TIER_BIG_RING[result.rarity]} ${TIER_BIG_BG[result.rarity]} ${TIER_BIG_GLOW[result.rarity]}`}
               >
                 {isHolo && (
                   <div className="pointer-events-none absolute inset-0 rounded-2xl holo-shimmer" />
@@ -320,3 +447,4 @@ function TapHint() {
     </div>
   );
 }
+
