@@ -28,28 +28,15 @@ export function AnimalEmblem({ size = 224 }: { size?: number }) {
       <circle cx="128" cy="128" r="118" fill="url(#aniField)" stroke="url(#aniGold)" strokeWidth="4" />
       <circle cx="128" cy="128" r="102" fill="none" stroke="url(#aniGold)" strokeWidth="1.2" strokeDasharray="3 5" opacity="0.55" />
 
-      {/* Laurel arcs */}
-      <g stroke="url(#aniGold)" strokeWidth="1.6" fill="none" opacity="0.85">
-        <path d="M 56 198 Q 32 148 60 96" />
-        <path d="M 200 198 Q 224 148 196 96" />
-      </g>
-      {/* Laurel leaves */}
-      <g fill="url(#aniGold)" opacity="0.85">
-        <ellipse cx="46" cy="178" rx="3.5" ry="9" transform="rotate(-65 46 178)" />
-        <ellipse cx="40" cy="152" rx="3.5" ry="9" transform="rotate(-50 40 152)" />
-        <ellipse cx="44" cy="124" rx="3.5" ry="9" transform="rotate(-30 44 124)" />
-        <ellipse cx="54" cy="102" rx="3.5" ry="9" transform="rotate(-10 54 102)" />
-        <ellipse cx="210" cy="178" rx="3.5" ry="9" transform="rotate(65 210 178)" />
-        <ellipse cx="216" cy="152" rx="3.5" ry="9" transform="rotate(50 216 152)" />
-        <ellipse cx="212" cy="124" rx="3.5" ry="9" transform="rotate(30 212 124)" />
-        <ellipse cx="202" cy="102" rx="3.5" ry="9" transform="rotate(10 202 102)" />
-      </g>
-
-      {/* 3 diagonal claw slashes */}
-      <g transform="translate(128 128) rotate(-25)" filter="url(#aniEmboss)">
-        <rect x="-78" y="-38" width="158" height="11" rx="5.5" fill="url(#aniGold)" />
-        <rect x="-86" y="-6" width="172" height="13" rx="6.5" fill="url(#aniGold)" />
-        <rect x="-72" y="26" width="148" height="11" rx="5.5" fill="url(#aniGold)" />
+      {/* Paw print */}
+      <g fill="url(#aniGold)" filter="url(#aniEmboss)">
+        {/* Main pad */}
+        <path d="M 84 152 Q 128 116 172 152 Q 184 196 128 208 Q 72 196 84 152 Z" />
+        {/* 4 toe pads */}
+        <ellipse cx="76" cy="100" rx="17" ry="24" transform="rotate(-18 76 100)" />
+        <ellipse cx="106" cy="78" rx="17" ry="26" transform="rotate(-8 106 78)" />
+        <ellipse cx="150" cy="78" rx="17" ry="26" transform="rotate(8 150 78)" />
+        <ellipse cx="180" cy="100" rx="17" ry="24" transform="rotate(18 180 100)" />
       </g>
     </svg>
   );

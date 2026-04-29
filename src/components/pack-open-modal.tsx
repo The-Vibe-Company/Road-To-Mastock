@@ -115,18 +115,26 @@ function PackTile({ packType }: { packType: PackType }) {
 
 function PackTileMini({ packType }: { packType: PackType }) {
   return (
-    <div className="relative h-20 w-14">
-      <div className={`absolute inset-0 -m-1 rounded-full ${PACK_HALO[packType]} blur-xl opacity-70`} />
+    <div className="relative aspect-[2/3] w-full">
+      <div className={`absolute inset-0 -m-2 rounded-full ${PACK_HALO[packType]} blur-2xl opacity-80`} />
       <Image
         src={`/cards/packs/${packType}.png`}
         alt={PACK_LABELS[packType]}
         fill
         unoptimized
-        className="relative object-contain"
+        className="relative object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
       />
     </div>
   );
 }
+
+const PACK_SHORT_NAME: Record<PackType, string> = {
+  basic:        "Basique",
+  animal_only:  "Animal",
+  pokemon_only: "Pokémon",
+  premium:      "Premium",
+  mythic:       "Mythique",
+};
 
 const PACK_ITEMS: ReelItem[] = PACK_TYPES.map((t) => ({
   key: t,
@@ -146,11 +154,14 @@ const RARITY_ITEMS: ReelItem[] = RARITIES.map((r) => ({
 // ─── Preview rows ────────────────────────────────────────────────────────
 function PackPreviewRow() {
   return (
-    <div className="flex items-end justify-center gap-2 overflow-x-auto pb-2">
+    <div className="flex w-full items-end justify-between gap-2">
       {PACK_TYPES.map((t) => (
-        <div key={t} className="flex shrink-0 flex-col items-center gap-1.5">
+        <div key={t} className="flex flex-1 flex-col items-center gap-2">
           <PackTileMini packType={t} />
-          <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
+          <p className="text-[10px] font-black uppercase tracking-wider text-foreground/85 text-center leading-tight">
+            {PACK_SHORT_NAME[t]}
+          </p>
+          <span className="font-mono text-[11px] font-bold tabular-nums text-muted-foreground">
             {PACK_TYPE_WEIGHTS[t]}%
           </span>
         </div>
@@ -163,20 +174,22 @@ function CategoryPreviewRow({ packType }: { packType: PackType }) {
   const pPokemon = Math.round(PACK_CATEGORY_PROB_POKEMON[packType] * 100);
   const pAnimal = 100 - pPokemon;
   return (
-    <div className="flex items-end justify-center gap-6 pb-2">
-      <div className="flex flex-col items-center gap-1.5">
-        <div className="size-16">
-          <AnimalEmblem size={64} />
-        </div>
-        <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
+    <div className="flex w-full items-end justify-around gap-6">
+      <div className="flex flex-1 flex-col items-center gap-3">
+        <AnimalEmblem size={168} />
+        <p className="text-sm font-black uppercase tracking-wider text-foreground">
+          Animal
+        </p>
+        <span className="font-mono text-base font-black tabular-nums text-muted-foreground">
           {pAnimal}%
         </span>
       </div>
-      <div className="flex flex-col items-center gap-1.5">
-        <div className="size-16">
-          <PokemonEmblem size={64} />
-        </div>
-        <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
+      <div className="flex flex-1 flex-col items-center gap-3">
+        <PokemonEmblem size={168} />
+        <p className="text-sm font-black uppercase tracking-wider text-foreground">
+          Pokémon
+        </p>
+        <span className="font-mono text-base font-black tabular-nums text-muted-foreground">
           {pPokemon}%
         </span>
       </div>
@@ -188,19 +201,22 @@ function RarityPreviewRow({ packType }: { packType: PackType }) {
   const weights = PACK_RARITY_WEIGHTS[packType];
   const total = Object.values(weights).reduce((a, b) => a + b, 0);
   return (
-    <div className="flex items-end justify-center gap-2 overflow-x-auto pb-2">
+    <div className="flex w-full items-end justify-between gap-1.5">
       {RARITIES.map((r) => {
         const pct = total > 0 ? Math.round((weights[r] / total) * 100) : 0;
         const dim = weights[r] === 0;
         return (
           <div
             key={r}
-            className={`flex shrink-0 flex-col items-center gap-1 ${dim ? "opacity-25" : ""}`}
+            className={`flex flex-1 flex-col items-center gap-1.5 ${dim ? "opacity-25" : ""}`}
           >
-            <div className="size-12">
-              <RarityEmblem rarity={r} size={48} />
+            <div className="aspect-square w-full max-w-[58px]">
+              <RarityEmblem rarity={r} size={58} />
             </div>
-            <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
+            <p className="text-[9px] font-black uppercase tracking-wider text-foreground/80 text-center leading-tight">
+              {RARITY_LABELS[r]}
+            </p>
+            <span className="font-mono text-[10px] font-bold tabular-nums text-muted-foreground">
               {pct}%
             </span>
           </div>
@@ -278,12 +294,12 @@ export function PackOpenModal({
         <X className="size-5" />
       </button>
 
-      <div className="flex w-full max-w-md flex-col items-center gap-6 px-6 py-12">
+      <div className="flex w-full max-w-xl flex-col items-center gap-6 px-6 py-12">
         {/* STAGE 0 — Pack */}
         {stage === "pack" && (
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-              Pack — odds
+              Pack
             </p>
 
             {phase === "ready" && (
@@ -334,7 +350,7 @@ export function PackOpenModal({
         {stage === "category" && (
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-              Catégorie — odds
+              Catégorie
             </p>
 
             {phase === "ready" && (
@@ -380,7 +396,7 @@ export function PackOpenModal({
         {stage === "rarity" && (
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-              Rareté — odds
+              Rareté
             </p>
 
             {phase === "ready" && (
@@ -428,7 +444,7 @@ export function PackOpenModal({
             onClick={(e) => e.stopPropagation()}
             className="flex w-full flex-col items-center gap-5"
           >
-            <div className="w-72 animate-card-reveal">
+            <div className="w-72 animate-creature-reveal">
               <CreatureCard
                 name={result.creature.name}
                 rarity={result.rarity}
