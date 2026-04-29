@@ -135,7 +135,7 @@ export function SpinWheelModal({
         <Button
           onClick={phase === "result" ? onClose : handleSpin}
           disabled={phase === "spinning"}
-          className="h-12 w-full rounded-2xl bg-gradient-orange-intense text-base font-black uppercase tracking-wider text-black disabled:opacity-100"
+          className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black disabled:opacity-100"
         >
           {phase === "ready" && (
             <>
