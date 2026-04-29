@@ -285,9 +285,9 @@ export function PackOpenModal({
   const [stage, setStage] = useState<Stage>("pack");
   const [phase, setPhase] = useState<Phase>("ready");
 
-  // Reset phase when stage changes
+  // Reset phase when stage changes (so creature also starts in 'ready' = card-back)
   useEffect(() => {
-    if (stage === "pack" || stage === "category" || stage === "rarity") {
+    if (stage === "pack" || stage === "category" || stage === "rarity" || stage === "creature") {
       setPhase("ready");
     }
   }, [stage]);
