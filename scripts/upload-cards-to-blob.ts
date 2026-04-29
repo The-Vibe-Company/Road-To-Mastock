@@ -1,0 +1,182 @@
+/**
+ * Uploads public/cards/{animals,pokemon,packs}/*.png to Vercel Blob.
+ *
+ * - Idempotent: lists existing blobs first and skips already-uploaded files.
+ * - Updates animals.image_url and pokemon.image_url in the DB to point to
+ *   Blob URLs.
+ * - Writes pack URLs to src/lib/pack-art-urls.ts so pack-open-modal can
+ *   import them.
+ *
+ * Requires BLOB_READ_WRITE_TOKEN and DATABASE_URL in .env.local.
+ *
+ * Usage: npx tsx scripts/upload-cards-to-blob.ts [animals|pokemon|packs|all]
+ *        defaults to "all"
+ */
+import { put, list } from "@vercel/blob";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import { sql } from "drizzle-orm";
+import { config } from "dotenv";
+import { readdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+config({ path: ".env.local", override: true });
+
+const CONCURRENCY = 25;
+
+type UploadResult = { slug: string; url: string };
+
+async function listExisting(prefix: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  let cursor: string | undefined;
+  do {
+    const res = await list({ prefix, cursor, limit: 1000 });
+    for (const blob of res.blobs) map.set(blob.pathname, blob.url);
+    cursor = res.cursor;
+  } while (cursor);
+  return map;
+}
+
+async function uploadFolder(folder: "animals" | "pokemon" | "packs"): Promise<UploadResult[]> {
+  const dir = join(process.cwd(), "public", "cards", folder);
+  const files = (await readdir(dir)).filter((f) => f.endsWith(".png"));
+  console.log(`\n[${folder}] ${files.length} local files`);
+
+  const prefix = `cards/${folder}/`;
+  console.log(`[${folder}] querying existing blobs at ${prefix}...`);
+  const existing = await listExisting(prefix);
+  console.log(`[${folder}] ${existing.size} already in Blob — will skip those`);
+
+  const results: UploadResult[] = [];
+
+  for (const file of files) {
+    const path = `${prefix}${file}`;
+    const existingUrl = existing.get(path);
+    if (existingUrl) {
+      results.push({ slug: file.replace(/\.png$/, ""), url: existingUrl });
+    }
+  }
+
+  const todo = files.filter((f) => !existing.has(`${prefix}${f}`));
+  if (todo.length === 0) {
+    console.log(`[${folder}] nothing new to upload`);
+    return results;
+  }
+  console.log(`[${folder}] uploading ${todo.length} new files (concurrency=${CONCURRENCY})...`);
+
+  let done = 0;
+  let failed: string[] = [];
+  for (let i = 0; i < todo.length; i += CONCURRENCY) {
+    const batch = todo.slice(i, i + CONCURRENCY);
+    const settled = await Promise.allSettled(
+      batch.map(async (file) => {
+        const slug = file.replace(/\.png$/, "");
+        const data = await readFile(join(dir, file));
+        const blob = await put(`${prefix}${file}`, data, {
+          access: "public",
+          addRandomSuffix: false,
+          allowOverwrite: true,
+          contentType: "image/png",
+        });
+        return { slug, url: blob.url };
+      }),
+    );
+    for (let j = 0; j < settled.length; j++) {
+      const r = settled[j];
+      if (r.status === "fulfilled") {
+        results.push(r.value);
+      } else {
+        failed.push(batch[j]);
+        console.error(`\n  ✗ ${batch[j]}: ${r.reason?.message ?? r.reason}`);
+      }
+    }
+    done += batch.length;
+    process.stdout.write(`\r[${folder}] ${done}/${todo.length} processed`);
+  }
+  console.log();
+  if (failed.length) {
+    console.warn(`[${folder}] ${failed.length} failed: ${failed.slice(0, 5).join(", ")}${failed.length > 5 ? "..." : ""}`);
+  }
+
+  return results;
+}
+
+async function updateDbImageUrls(
+  table: "animals" | "pokemon",
+  results: UploadResult[],
+) {
+  const dbSql = neon(process.env.DATABASE_URL!);
+  const db = drizzle(dbSql);
+
+  console.log(`\nUpdating ${table}.image_url for ${results.length} entries...`);
+  let updated = 0;
+
+  // Process in batches to avoid overwhelming the DB
+  const BATCH = 50;
+  for (let i = 0; i < results.length; i += BATCH) {
+    const batch = results.slice(i, i + BATCH);
+    const settled = await Promise.all(
+      batch.map(async ({ slug, url }) => {
+        const stmt =
+          table === "animals"
+            ? sql`UPDATE animals SET image_url = ${url} WHERE slug = ${slug}`
+            : sql`UPDATE pokemon SET image_url = ${url} WHERE slug = ${slug}`;
+        const r = await db.execute(stmt);
+        return (r as unknown as { rowCount?: number }).rowCount ?? 0;
+      }),
+    );
+    updated += settled.reduce((a, b) => a + b, 0);
+    process.stdout.write(`\r  ${Math.min(i + BATCH, results.length)}/${results.length}`);
+  }
+  console.log();
+  console.log(`  ${updated} ${table} rows updated`);
+}
+
+async function writePackUrls(packs: UploadResult[]) {
+  if (packs.length === 0) return;
+  const map = Object.fromEntries(packs.map((p) => [p.slug, p.url]));
+  const target = join(process.cwd(), "src/lib/pack-art-urls.ts");
+  const content =
+    `// AUTO-GENERATED by scripts/upload-cards-to-blob.ts — do not edit by hand.\n` +
+    `// Maps pack-type slug → Vercel Blob public URL.\n\n` +
+    `export const PACK_ART_URLS: Record<string, string> = ${JSON.stringify(map, null, 2)};\n`;
+  await writeFile(target, content);
+  console.log(`\nWrote ${target}`);
+  console.log(`  packs: ${Object.keys(map).join(", ")}`);
+}
+
+async function main() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error("Missing BLOB_READ_WRITE_TOKEN in .env.local");
+    process.exit(1);
+  }
+  if (!process.env.DATABASE_URL) {
+    console.error("Missing DATABASE_URL in .env.local");
+    process.exit(1);
+  }
+
+  const target = (process.argv[2] ?? "all") as "animals" | "pokemon" | "packs" | "all";
+
+  const t0 = Date.now();
+
+  if (target === "all" || target === "packs") {
+    const packs = await uploadFolder("packs");
+    await writePackUrls(packs);
+  }
+  if (target === "all" || target === "animals") {
+    const animals = await uploadFolder("animals");
+    await updateDbImageUrls("animals", animals);
+  }
+  if (target === "all" || target === "pokemon") {
+    const pokemon = await uploadFolder("pokemon");
+    await updateDbImageUrls("pokemon", pokemon);
+  }
+
+  const dt = ((Date.now() - t0) / 1000).toFixed(1);
+  console.log(`\n✓ Done in ${dt}s.`);
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

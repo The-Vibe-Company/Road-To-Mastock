@@ -20,6 +20,7 @@ import {
   PACK_CATEGORY_PROB_POKEMON,
   type PackType,
 } from "@/lib/pack-types";
+import { PACK_ART_URLS } from "@/lib/pack-art-urls";
 
 type Category = "animal" | "pokemon";
 type Stage = "pack" | "category" | "rarity" | "creature" | "duplicate";
@@ -118,7 +119,7 @@ function PackTile({ packType }: { packType: PackType }) {
     <div className="relative h-72 w-52">
       <div className={`absolute inset-0 -m-6 rounded-full ${PACK_HALO[packType]} blur-3xl`} />
       <Image
-        src={`/cards/packs/${packType}.png`}
+        src={PACK_ART_URLS[packType]}
         alt={PACK_LABELS[packType]}
         fill
         unoptimized
@@ -159,7 +160,7 @@ function PackTileMini({ packType }: { packType: PackType }) {
     <div className="relative aspect-[2/3] w-full">
       <div className={`absolute inset-0 -m-2 rounded-full ${PACK_HALO[packType]} blur-2xl opacity-80`} />
       <Image
-        src={`/cards/packs/${packType}.png`}
+        src={PACK_ART_URLS[packType]}
         alt={PACK_LABELS[packType]}
         fill
         unoptimized
