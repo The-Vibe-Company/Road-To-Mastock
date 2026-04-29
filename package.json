@@ -19,6 +19,7 @@
     "pokemon:enrich": "npx tsx scripts/enrich-pokemon.ts",
     "animals:enrich": "npx tsx scripts/enrich-animals.ts",
     "cards:assign-numbers": "npx tsx scripts/assign-card-numbers.ts",
+    "cards:generate-packs": "python3 scripts/generate-pack-art.py",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

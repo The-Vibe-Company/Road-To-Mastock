@@ -28,6 +28,14 @@ export const PACK_LABELS: Record<PackType, string> = {
   mythic:       "Pack Mythique",
 };
 
+export const PACK_DESCRIPTIONS: Record<PackType, string> = {
+  basic:        "Tirage classique. 75% animal · 25% pokémon. Toutes raretés possibles.",
+  animal_only:  "100% animal. Toutes raretés possibles.",
+  pokemon_only: "100% pokémon. Toutes raretés possibles.",
+  premium:      "Pas de communs. Garantie peu commun ou mieux. Odds boostées.",
+  mythic:       "Le Saint Graal. Garantie légendaire ou mythique.",
+};
+
 // Rarity weights per pack type. Rolling a creature in a pack uses these.
 // "premium" drops common entirely and boosts higher tiers.
 // "mythic" only rolls legendary or mythic.

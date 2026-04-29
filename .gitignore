@@ -43,5 +43,6 @@ next-env.d.ts
 # Card artwork (regenerated via scripts; too heavy for git)
 public/cards/animals/
 public/cards/pokemon/
+public/cards/packs/
 logs/
 .claude/scheduled_tasks.lock
