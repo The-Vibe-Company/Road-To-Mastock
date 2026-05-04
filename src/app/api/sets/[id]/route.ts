@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { sets } from "@/lib/db/schema";
+import { sets, sessionExercises, exercises } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function PUT(
@@ -8,14 +8,34 @@ export async function PUT(
 ) {
   const { id } = await params;
   const body = await request.json();
+  const setId = parseInt(id);
+
+  const [meta] = await db
+    .select({ kind: exercises.kind })
+    .from(sets)
+    .innerJoin(sessionExercises, eq(sets.sessionExerciseId, sessionExercises.id))
+    .innerJoin(exercises, eq(sessionExercises.exerciseId, exercises.id))
+    .where(eq(sets.id, setId));
+
+  const isCardio = meta?.kind === "cardio";
 
   const [result] = await db
     .update(sets)
-    .set({
-      weightKg: body.weightKg,
-      reps: body.reps,
-    })
-    .where(eq(sets.id, parseInt(id)))
+    .set(
+      isCardio
+        ? {
+            durationMinutes: body.durationMinutes ?? null,
+            calories: body.calories ?? null,
+            distanceKm: body.distanceKm ?? null,
+            avgSpeedKmh: body.avgSpeedKmh ?? null,
+            resistanceLevel: body.resistanceLevel ?? null,
+          }
+        : {
+            weightKg: body.weightKg,
+            reps: body.reps,
+          },
+    )
+    .where(eq(sets.id, setId))
     .returning();
 
   return Response.json(result);

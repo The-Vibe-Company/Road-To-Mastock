@@ -11,12 +11,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Flame, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Search, Flame, Sparkles, Loader2, Activity } from "lucide-react";
 import { MUSCLE_GROUPS } from "@/lib/muscle-groups";
 
 interface Exercise {
   id: number;
   name: string;
+  kind?: "muscu" | "cardio";
   muscleGroup: string | null;
   muscleGroups: string[];
 }
@@ -96,7 +97,10 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
       )
     : exercises;
 
-  const grouped = filtered.reduce(
+  const cardioExercises = filtered.filter((e) => e.kind === "cardio");
+  const muscuExercises = filtered.filter((e) => e.kind !== "cardio");
+
+  const grouped = muscuExercises.reduce(
     (acc, e) => {
       const tags = e.muscleGroups.length > 0 ? e.muscleGroups : ["Autre"];
       for (const key of tags) {
@@ -215,6 +219,35 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
                             <Plus className="size-4 text-primary" />
                           )}
                         </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Cardio section */}
+            {cardioExercises.length > 0 && (
+              <div className="mb-5">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary/60">
+                  <Activity className="size-3.5" />
+                  Cardio
+                </p>
+                <div className="space-y-1">
+                  {cardioExercises.map((ex) => (
+                    <button
+                      key={ex.id}
+                      onClick={() => handleSelect(ex)}
+                      disabled={selectingId !== null}
+                      className="flex w-full items-center justify-between rounded-xl px-3 py-3.5 text-left transition-all hover:bg-accent active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
+                    >
+                      <p className="font-bold">{ex.name}</p>
+                      <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+                        {selectingId === ex.id ? (
+                          <Loader2 className="size-4 animate-spin text-primary" />
+                        ) : (
+                          <Plus className="size-4 text-primary" />
+                        )}
                       </div>
                     </button>
                   ))}

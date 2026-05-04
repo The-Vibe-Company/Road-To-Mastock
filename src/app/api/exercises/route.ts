@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
       return {
         id: e.id,
         name: e.name,
+        kind: e.kind ?? "muscu",
         muscleGroup: groups[0] ?? null,
         muscleGroups: groups,
       };
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
     return Response.json({
       id: existing.id,
       name: existing.name,
+      kind: existing.kind ?? "muscu",
       muscleGroup: eg[0] ?? null,
       muscleGroups: eg,
     });
@@ -93,6 +95,7 @@ export async function POST(request: Request) {
     {
       id: result.id,
       name: result.name,
+      kind: result.kind ?? "muscu",
       muscleGroup: rg[0] ?? null,
       muscleGroups: rg,
     },

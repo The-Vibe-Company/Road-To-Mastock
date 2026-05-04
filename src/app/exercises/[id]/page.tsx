@@ -1,28 +1,43 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Minus, Trophy, Calendar } from "lucide-react";
+import { Minus, Trophy, Calendar, Clock, Flame } from "lucide-react";
 import { BackButton } from "@/components/back-button";
 
 interface ExerciseInfo {
   id: number;
   name: string;
+  kind: "muscu" | "cardio";
   muscleGroup: string | null;
   muscleGroups: string[];
+}
+
+interface SetEntry {
+  setNumber: number;
+  weightKg: number | null;
+  reps: number | null;
+  durationMinutes: number | null;
+  calories: number | null;
+  distanceKm: number | null;
+  avgSpeedKmh: number | null;
+  resistanceLevel: number | null;
 }
 
 interface SessionHistory {
   date: string;
   sessionId: number;
-  sets: { setNumber: number; weightKg: number; reps: number }[];
+  sets: SetEntry[];
 }
 
 interface HistoryData {
   exercise: ExerciseInfo;
   history: SessionHistory[];
 }
+
+type MuscuTab = "weight" | "volume";
+type CardioTab = "calories" | "duration" | "distance";
 
 export default function ExerciseDetail({
   params,
@@ -32,7 +47,8 @@ export default function ExerciseDetail({
   const { id } = use(params);
   const [data, setData] = useState<HistoryData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [chartTab, setChartTab] = useState<"weight" | "volume">("weight");
+  const [muscuTab, setMuscuTab] = useState<MuscuTab>("weight");
+  const [cardioTab, setCardioTab] = useState<CardioTab>("calories");
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
 
   useEffect(() => {
@@ -58,20 +74,51 @@ export default function ExerciseDetail({
   if (!data) return null;
 
   const { exercise, history } = data;
+  const isCardio = exercise.kind === "cardio";
 
-  const maxWeights = history.map((h) =>
-    Math.max(...h.sets.map((s) => s.weightKg))
-  );
-  const bestWeight = maxWeights.length > 0 ? Math.max(...maxWeights) : 0;
   const totalSessions = history.length;
 
-  const chartData = history.map((h) => ({
+  // Aggregate per session
+  const muscuChartData = history.map((h) => ({
     date: h.date,
-    maxWeight: Math.max(...h.sets.map((s) => s.weightKg)),
-    totalVolume: h.sets.reduce((sum, s) => sum + s.weightKg * s.reps, 0),
+    maxWeight: Math.max(0, ...h.sets.map((s) => s.weightKg ?? 0)),
+    totalVolume: h.sets.reduce((sum, s) => sum + (s.weightKg ?? 0) * (s.reps ?? 0), 0),
+  }));
+  const cardioChartData = history.map((h) => ({
+    date: h.date,
+    calories: h.sets.reduce((sum, s) => sum + (s.calories ?? 0), 0),
+    duration: h.sets.reduce((sum, s) => sum + (s.durationMinutes ?? 0), 0),
+    distance: h.sets.reduce((sum, s) => sum + (s.distanceKm ?? 0), 0),
   }));
 
-  const maxChartWeight = chartData.length > 0 ? Math.max(...chartData.map((d) => d.maxWeight)) : 1;
+  const bestWeight = isCardio ? 0 : Math.max(0, ...muscuChartData.map((d) => d.maxWeight));
+  const bestDuration = isCardio ? Math.max(0, ...cardioChartData.map((d) => d.duration)) : 0;
+  const bestCalories = isCardio ? Math.max(0, ...cardioChartData.map((d) => d.calories)) : 0;
+
+  const cardioHasDistance = isCardio && history.some((h) => h.sets.some((s) => s.distanceKm != null));
+
+  // Build chart values + unit per active tab
+  let values: number[] = [];
+  let unitLabel = "";
+  let chartDates: string[] = [];
+
+  if (isCardio) {
+    chartDates = cardioChartData.map((d) => d.date);
+    if (cardioTab === "calories") {
+      values = cardioChartData.map((d) => d.calories);
+      unitLabel = "kcal";
+    } else if (cardioTab === "duration") {
+      values = cardioChartData.map((d) => d.duration);
+      unitLabel = "min";
+    } else {
+      values = cardioChartData.map((d) => d.distance);
+      unitLabel = "km";
+    }
+  } else {
+    chartDates = muscuChartData.map((d) => d.date);
+    values = muscuChartData.map((d) => (muscuTab === "weight" ? d.maxWeight : d.totalVolume));
+    unitLabel = "kg";
+  }
 
   return (
     <div className="min-h-dvh px-4 pb-8 pt-6">
@@ -90,31 +137,51 @@ export default function ExerciseDetail({
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-2 gap-3">
-        <Card className="border-primary/20">
-          <CardContent className="flex flex-col items-center gap-1 py-5">
-            <Trophy className="size-5 text-primary" />
-            <p className="text-4xl font-black tracking-tighter text-primary">
-              {bestWeight > 0 ? `${bestWeight}` : "-"}
-            </p>
-            <p className="text-xs font-medium text-muted-foreground">Max (kg)</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex flex-col items-center gap-1 py-5">
-            <Calendar className="size-5 text-muted-foreground" />
-            <p className="text-4xl font-black tracking-tighter">
-              {totalSessions}
-            </p>
-            <p className="text-xs font-medium text-muted-foreground">Séances</p>
-          </CardContent>
-        </Card>
+        {isCardio ? (
+          <>
+            <Card className="border-primary/20">
+              <CardContent className="flex flex-col items-center gap-1 py-5">
+                <Flame className="size-5 text-primary" />
+                <p className="text-4xl font-black tracking-tighter text-primary">
+                  {bestCalories > 0 ? `${bestCalories}` : "-"}
+                </p>
+                <p className="text-xs font-medium text-muted-foreground">Max kcal</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex flex-col items-center gap-1 py-5">
+                <Clock className="size-5 text-muted-foreground" />
+                <p className="text-4xl font-black tracking-tighter">
+                  {bestDuration > 0 ? `${bestDuration}` : "-"}
+                </p>
+                <p className="text-xs font-medium text-muted-foreground">Max min</p>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card className="border-primary/20">
+              <CardContent className="flex flex-col items-center gap-1 py-5">
+                <Trophy className="size-5 text-primary" />
+                <p className="text-4xl font-black tracking-tighter text-primary">
+                  {bestWeight > 0 ? `${bestWeight}` : "-"}
+                </p>
+                <p className="text-xs font-medium text-muted-foreground">Max (kg)</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex flex-col items-center gap-1 py-5">
+                <Calendar className="size-5 text-muted-foreground" />
+                <p className="text-4xl font-black tracking-tighter">{totalSessions}</p>
+                <p className="text-xs font-medium text-muted-foreground">Séances</p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Chart */}
-      {chartData.length > 1 && (() => {
-        const values = chartData.map((d) =>
-          chartTab === "weight" ? d.maxWeight : d.totalVolume
-        );
+      {history.length > 1 && values.some((v) => v > 0) && (() => {
         const maxVal = Math.max(...values);
         const minVal = Math.min(...values);
         const range = maxVal - minVal || 1;
@@ -129,7 +196,7 @@ export default function ExerciseDetail({
           x: padX + (i / (values.length - 1)) * graphW,
           y: padY + graphH - ((v - minVal) / range) * graphH,
           value: v,
-          date: chartData[i].date,
+          date: chartDates[i],
         }));
 
         const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
@@ -139,26 +206,65 @@ export default function ExerciseDetail({
           <Card className="mb-6">
             <CardHeader>
               <div className="flex items-center gap-2 rounded-xl bg-secondary/50 p-1">
-                <button
-                  onClick={() => setChartTab("weight")}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                    chartTab === "weight"
-                      ? "bg-gradient-orange-intense text-black shadow-lg"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Poids max
-                </button>
-                <button
-                  onClick={() => setChartTab("volume")}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                    chartTab === "volume"
-                      ? "bg-gradient-orange-intense text-black shadow-lg"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Volume total
-                </button>
+                {isCardio ? (
+                  <>
+                    <button
+                      onClick={() => setCardioTab("calories")}
+                      className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                        cardioTab === "calories"
+                          ? "bg-gradient-orange-intense text-black shadow-lg"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Calories
+                    </button>
+                    <button
+                      onClick={() => setCardioTab("duration")}
+                      className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                        cardioTab === "duration"
+                          ? "bg-gradient-orange-intense text-black shadow-lg"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Durée
+                    </button>
+                    {cardioHasDistance && (
+                      <button
+                        onClick={() => setCardioTab("distance")}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                          cardioTab === "distance"
+                            ? "bg-gradient-orange-intense text-black shadow-lg"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Distance
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setMuscuTab("weight")}
+                      className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                        muscuTab === "weight"
+                          ? "bg-gradient-orange-intense text-black shadow-lg"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Poids max
+                    </button>
+                    <button
+                      onClick={() => setMuscuTab("volume")}
+                      className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                        muscuTab === "volume"
+                          ? "bg-gradient-orange-intense text-black shadow-lg"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Volume total
+                    </button>
+                  </>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -170,11 +276,8 @@ export default function ExerciseDetail({
                       <stop offset="100%" stopColor="oklch(0.7 0.2 45)" stopOpacity="0" />
                     </linearGradient>
                   </defs>
-                  {/* Area */}
                   <path d={areaPath} fill="url(#chartGrad)" />
-                  {/* Line */}
                   <path d={linePath} fill="none" stroke="oklch(0.7 0.2 45)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                  {/* Vertical hover line */}
                   {hoveredPoint !== null && (
                     <line
                       x1={points[hoveredPoint].x}
@@ -187,7 +290,6 @@ export default function ExerciseDetail({
                       opacity="0.4"
                     />
                   )}
-                  {/* Dots */}
                   {points.map((p, i) => (
                     <g key={i}>
                       <circle
@@ -199,7 +301,6 @@ export default function ExerciseDetail({
                         strokeWidth={hoveredPoint === i || i === points.length - 1 ? 0 : 1.5}
                         className="transition-all duration-150"
                       />
-                      {/* Invisible larger hit area */}
                       <circle
                         cx={p.x}
                         cy={p.y}
@@ -213,12 +314,12 @@ export default function ExerciseDetail({
                   ))}
                 </svg>
 
-                {/* Tooltip */}
                 {hoveredPoint !== null && (() => {
                   const p = points[hoveredPoint];
                   const pctX = (p.x / W) * 100;
                   const dateStr = new Date(p.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-                  const val = chartTab === "weight" ? `${p.value} kg` : `${Math.round(p.value)} kg`;
+                  const valNum = unitLabel === "km" ? Number(p.value.toFixed(1)) : Math.round(p.value);
+                  const val = `${valNum} ${unitLabel}`;
                   const isLeft = pctX < 15;
                   const isRight = pctX > 85;
                   return (
@@ -238,20 +339,18 @@ export default function ExerciseDetail({
                 })()}
               </div>
 
-              {/* Labels */}
               <div className="mt-1 flex justify-between text-[10px] font-medium text-muted-foreground">
-                <span>
-                  {new Date(chartData[0].date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                </span>
-                <span>
-                  {new Date(chartData[chartData.length - 1].date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                </span>
+                <span>{new Date(chartDates[0]).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                <span>{new Date(chartDates[chartDates.length - 1]).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
               </div>
 
-              {/* Min / Max */}
               <div className="mt-2 flex justify-center gap-4 text-[10px] text-muted-foreground">
-                <span>Min: <span className="font-bold text-foreground">{chartTab === "weight" ? minVal : Math.round(minVal)} kg</span></span>
-                <span>Max: <span className="font-bold text-primary">{chartTab === "weight" ? maxVal : Math.round(maxVal)} kg</span></span>
+                <span>
+                  Min: <span className="font-bold text-foreground">{unitLabel === "km" ? Number(minVal.toFixed(1)) : Math.round(minVal)} {unitLabel}</span>
+                </span>
+                <span>
+                  Max: <span className="font-bold text-primary">{unitLabel === "km" ? Number(maxVal.toFixed(1)) : Math.round(maxVal)} {unitLabel}</span>
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -275,20 +374,65 @@ export default function ExerciseDetail({
           </h2>
           <div className="space-y-3">
             {[...history].reverse().map((h) => {
-              const vol = h.sets.reduce(
-                (sum, s) => sum + s.weightKg * s.reps,
-                0
-              );
               const d = new Date(h.date);
+              if (isCardio) {
+                const totalDur = h.sets.reduce((sum, s) => sum + (s.durationMinutes ?? 0), 0);
+                const totalCal = h.sets.reduce((sum, s) => sum + (s.calories ?? 0), 0);
+                return (
+                  <Card key={h.sessionId}>
+                    <CardContent>
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <p className="font-bold capitalize">
+                          {d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                        </p>
+                        <div className="flex gap-1.5">
+                          {totalDur > 0 && (
+                            <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
+                              {totalDur} min
+                            </span>
+                          )}
+                          {totalCal > 0 && (
+                            <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
+                              {totalCal} kcal
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        {h.sets.map((s) => (
+                          <div key={s.setNumber} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-xs font-bold text-primary">
+                              {s.setNumber}
+                            </span>
+                            {s.durationMinutes != null && (
+                              <span className="text-sm font-bold">{s.durationMinutes}<span className="ml-0.5 text-xs text-muted-foreground">min</span></span>
+                            )}
+                            {s.calories != null && (
+                              <span className="text-sm font-semibold text-foreground/80">{s.calories}<span className="ml-0.5 text-xs text-muted-foreground">kcal</span></span>
+                            )}
+                            {s.distanceKm != null && (
+                              <span className="text-sm font-semibold text-foreground/80">{s.distanceKm}<span className="ml-0.5 text-xs text-muted-foreground">km</span></span>
+                            )}
+                            {s.avgSpeedKmh != null && (
+                              <span className="text-sm font-semibold text-foreground/80">{s.avgSpeedKmh}<span className="ml-0.5 text-xs text-muted-foreground">km/h</span></span>
+                            )}
+                            {s.resistanceLevel != null && (
+                              <span className="text-sm font-semibold text-foreground/80">niv. {s.resistanceLevel}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+              const vol = h.sets.reduce((sum, s) => sum + (s.weightKg ?? 0) * (s.reps ?? 0), 0);
               return (
                 <Card key={h.sessionId}>
                   <CardContent>
                     <div className="mb-2.5 flex items-center justify-between">
                       <p className="font-bold capitalize">
-                        {d.toLocaleDateString("fr-FR", {
-                          day: "numeric",
-                          month: "long",
-                        })}
+                        {d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
                       </p>
                       <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
                         {Math.round(vol)} kg vol.
@@ -296,16 +440,13 @@ export default function ExerciseDetail({
                     </div>
                     <div className="space-y-1">
                       {h.sets.map((s) => (
-                        <div
-                          key={s.setNumber}
-                          className="flex items-center gap-3"
-                        >
+                        <div key={s.setNumber} className="flex items-center gap-3">
                           <span className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-xs font-bold text-primary">
                             {s.setNumber}
                           </span>
-                          <span className="text-base font-black">{s.weightKg} kg</span>
+                          <span className="text-base font-black">{s.weightKg ?? 0} kg</span>
                           <span className="text-sm font-bold text-primary/40">x</span>
-                          <span className="text-base font-semibold">{s.reps}</span>
+                          <span className="text-base font-semibold">{s.reps ?? 0}</span>
                         </div>
                       ))}
                     </div>

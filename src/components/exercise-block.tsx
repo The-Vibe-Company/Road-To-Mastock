@@ -7,14 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SetForm } from "./set-form";
 import { SetRow } from "./set-row";
+import { CardioSetForm, type CardioPayload } from "./cardio-set-form";
+import { CardioSetRow } from "./cardio-set-row";
 import { RestTimer } from "./rest-timer";
 import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2 } from "lucide-react";
+import { cardioMachineFromName } from "@/lib/cardio";
 
 interface ExerciseSet {
   id: number;
   setNumber: number;
-  weightKg: number;
-  reps: number;
+  weightKg: number | null;
+  reps: number | null;
+  durationMinutes: number | null;
+  calories: number | null;
+  distanceKm: number | null;
+  avgSpeedKmh: number | null;
+  resistanceLevel: number | null;
 }
 
 interface LastPerf {
@@ -26,6 +34,7 @@ interface ExerciseBlockProps {
   sessionExerciseId: number;
   exerciseId: number;
   name: string;
+  kind: "muscu" | "cardio";
   muscleGroups: string[];
   locked: boolean;
   notes: string | null;
@@ -34,6 +43,7 @@ interface ExerciseBlockProps {
   knownWeights: number[];
   sets: ExerciseSet[];
   onAddSet: (sessionExerciseId: number, weightKg: number, reps: number) => void | Promise<void>;
+  onAddCardioSet?: (sessionExerciseId: number, payload: CardioPayload) => void | Promise<void>;
   onDeleteSet: (setId: number) => void | Promise<void>;
   onRemoveExercise: (sessionExerciseId: number) => void | Promise<void>;
   onToggleLock: (sessionExerciseId: number, locked: boolean) => void;
@@ -54,6 +64,7 @@ export function ExerciseBlock({
   sessionExerciseId,
   exerciseId,
   name,
+  kind,
   muscleGroups,
   locked,
   notes,
@@ -62,6 +73,7 @@ export function ExerciseBlock({
   knownWeights,
   sets,
   onAddSet,
+  onAddCardioSet,
   onDeleteSet,
   onRemoveExercise,
   onToggleLock,
@@ -71,9 +83,19 @@ export function ExerciseBlock({
   onMoveUp,
   onMoveDown,
 }: ExerciseBlockProps) {
+  const isCardio = kind === "cardio";
+  const cardioMachine = isCardio ? cardioMachineFromName(name) : null;
   const lastSet = sets[sets.length - 1];
-  const totalVolume = sets.reduce((sum, s) => sum + s.weightKg * s.reps, 0);
-  const medal = record && record <= 3 ? recordStyles[record] : null;
+  const totalVolume = isCardio
+    ? 0
+    : sets.reduce((sum, s) => sum + (s.weightKg ?? 0) * (s.reps ?? 0), 0);
+  const totalDuration = isCardio
+    ? sets.reduce((sum, s) => sum + (s.durationMinutes ?? 0), 0)
+    : 0;
+  const totalCalories = isCardio
+    ? sets.reduce((sum, s) => sum + (s.calories ?? 0), 0)
+    : 0;
+  const medal = !isCardio && record && record <= 3 ? recordStyles[record] : null;
   const [showNotes, setShowNotes] = useState(false);
   const [savedNotes, setSavedNotes] = useState(notes || "");
   const [showTimer, setShowTimer] = useState(false);
@@ -87,6 +109,11 @@ export function ExerciseBlock({
   const handleAddSet = async (w: number, r: number) => {
     await onAddSet(sessionExerciseId, w, r);
     setShowTimer(true);
+  };
+
+  const handleAddCardioSet = async (payload: CardioPayload) => {
+    if (!onAddCardioSet) return;
+    await onAddCardioSet(sessionExerciseId, payload);
   };
 
   const handleConfirmDeleteSet = async () => {
@@ -127,9 +154,19 @@ export function ExerciseBlock({
             {muscleGroups.map((mg) => (
               <Badge key={mg} variant="secondary" className="text-[10px] font-bold">{mg}</Badge>
             ))}
-            {totalVolume > 0 && (
+            {!isCardio && totalVolume > 0 && (
               <Badge variant="outline" className="border-primary/20 text-[10px] text-primary">
                 {Math.round(totalVolume)} kg vol.
+              </Badge>
+            )}
+            {isCardio && totalDuration > 0 && (
+              <Badge variant="outline" className="border-primary/20 text-[10px] text-primary">
+                {totalDuration} min
+              </Badge>
+            )}
+            {isCardio && totalCalories > 0 && (
+              <Badge variant="outline" className="border-primary/20 text-[10px] text-primary">
+                {totalCalories} kcal
               </Badge>
             )}
             {locked && (
@@ -201,8 +238,8 @@ export function ExerciseBlock({
           </div>
         )}
 
-        {/* Last performance */}
-        {!locked && lastPerf && lastPerf.sets.length > 0 && (
+        {/* Last performance — muscu only */}
+        {!isCardio && !locked && lastPerf && lastPerf.sets.length > 0 && (
           <div className="mb-3 rounded-lg border border-primary/10 bg-primary/5 px-3 py-2.5">
             <div className="mb-2 flex items-center gap-1.5">
               <History className="size-3 text-primary/40" />
@@ -227,15 +264,28 @@ export function ExerciseBlock({
 
         {sets.length > 0 && (
           <div className={!locked ? "mb-3 border-b border-border/50 pb-2" : ""}>
-            {sets.map((s) => (
-              <SetRow
-                key={s.id}
-                setNumber={s.setNumber}
-                weightKg={s.weightKg}
-                reps={s.reps}
-                onDelete={locked ? undefined : () => setDeleteSetId(s.id)}
-              />
-            ))}
+            {sets.map((s) =>
+              isCardio ? (
+                <CardioSetRow
+                  key={s.id}
+                  setNumber={s.setNumber}
+                  durationMinutes={s.durationMinutes}
+                  calories={s.calories}
+                  distanceKm={s.distanceKm}
+                  avgSpeedKmh={s.avgSpeedKmh}
+                  resistanceLevel={s.resistanceLevel}
+                  onDelete={locked ? undefined : () => setDeleteSetId(s.id)}
+                />
+              ) : (
+                <SetRow
+                  key={s.id}
+                  setNumber={s.setNumber}
+                  weightKg={s.weightKg ?? 0}
+                  reps={s.reps ?? 0}
+                  onDelete={locked ? undefined : () => setDeleteSetId(s.id)}
+                />
+              ),
+            )}
           </div>
         )}
 
@@ -264,19 +314,28 @@ export function ExerciseBlock({
           </div>
         )}
 
-        {/* Rest timer */}
-        {!locked && showTimer && (
+        {/* Rest timer (muscu only) */}
+        {!isCardio && !locked && showTimer && (
           <div className="mb-3">
             <RestTimer onDismiss={() => setShowTimer(false)} />
           </div>
         )}
 
-        {!locked && (
+        {!locked && !isCardio && (
           <SetForm
             onAdd={handleAddSet}
-            lastWeight={lastSet?.weightKg}
-            lastReps={lastSet?.reps}
+            lastWeight={lastSet?.weightKg ?? undefined}
+            lastReps={lastSet?.reps ?? undefined}
             knownWeights={knownWeights}
+          />
+        )}
+
+        {!locked && isCardio && cardioMachine && (
+          <CardioSetForm
+            machine={cardioMachine}
+            onAdd={handleAddCardioSet}
+            lastDuration={lastSet?.durationMinutes ?? null}
+            lastResistance={lastSet?.resistanceLevel ?? null}
           />
         )}
       </CardContent>

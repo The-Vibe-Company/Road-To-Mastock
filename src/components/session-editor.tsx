@@ -9,12 +9,18 @@ import { DatePicker } from "./date-picker";
 import { TerminateSessionButton } from "./terminate-session-button";
 import { Plus, Trash2, Dumbbell, Activity, Weight, Layers, CalendarDays, Loader2 } from "lucide-react";
 import { BackButton } from "./back-button";
+import type { CardioPayload } from "./cardio-set-form";
 
 interface ExerciseSet {
   id: number;
   setNumber: number;
-  weightKg: number;
-  reps: number;
+  weightKg: number | null;
+  reps: number | null;
+  durationMinutes: number | null;
+  calories: number | null;
+  distanceKm: number | null;
+  avgSpeedKmh: number | null;
+  resistanceLevel: number | null;
 }
 
 interface LastPerf {
@@ -26,6 +32,7 @@ interface SessionExercise {
   sessionExerciseId: number;
   exerciseId: number;
   name: string;
+  kind: "muscu" | "cardio";
   muscleGroup: string | null;
   muscleGroups: string[];
   locked: boolean;
@@ -80,14 +87,29 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
     weightKg: number,
     reps: number
   ) => {
-    // Optimistic: add set locally
     setSession((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         exercises: prev.exercises.map((ex) =>
           ex.sessionExerciseId === sessionExerciseId
-            ? { ...ex, sets: [...ex.sets, { id: Date.now(), setNumber: ex.sets.length + 1, weightKg, reps }] }
+            ? {
+                ...ex,
+                sets: [
+                  ...ex.sets,
+                  {
+                    id: Date.now(),
+                    setNumber: ex.sets.length + 1,
+                    weightKg,
+                    reps,
+                    durationMinutes: null,
+                    calories: null,
+                    distanceKm: null,
+                    avgSpeedKmh: null,
+                    resistanceLevel: null,
+                  },
+                ],
+              }
             : ex
         ),
       };
@@ -96,6 +118,41 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionExerciseId, weightKg, reps }),
+    });
+    refreshSession();
+  };
+
+  const handleAddCardioSet = async (
+    sessionExerciseId: number,
+    payload: CardioPayload,
+  ) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex) =>
+          ex.sessionExerciseId === sessionExerciseId
+            ? {
+                ...ex,
+                sets: [
+                  ...ex.sets,
+                  {
+                    id: Date.now(),
+                    setNumber: ex.sets.length + 1,
+                    weightKg: null,
+                    reps: null,
+                    ...payload,
+                  },
+                ],
+              }
+            : ex
+        ),
+      };
+    });
+    await fetch("/api/sets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionExerciseId, ...payload }),
     });
     refreshSession();
   };
@@ -227,7 +284,16 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
   const totalVolume = exercises.reduce(
     (sum, ex) =>
-      sum + ex.sets.reduce((s, set) => s + set.weightKg * set.reps, 0),
+      ex.kind === "cardio"
+        ? sum
+        : sum + ex.sets.reduce((s, set) => s + (set.weightKg ?? 0) * (set.reps ?? 0), 0),
+    0
+  );
+  const totalCardioMinutes = exercises.reduce(
+    (sum, ex) =>
+      ex.kind === "cardio"
+        ? sum + ex.sets.reduce((s, set) => s + (set.durationMinutes ?? 0), 0)
+        : sum,
     0
   );
 
@@ -276,6 +342,14 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
                 </span>
               </div>
             )}
+            {totalCardioMinutes > 0 && (
+              <div className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5">
+                <Activity className="size-3.5 text-primary" />
+                <span className="text-xs font-bold text-primary">
+                  {totalCardioMinutes} min cardio
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -303,6 +377,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
               sessionExerciseId={ex.sessionExerciseId}
               exerciseId={ex.exerciseId}
               name={ex.name}
+              kind={ex.kind}
               muscleGroups={ex.muscleGroups}
               locked={ex.locked}
               notes={ex.notes}
@@ -311,6 +386,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
               knownWeights={ex.knownWeights}
               sets={ex.sets}
               onAddSet={handleAddSet}
+              onAddCardioSet={handleAddCardioSet}
               onDeleteSet={handleDeleteSet}
               onRemoveExercise={handleRemoveExercise}
               onToggleLock={handleToggleLock}

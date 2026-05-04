@@ -30,6 +30,11 @@ export async function GET(
       setNumber: sets.setNumber,
       weightKg: sets.weightKg,
       reps: sets.reps,
+      durationMinutes: sets.durationMinutes,
+      calories: sets.calories,
+      distanceKm: sets.distanceKm,
+      avgSpeedKmh: sets.avgSpeedKmh,
+      resistanceLevel: sets.resistanceLevel,
     })
     .from(sessionExercises)
     .innerJoin(sessions, eq(sessionExercises.sessionId, sessions.id))
@@ -42,28 +47,36 @@ export async function GET(
     )
     .orderBy(asc(sessions.date), asc(sets.setNumber));
 
+  type SetEntry = {
+    setNumber: number;
+    weightKg: number | null;
+    reps: number | null;
+    durationMinutes: number | null;
+    calories: number | null;
+    distanceKm: number | null;
+    avgSpeedKmh: number | null;
+    resistanceLevel: number | null;
+  };
+
   const bySession: Record<
     string,
-    {
-      date: string;
-      sessionId: number;
-      sets: { setNumber: number; weightKg: number; reps: number }[];
-    }
+    { date: string; sessionId: number; sets: SetEntry[] }
   > = {};
 
   for (const row of rows) {
     const key = `${row.sessionId}`;
     if (!bySession[key]) {
-      bySession[key] = {
-        date: row.date,
-        sessionId: row.sessionId,
-        sets: [],
-      };
+      bySession[key] = { date: row.date, sessionId: row.sessionId, sets: [] };
     }
     bySession[key].sets.push({
       setNumber: row.setNumber,
       weightKg: row.weightKg,
       reps: row.reps,
+      durationMinutes: row.durationMinutes,
+      calories: row.calories,
+      distanceKm: row.distanceKm,
+      avgSpeedKmh: row.avgSpeedKmh,
+      resistanceLevel: row.resistanceLevel,
     });
   }
 
@@ -74,6 +87,7 @@ export async function GET(
     exercise: {
       id: exercise.id,
       name: exercise.name,
+      kind: exercise.kind ?? "muscu",
       muscleGroup: groups[0] ?? null,
       muscleGroups: groups,
     },

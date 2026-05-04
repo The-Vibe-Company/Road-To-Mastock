@@ -12,6 +12,7 @@ export async function GET() {
     .select({
       id: exercises.id,
       name: exercises.name,
+      kind: exercises.kind,
       muscleGroup: exercises.muscleGroup,
       muscleGroups: exercises.muscleGroups,
       useCount: count(sessionExercises.id),
@@ -30,6 +31,7 @@ export async function GET() {
       return {
         id: r.id,
         name: r.name,
+        kind: r.kind ?? "muscu",
         muscleGroup: groups[0] ?? null,
         muscleGroups: groups,
         useCount: r.useCount,

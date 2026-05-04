@@ -25,6 +25,8 @@ export const users = pgTable("users", {
 export const exercises = pgTable("exercises", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
+  // 'muscu' | 'cardio'. Drives which set fields (weight/reps vs duration/calories/...) apply.
+  kind: text("kind").notNull().default("muscu"),
   muscleGroup: text("muscle_group"),
   muscleGroups: text("muscle_groups").array(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -85,8 +87,16 @@ export const sets = pgTable("sets", {
     .notNull()
     .references(() => sessionExercises.id, { onDelete: "cascade" }),
   setNumber: integer("set_number").notNull(),
-  weightKg: real("weight_kg").notNull(),
-  reps: integer("reps").notNull(),
+  // Muscu fields — null on cardio sets.
+  weightKg: real("weight_kg"),
+  reps: integer("reps"),
+  // Cardio fields — null on muscu sets. Always present together for cardio.
+  durationMinutes: integer("duration_minutes"),
+  calories: integer("calories"),
+  // Per-machine cardio detail (all nullable, only relevant for some machines).
+  distanceKm: real("distance_km"),
+  avgSpeedKmh: real("avg_speed_kmh"),
+  resistanceLevel: integer("resistance_level"),
 });
 
 export const animals = pgTable("animals", {

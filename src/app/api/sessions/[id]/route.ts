@@ -28,6 +28,7 @@ export async function GET(
       sessionExerciseId: sessionExercises.id,
       exerciseId: exercises.id,
       exerciseName: exercises.name,
+      kind: exercises.kind,
       muscleGroup: exercises.muscleGroup,
       muscleGroups: exercises.muscleGroups,
       sortOrder: sessionExercises.sortOrder,
@@ -37,6 +38,11 @@ export async function GET(
       setNumber: sets.setNumber,
       weightKg: sets.weightKg,
       reps: sets.reps,
+      durationMinutes: sets.durationMinutes,
+      calories: sets.calories,
+      distanceKm: sets.distanceKm,
+      avgSpeedKmh: sets.avgSpeedKmh,
+      resistanceLevel: sets.resistanceLevel,
     })
     .from(sessionExercises)
     .innerJoin(exercises, eq(sessionExercises.exerciseId, exercises.id))
@@ -44,18 +50,31 @@ export async function GET(
     .where(eq(sessionExercises.sessionId, sessionId))
     .orderBy(sessionExercises.sortOrder, sets.setNumber);
 
+  type SetEntry = {
+    id: number;
+    setNumber: number;
+    weightKg: number | null;
+    reps: number | null;
+    durationMinutes: number | null;
+    calories: number | null;
+    distanceKm: number | null;
+    avgSpeedKmh: number | null;
+    resistanceLevel: number | null;
+  };
+
   const grouped = new Map<
     number,
     {
       sessionExerciseId: number;
       exerciseId: number;
       name: string;
+      kind: string;
       muscleGroup: string | null;
       muscleGroups: string[];
       sortOrder: number;
       locked: boolean;
       notes: string | null;
-      sets: { id: number; setNumber: number; weightKg: number; reps: number }[];
+      sets: SetEntry[];
     }
   >();
 
@@ -66,6 +85,7 @@ export async function GET(
         sessionExerciseId: row.sessionExerciseId,
         exerciseId: row.exerciseId,
         name: row.exerciseName,
+        kind: row.kind ?? "muscu",
         muscleGroup: groups[0] ?? null,
         muscleGroups: groups,
         sortOrder: row.sortOrder ?? 0,
@@ -78,19 +98,26 @@ export async function GET(
       grouped.get(row.sessionExerciseId)!.sets.push({
         id: row.setId,
         setNumber: row.setNumber!,
-        weightKg: row.weightKg!,
-        reps: row.reps!,
+        weightKg: row.weightKg,
+        reps: row.reps,
+        durationMinutes: row.durationMinutes,
+        calories: row.calories,
+        distanceKm: row.distanceKm,
+        avgSpeedKmh: row.avgSpeedKmh,
+        resistanceLevel: row.resistanceLevel,
       });
     }
   }
 
   const exerciseList = [...grouped.values()].sort((a, b) => a.sortOrder - b.sortOrder);
   const exerciseIds = [...new Set(exerciseList.map((e) => e.exerciseId))];
+  const muscuExerciseIds = [...new Set(exerciseList.filter((e) => e.kind !== "cardio").map((e) => e.exerciseId))];
 
-  // Fetch last session's sets for each exercise (previous performance)
+  // Fetch last session's sets for each muscu exercise (previous performance).
+  // Cardio doesn't surface a "last perf" panel.
   const lastPerf: Record<number, { date: string; sets: { weightKg: number; reps: number }[] }> = {};
 
-  if (exerciseIds.length > 0) {
+  if (muscuExerciseIds.length > 0) {
     const lastPerfRows = (await db.execute(sql`
       WITH last_se AS (
         SELECT DISTINCT ON (se.exercise_id)
@@ -99,7 +126,7 @@ export async function GET(
           s.date
         FROM session_exercises se
         JOIN sessions s ON s.id = se.session_id
-        WHERE se.exercise_id IN (${sql.join(exerciseIds.map(id => sql`${id}`), sql`, `)})
+        WHERE se.exercise_id IN (${sql.join(muscuExerciseIds.map(id => sql`${id}`), sql`, `)})
           AND s.user_id = ${auth.userId}
           AND se.session_id != ${sessionId}
         ORDER BY se.exercise_id, s.date DESC, s.created_at DESC
@@ -112,6 +139,7 @@ export async function GET(
         st.set_number
       FROM last_se lse
       JOIN sets st ON st.session_exercise_id = lse.se_id
+      WHERE st.weight_kg IS NOT NULL
       ORDER BY lse.exercise_id, st.set_number
     `)) as unknown as { rows?: any[] };
 
