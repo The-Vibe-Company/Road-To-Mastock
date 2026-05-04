@@ -44,9 +44,9 @@ export async function POST(
 
   let tokenGranted = false;
   let specialTokenGranted = false;
-  // 1ʳᵉ séance terminée de la semaine ISO (basée sur sessions.date, pas la
-  // date de termination) → jeton spécial à la place du jeton normal.
-  // Sessions 2+ de la semaine → jeton normal classique.
+  // 1ʳᵉ et 4ᵉ séance terminée de la semaine ISO (basée sur sessions.date,
+  // pas la date de termination) → jeton spécial à la place du jeton normal.
+  // Sessions 2/3/5+ de la semaine → jeton normal classique.
   let weekPosition: number | null = null;
 
   if (!session.tokensGrantedAt) {
@@ -81,7 +81,7 @@ export async function POST(
       const previousThisWeek = Number(rows[0]?.countBefore ?? 0);
       weekPosition = previousThisWeek + 1;
 
-      const isSpecialPosition = weekPosition === 1;
+      const isSpecialPosition = weekPosition === 1 || weekPosition === 4;
       if (isSpecialPosition) {
         await db
           .update(users)
