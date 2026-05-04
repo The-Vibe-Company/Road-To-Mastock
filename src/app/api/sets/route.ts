@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { sets, sessionExercises, exercises, exerciseWeights } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -38,5 +39,6 @@ export async function POST(request: Request) {
       .then(() => {});
   }
 
+  revalidatePath("/");
   return Response.json(result, { status: 201 });
 }

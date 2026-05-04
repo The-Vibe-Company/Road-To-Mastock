@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { sessionExercises } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 export async function PATCH(
   request: Request,
@@ -20,6 +21,7 @@ export async function PATCH(
     .where(eq(sessionExercises.id, parseInt(id)))
     .returning();
 
+  revalidatePath("/");
   return Response.json(updated);
 }
 
@@ -31,5 +33,6 @@ export async function DELETE(
   await db
     .delete(sessionExercises)
     .where(eq(sessionExercises.id, parseInt(id)));
+  revalidatePath("/");
   return Response.json({ ok: true });
 }

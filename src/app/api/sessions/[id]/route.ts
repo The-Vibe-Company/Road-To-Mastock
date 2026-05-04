@@ -3,6 +3,7 @@ import { sessions, sessionExercises, sets, exercises, exerciseWeights } from "@/
 import { eq, and, sql, inArray, asc } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { resolveMuscleGroups } from "@/lib/muscle-groups";
+import { revalidatePath } from "next/cache";
 
 export async function GET(
   _request: Request,
@@ -252,6 +253,7 @@ export async function PATCH(
     return Response.json({ error: "Session not found" }, { status: 404 });
   }
 
+  revalidatePath("/");
   return Response.json(updated);
 }
 
@@ -267,5 +269,6 @@ export async function DELETE(
     .delete(sessions)
     .where(and(eq(sessions.id, parseInt(id)), eq(sessions.userId, auth.userId)));
 
+  revalidatePath("/");
   return Response.json({ ok: true });
 }

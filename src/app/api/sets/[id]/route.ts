@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { sets, sessionExercises, exercises } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 export async function PUT(
   request: Request,
@@ -38,6 +39,7 @@ export async function PUT(
     .where(eq(sets.id, setId))
     .returning();
 
+  revalidatePath("/");
   return Response.json(result);
 }
 
@@ -47,5 +49,6 @@ export async function DELETE(
 ) {
   const { id } = await params;
   await db.delete(sets).where(eq(sets.id, parseInt(id)));
+  revalidatePath("/");
   return Response.json({ ok: true });
 }

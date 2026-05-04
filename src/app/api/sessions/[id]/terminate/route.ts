@@ -7,6 +7,7 @@ import {
 } from "@/lib/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 
 async function sessionHasSets(sessionId: number) {
   const [row] = await db
@@ -113,6 +114,7 @@ export async function POST(
     .from(users)
     .where(eq(users.id, auth.userId));
 
+  revalidatePath("/");
   return Response.json({
     terminated: true,
     tokenGranted,
@@ -141,5 +143,6 @@ export async function DELETE(
     .returning();
 
   if (!updated) return Response.json({ error: "Session not found" }, { status: 404 });
+  revalidatePath("/");
   return Response.json({ terminated: false });
 }

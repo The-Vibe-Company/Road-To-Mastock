@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { sessions, sessionExercises } from "@/lib/db/schema";
 import { desc, eq, count, and } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 
 export async function GET() {
   const auth = await getAuthUser();
@@ -38,5 +39,6 @@ export async function POST(request: Request) {
     })
     .returning();
 
+  revalidatePath("/");
   return Response.json(session, { status: 201 });
 }
