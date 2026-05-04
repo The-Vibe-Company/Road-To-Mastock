@@ -3,7 +3,16 @@ import { SignJWT, jwtVerify } from "jose";
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
-const publicPaths = ["/login", "/register", "/api/auth/login", "/api/auth/register"];
+const publicPaths = [
+  "/login",
+  "/register",
+  "/api/auth/login",
+  "/api/auth/register",
+  "/manifest.webmanifest",
+  "/icon",
+  "/apple-icon",
+  "/favicon.ico",
+];
 
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 // Only re-issue the cookie when it's more than a day old, to avoid
@@ -47,6 +56,9 @@ export async function proxy(request: NextRequest) {
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         maxAge: SESSION_MAX_AGE,
+        // iOS Safari (PWA standalone) ignore parfois Max-Age — on double
+        // avec Expires pour forcer la persistance 30 jours.
+        expires: new Date(Date.now() + SESSION_MAX_AGE * 1000),
         path: "/",
       });
     }

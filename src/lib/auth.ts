@@ -27,11 +27,15 @@ export async function verifyToken(
 export async function setAuthCookie(userId: number) {
   const token = await signToken(userId);
   const cookieStore = await cookies();
+  const maxAge = 60 * 60 * 24 * 30; // 30 days
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge,
+    // iOS Safari (notamment en mode PWA standalone) ignore parfois Max-Age
+    // et ne respecte que Expires. On envoie les deux.
+    expires: new Date(Date.now() + maxAge * 1000),
     path: "/",
   });
 }
