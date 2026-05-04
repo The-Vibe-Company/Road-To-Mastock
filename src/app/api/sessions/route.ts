@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { sessions, sessionExercises } from "@/lib/db/schema";
-import { desc, eq, count, and } from "drizzle-orm";
+import { desc, eq, count, and, isNotNull } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
@@ -30,12 +30,27 @@ export async function POST(request: Request) {
   if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
+
+  // Prefill bodyweight from the user's most recent session that has one,
+  // so creating a new session inherits the last known weight.
+  let bodyweightKg: number | null = typeof body.bodyweightKg === "number" ? body.bodyweightKg : null;
+  if (bodyweightKg == null) {
+    const [last] = await db
+      .select({ bodyweightKg: sessions.bodyweightKg })
+      .from(sessions)
+      .where(and(eq(sessions.userId, auth.userId), isNotNull(sessions.bodyweightKg)))
+      .orderBy(desc(sessions.date), desc(sessions.createdAt))
+      .limit(1);
+    bodyweightKg = last?.bodyweightKg ?? null;
+  }
+
   const [session] = await db
     .insert(sessions)
     .values({
       userId: auth.userId,
       date: body.date || new Date().toISOString().split("T")[0],
       notes: body.notes || null,
+      bodyweightKg,
     })
     .returning();
 

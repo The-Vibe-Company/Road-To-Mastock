@@ -9,8 +9,10 @@ import { SetForm } from "./set-form";
 import { SetRow } from "./set-row";
 import { CardioSetForm, type CardioPayload } from "./cardio-set-form";
 import { CardioSetRow } from "./cardio-set-row";
+import { AssistedSetForm, type AssistedPayload } from "./assisted-set-form";
+import { AssistedSetRow } from "./assisted-set-row";
 import { RestTimer } from "./rest-timer";
-import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2 } from "lucide-react";
+import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2, AlertTriangle } from "lucide-react";
 import { cardioMachineFromName } from "@/lib/cardio";
 
 interface ExerciseSet {
@@ -23,6 +25,7 @@ interface ExerciseSet {
   distanceKm: number | null;
   avgSpeedKmh: number | null;
   resistanceLevel: number | null;
+  assistanceKg: number | null;
 }
 
 interface LastPerf {
@@ -35,6 +38,9 @@ interface ExerciseBlockProps {
   exerciseId: number;
   name: string;
   kind: "muscu" | "cardio";
+  isAssisted: boolean;
+  bodyweightKg: number | null;
+  onRequestBodyweight?: () => void;
   muscleGroups: string[];
   locked: boolean;
   notes: string | null;
@@ -44,6 +50,7 @@ interface ExerciseBlockProps {
   sets: ExerciseSet[];
   onAddSet: (sessionExerciseId: number, weightKg: number, reps: number) => void | Promise<void>;
   onAddCardioSet?: (sessionExerciseId: number, payload: CardioPayload) => void | Promise<void>;
+  onAddAssistedSet?: (sessionExerciseId: number, payload: AssistedPayload) => void | Promise<void>;
   onDeleteSet: (setId: number) => void | Promise<void>;
   onRemoveExercise: (sessionExerciseId: number) => void | Promise<void>;
   onToggleLock: (sessionExerciseId: number, locked: boolean) => void;
@@ -65,6 +72,9 @@ export function ExerciseBlock({
   exerciseId,
   name,
   kind,
+  isAssisted,
+  bodyweightKg,
+  onRequestBodyweight,
   muscleGroups,
   locked,
   notes,
@@ -74,6 +84,7 @@ export function ExerciseBlock({
   sets,
   onAddSet,
   onAddCardioSet,
+  onAddAssistedSet,
   onDeleteSet,
   onRemoveExercise,
   onToggleLock,
@@ -114,6 +125,12 @@ export function ExerciseBlock({
   const handleAddCardioSet = async (payload: CardioPayload) => {
     if (!onAddCardioSet) return;
     await onAddCardioSet(sessionExerciseId, payload);
+  };
+
+  const handleAddAssistedSet = async (payload: AssistedPayload) => {
+    if (!onAddAssistedSet) return;
+    await onAddAssistedSet(sessionExerciseId, payload);
+    setShowTimer(true);
   };
 
   const handleConfirmDeleteSet = async () => {
@@ -276,6 +293,15 @@ export function ExerciseBlock({
                   resistanceLevel={s.resistanceLevel}
                   onDelete={locked ? undefined : () => setDeleteSetId(s.id)}
                 />
+              ) : isAssisted ? (
+                <AssistedSetRow
+                  key={s.id}
+                  setNumber={s.setNumber}
+                  weightKg={s.weightKg}
+                  reps={s.reps}
+                  assistanceKg={s.assistanceKg}
+                  onDelete={locked ? undefined : () => setDeleteSetId(s.id)}
+                />
               ) : (
                 <SetRow
                   key={s.id}
@@ -321,7 +347,7 @@ export function ExerciseBlock({
           </div>
         )}
 
-        {!locked && !isCardio && (
+        {!locked && !isCardio && !isAssisted && (
           <SetForm
             onAdd={handleAddSet}
             lastWeight={lastSet?.weightKg ?? undefined}
@@ -337,6 +363,26 @@ export function ExerciseBlock({
             lastDuration={lastSet?.durationMinutes ?? null}
             lastResistance={lastSet?.resistanceLevel ?? null}
           />
+        )}
+
+        {!locked && isAssisted && (
+          bodyweightKg != null ? (
+            <AssistedSetForm
+              bodyweightKg={bodyweightKg}
+              onAdd={handleAddAssistedSet}
+              lastAssistance={lastSet?.assistanceKg ?? null}
+              lastReps={lastSet?.reps ?? null}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => onRequestBodyweight?.()}
+              className="flex w-full items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-3 text-left text-sm font-bold text-primary transition-all active:scale-[0.98]"
+            >
+              <AlertTriangle className="size-4" />
+              Renseigne ton poids de corps pour calculer le poids soulevé
+            </button>
+          )
         )}
       </CardContent>
 

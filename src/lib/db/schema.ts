@@ -27,6 +27,9 @@ export const exercises = pgTable("exercises", {
   name: text("name").notNull().unique(),
   // 'muscu' | 'cardio'. Drives which set fields (weight/reps vs duration/calories/...) apply.
   kind: text("kind").notNull().default("muscu"),
+  // Exercices à assistance (tractions/dips assistés) : l'utilisateur saisit
+  // l'aide en kg, le poids effectif soulevé est session.bodyweightKg − assistance.
+  isAssisted: boolean("is_assisted").notNull().default(false),
   muscleGroup: text("muscle_group"),
   muscleGroups: text("muscle_groups").array(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -39,6 +42,9 @@ export const sessions = pgTable("sessions", {
     .references(() => users.id, { onDelete: "cascade" }),
   date: date("date").notNull().defaultNow(),
   notes: text("notes"),
+  // Poids de corps du jour, utilisé par les exos assistés
+  // (weight_kg = bodyweight_kg - sets.assistance_kg).
+  bodyweightKg: real("bodyweight_kg"),
   terminatedAt: timestamp("terminated_at", { withTimezone: true }),
   tokensGrantedAt: timestamp("tokens_granted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -97,6 +103,9 @@ export const sets = pgTable("sets", {
   distanceKm: real("distance_km"),
   avgSpeedKmh: real("avg_speed_kmh"),
   resistanceLevel: integer("resistance_level"),
+  // Pour les exos assistés : aide en kg saisie. weight_kg est calculé côté
+  // serveur comme session.bodyweight_kg - assistance_kg.
+  assistanceKg: real("assistance_kg"),
 });
 
 export const animals = pgTable("animals", {

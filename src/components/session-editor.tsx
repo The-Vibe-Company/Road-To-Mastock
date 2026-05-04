@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { ExercisePicker } from "./exercise-picker";
 import { ExerciseBlock } from "./exercise-block";
 import { DatePicker } from "./date-picker";
+import { BodyweightPicker } from "./bodyweight-picker";
 import { TerminateSessionButton } from "./terminate-session-button";
-import { Plus, Trash2, Dumbbell, Activity, Weight, Layers, CalendarDays, Loader2 } from "lucide-react";
+import { Plus, Trash2, Dumbbell, Activity, Weight, Layers, CalendarDays, Loader2, Scale } from "lucide-react";
 import { BackButton } from "./back-button";
 import type { CardioPayload } from "./cardio-set-form";
+import type { AssistedPayload } from "./assisted-set-form";
 
 interface ExerciseSet {
   id: number;
@@ -21,6 +23,7 @@ interface ExerciseSet {
   distanceKm: number | null;
   avgSpeedKmh: number | null;
   resistanceLevel: number | null;
+  assistanceKg: number | null;
 }
 
 interface LastPerf {
@@ -33,6 +36,7 @@ interface SessionExercise {
   exerciseId: number;
   name: string;
   kind: "muscu" | "cardio";
+  isAssisted: boolean;
   muscleGroup: string | null;
   muscleGroups: string[];
   locked: boolean;
@@ -46,6 +50,7 @@ interface SessionExercise {
 interface SessionData {
   id: number;
   date: string;
+  bodyweightKg: number | null;
   exercises: SessionExercise[];
 }
 
@@ -54,6 +59,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   const [session, setSession] = useState<SessionData | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showBodyweightPicker, setShowBodyweightPicker] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refreshSession = useCallback(async () => {
@@ -107,6 +113,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
                     distanceKm: null,
                     avgSpeedKmh: null,
                     resistanceLevel: null,
+                    assistanceKg: null,
                   },
                 ],
               }
@@ -118,6 +125,58 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionExerciseId, weightKg, reps }),
+    });
+    refreshSession();
+  };
+
+  const handleAddAssistedSet = async (
+    sessionExerciseId: number,
+    payload: AssistedPayload,
+  ) => {
+    const bw = session?.bodyweightKg ?? null;
+    const effective = bw != null ? Math.max(0, Number((bw - payload.assistanceKg).toFixed(2))) : null;
+    setSession((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex) =>
+          ex.sessionExerciseId === sessionExerciseId
+            ? {
+                ...ex,
+                sets: [
+                  ...ex.sets,
+                  {
+                    id: Date.now(),
+                    setNumber: ex.sets.length + 1,
+                    weightKg: effective,
+                    reps: payload.reps,
+                    durationMinutes: null,
+                    calories: null,
+                    distanceKm: null,
+                    avgSpeedKmh: null,
+                    resistanceLevel: null,
+                    assistanceKg: payload.assistanceKg,
+                  },
+                ],
+              }
+            : ex
+        ),
+      };
+    });
+    await fetch("/api/sets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionExerciseId, ...payload }),
+    });
+    refreshSession();
+  };
+
+  const handleBodyweightChange = async (kg: number) => {
+    setSession((prev) => (prev ? { ...prev, bodyweightKg: kg } : prev));
+    await fetch(`/api/sessions/${sessionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bodyweightKg: kg }),
     });
     refreshSession();
   };
@@ -141,6 +200,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
                     setNumber: ex.sets.length + 1,
                     weightKg: null,
                     reps: null,
+                    assistanceKg: null,
                     ...payload,
                   },
                 ],
@@ -320,6 +380,18 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
             onOpenChange={setShowDatePicker}
           />
         </div>
+        <button
+          type="button"
+          onClick={() => setShowBodyweightPicker(true)}
+          className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors active:scale-95 ${
+            session.bodyweightKg != null
+              ? "bg-primary/10 text-primary hover:bg-primary/15"
+              : "bg-primary/15 text-primary ring-1 ring-primary/40 hover:bg-primary/20"
+          }`}
+        >
+          <Scale className="size-3.5" />
+          {session.bodyweightKg != null ? `${session.bodyweightKg} kg` : "Pèse-toi"}
+        </button>
         {exercises.length > 0 && (
           <div className="mt-3 flex gap-2">
             <div className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5">
@@ -378,6 +450,9 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
               exerciseId={ex.exerciseId}
               name={ex.name}
               kind={ex.kind}
+              isAssisted={ex.isAssisted}
+              bodyweightKg={session.bodyweightKg}
+              onRequestBodyweight={() => setShowBodyweightPicker(true)}
               muscleGroups={ex.muscleGroups}
               locked={ex.locked}
               notes={ex.notes}
@@ -387,6 +462,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
               sets={ex.sets}
               onAddSet={handleAddSet}
               onAddCardioSet={handleAddCardioSet}
+              onAddAssistedSet={handleAddAssistedSet}
               onDeleteSet={handleDeleteSet}
               onRemoveExercise={handleRemoveExercise}
               onToggleLock={handleToggleLock}
@@ -434,6 +510,12 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
         onSelect={handleSelectExercise}
       />
 
+      <BodyweightPicker
+        open={showBodyweightPicker}
+        onOpenChange={setShowBodyweightPicker}
+        value={session.bodyweightKg}
+        onChange={handleBodyweightChange}
+      />
     </div>
   );
 }

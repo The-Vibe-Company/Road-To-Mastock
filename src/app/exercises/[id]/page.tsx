@@ -10,6 +10,7 @@ interface ExerciseInfo {
   id: number;
   name: string;
   kind: "muscu" | "cardio";
+  isAssisted: boolean;
   muscleGroup: string | null;
   muscleGroups: string[];
 }
@@ -23,11 +24,13 @@ interface SetEntry {
   distanceKm: number | null;
   avgSpeedKmh: number | null;
   resistanceLevel: number | null;
+  assistanceKg: number | null;
 }
 
 interface SessionHistory {
   date: string;
   sessionId: number;
+  bodyweightKg: number | null;
   sets: SetEntry[];
 }
 
@@ -431,9 +434,16 @@ export default function ExerciseDetail({
                 <Card key={h.sessionId}>
                   <CardContent>
                     <div className="mb-2.5 flex items-center justify-between">
-                      <p className="font-bold capitalize">
-                        {d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold capitalize">
+                          {d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+                        </p>
+                        {exercise.isAssisted && h.bodyweightKg != null && (
+                          <span className="rounded-md bg-secondary/40 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            bw {h.bodyweightKg} kg
+                          </span>
+                        )}
+                      </div>
                       <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
                         {Math.round(vol)} kg vol.
                       </span>
@@ -447,6 +457,11 @@ export default function ExerciseDetail({
                           <span className="text-base font-black">{s.weightKg ?? 0} kg</span>
                           <span className="text-sm font-bold text-primary/40">x</span>
                           <span className="text-base font-semibold">{s.reps ?? 0}</span>
+                          {exercise.isAssisted && s.assistanceKg != null && (
+                            <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                              −{s.assistanceKg} aide
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>

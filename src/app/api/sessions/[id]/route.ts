@@ -30,6 +30,7 @@ export async function GET(
       exerciseId: exercises.id,
       exerciseName: exercises.name,
       kind: exercises.kind,
+      isAssisted: exercises.isAssisted,
       muscleGroup: exercises.muscleGroup,
       muscleGroups: exercises.muscleGroups,
       sortOrder: sessionExercises.sortOrder,
@@ -44,6 +45,7 @@ export async function GET(
       distanceKm: sets.distanceKm,
       avgSpeedKmh: sets.avgSpeedKmh,
       resistanceLevel: sets.resistanceLevel,
+      assistanceKg: sets.assistanceKg,
     })
     .from(sessionExercises)
     .innerJoin(exercises, eq(sessionExercises.exerciseId, exercises.id))
@@ -61,6 +63,7 @@ export async function GET(
     distanceKm: number | null;
     avgSpeedKmh: number | null;
     resistanceLevel: number | null;
+    assistanceKg: number | null;
   };
 
   const grouped = new Map<
@@ -70,6 +73,7 @@ export async function GET(
       exerciseId: number;
       name: string;
       kind: string;
+      isAssisted: boolean;
       muscleGroup: string | null;
       muscleGroups: string[];
       sortOrder: number;
@@ -87,6 +91,7 @@ export async function GET(
         exerciseId: row.exerciseId,
         name: row.exerciseName,
         kind: row.kind ?? "muscu",
+        isAssisted: row.isAssisted ?? false,
         muscleGroup: groups[0] ?? null,
         muscleGroups: groups,
         sortOrder: row.sortOrder ?? 0,
@@ -106,6 +111,7 @@ export async function GET(
         distanceKm: row.distanceKm,
         avgSpeedKmh: row.avgSpeedKmh,
         resistanceLevel: row.resistanceLevel,
+        assistanceKg: row.assistanceKg,
       });
     }
   }
@@ -239,13 +245,20 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
-  if (!body.date) {
-    return Response.json({ error: "Date is required" }, { status: 400 });
+  const updates: Partial<typeof sessions.$inferInsert> = {};
+  if (typeof body.date === "string" && body.date) updates.date = body.date;
+  if ("bodyweightKg" in body) {
+    const v = body.bodyweightKg;
+    updates.bodyweightKg = v == null ? null : Number(v);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return Response.json({ error: "Nothing to update" }, { status: 400 });
   }
 
   const [updated] = await db
     .update(sessions)
-    .set({ date: body.date })
+    .set(updates)
     .where(and(eq(sessions.id, parseInt(id)), eq(sessions.userId, auth.userId)))
     .returning();
 

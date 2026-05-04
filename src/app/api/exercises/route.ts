@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
         id: e.id,
         name: e.name,
         kind: e.kind ?? "muscu",
+        isAssisted: e.isAssisted ?? false,
         muscleGroup: groups[0] ?? null,
         muscleGroups: groups,
       };
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
       id: existing.id,
       name: existing.name,
       kind: existing.kind ?? "muscu",
+      isAssisted: existing.isAssisted ?? false,
       muscleGroup: eg[0] ?? null,
       muscleGroups: eg,
     });
@@ -96,6 +98,7 @@ export async function POST(request: Request) {
       id: result.id,
       name: result.name,
       kind: result.kind ?? "muscu",
+      isAssisted: result.isAssisted ?? false,
       muscleGroup: rg[0] ?? null,
       muscleGroups: rg,
     },
