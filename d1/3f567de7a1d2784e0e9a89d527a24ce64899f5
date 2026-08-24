@@ -1,0 +1,75 @@
+src/app/api/exercises/frequent/route.ts
+  s_cbb00cc0677714::t_1762c501639012 2-3,7-10,14-17,25-28,33,36-42,52,56-57
+src/app/api/exercises/[id]/route.ts
+  s_cbb00cc0677714::t_1762c501639012 3,27,29,48-49,53-55,66
+src/app/api/auth/register/route.ts
+  s_cbb00cc0677714::t_1762c501639012 2,47-62
+  s_cbb00cc0677714::t_44167a7b658dbd 63
+src/app/api/sets/[id]/route.ts
+  s_cbb00cc0677714::t_1762c501639012 5-6,12-14,17-19,87-89,91-92
+src/app/exercises/[id]/page.tsx
+  s_cbb00cc0677714::t_1762c501639012 8,15,143-147
+  s_cbb00cc0677714::t_03b426107090c6 148
+src/components/home-tabs.tsx
+  s_cbb00cc0677714::t_1762c501639012 7,19-26,29-32,34,36,42-55,92
+scripts/migrate-exercises-per-user.ts
+  s_cbb00cc0677714::t_1762c501639012 1-139
+src/app/api/exercises/[id]/history/route.ts
+  s_cbb00cc0677714::t_1762c501639012 20,101
+src/app/api/friends/[id]/stats/route.ts
+  s_cbb00cc0677714::t_1762c501639012 34-35,37
+src/components/exercise-ranking.tsx
+  s_cbb00cc0677714::t_1762c501639012 1-105
+src/components/refresh-on-return.tsx
+  s_cbb00cc0677714::t_1762c501639012 1-36
+src/components/session-editor.tsx
+  s_cbb00cc0677714::t_1762c501639012 3,31-32,44-46,69,82-100,103,105-108,285-298,483,485-518
+src/components/weight-steps.tsx
+  s_cbb00cc0677714::t_1762c501639012 1-350
+src/lib/ownership.ts
+  s_cbb00cc0677714::t_1762c501639012 1-56
+src/app/api/sessions/[id]/route.ts
+  s_cbb00cc0677714::t_1762c501639012 2,36-38,55,83-85,104-106,131-144,148-158,160,162-171,174-176,180-183,185-208,212,214-215,220-221,228-230,234-241,243,259,267,273-274,292-294,297-301,306-308,322-323
+src/app/api/exercises/[id]/variants/route.ts
+  s_cbb00cc0677714::t_1762c501639012 1-141
+src/app/api/exercises/route.ts
+  s_cbb00cc0677714::t_1762c501639012 3,15,19-23,34,75,87-92
+src/app/api/session-exercises/[id]/route.ts
+  s_cbb00cc0677714::t_1762c501639012 5-6,12-14,16-17,24-28,44-46,48-49
+scripts/migrate-exercise-variants.ts
+  s_cbb00cc0677714::t_1762c501639012 1-79
+.gitignore
+  s_cbb00cc0677714::t_1762c501639012 49-51
+src/app/api/sets/route.ts
+  s_cbb00cc0677714::t_1762c501639012 11-12,15-17,20-23,30,85-91
+src/app/api/stats/route.ts
+  s_cbb00cc0677714::t_1762c501639012 10-11,13
+src/app/page.tsx
+  s_cbb00cc0677714::t_1762c501639012 12,71
+src/components/exercise-picker.tsx
+  s_cbb00cc0677714::t_1762c501639012 14,21,26-30,38,50-53,58-59,73-81,84,90-114,128,234-301,303
+src/lib/db/schema.ts
+  s_cbb00cc0677714::t_1762c501639012 11,13,27-29,38-78,102-105,123-124,132-136,139-150
+src/app/api/session-exercises/route.ts
+  s_cbb00cc0677714::t_1762c501639012 5-6,9-11,14-17,29-30
+src/components/exercise-block.tsx
+  s_cbb00cc0677714::t_1762c501639012 15,33-34,47-53,73-95,111-114,146-149,160-202,257-269,329-384,413-430
+src/app/api/exercises/[id]/weights/route.ts
+  s_cbb00cc0677714::t_1762c501639012 1-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "d13f567de7a1d2784e0e9a89d527a24ce64899f5",
+  "prompts": {},
+  "sessions": {
+    "s_cbb00cc0677714": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc54df53-6518-46de-8c58-922eeb42f9dd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}
