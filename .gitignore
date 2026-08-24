@@ -46,3 +46,6 @@ public/cards/pokemon/
 public/cards/packs/
 logs/
 .claude/scheduled_tasks.lock
+
+# Artefacts locaux de ship-pr-dev (non commités)
+/plans/ship-pr-dev/

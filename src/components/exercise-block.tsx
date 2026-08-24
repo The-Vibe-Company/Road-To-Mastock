@@ -12,7 +12,7 @@ import { CardioSetRow } from "./cardio-set-row";
 import { AssistedSetForm, type AssistedPayload } from "./assisted-set-form";
 import { AssistedSetRow } from "./assisted-set-row";
 import { RestTimer } from "./rest-timer";
-import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2, AlertTriangle } from "lucide-react";
+import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2, AlertTriangle, MapPin } from "lucide-react";
 import { cardioMachineFromName } from "@/lib/cardio";
 
 interface ExerciseSet {
@@ -30,6 +30,8 @@ interface ExerciseSet {
 
 interface LastPerf {
   date: string;
+  position: number;
+  totalExercises: number;
   sets: { weightKg: number; reps: number }[];
 }
 
@@ -42,6 +44,13 @@ interface ExerciseBlockProps {
   bodyweightKg: number | null;
   onRequestBodyweight?: () => void;
   muscleGroups: string[];
+  hasVariants?: boolean;
+  variantId?: number | null;
+  variantName?: string | null;
+  onChangeVariant?: (
+    sessionExerciseId: number,
+    variantId: number | null,
+  ) => void | Promise<void>;
   locked: boolean;
   notes: string | null;
   record: number | null;
@@ -61,6 +70,29 @@ interface ExerciseBlockProps {
   onMoveDown: () => void;
 }
 
+// "exercice" est masculin : 1er, puis 2e, 3e...
+function ordinal(n: number): string {
+  return n === 1 ? "1ᵉʳ" : `${n}ᵉ`;
+}
+
+function formatLastPerfDate(raw: string): string {
+  return new Date(raw).toLocaleDateString("fr-FR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+// Ecart en jours pleins, calcule sur les dates locales pour ne pas etre
+// fausse par l'heure stockee avec la date.
+function daysAgo(raw: string): number {
+  const then = new Date(raw);
+  const now = new Date();
+  const a = Date.UTC(then.getFullYear(), then.getMonth(), then.getDate());
+  const b = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((b - a) / 86400000);
+}
+
 const recordStyles: Record<number, { card: string; badge: string; label: string }> = {
   1: { card: "card-gradient-gold", badge: "bg-yellow-500/15 text-yellow-500", label: "Record" },
   2: { card: "card-gradient-silver", badge: "bg-gray-400/15 text-gray-400", label: "2e" },
@@ -76,6 +108,10 @@ export function ExerciseBlock({
   bodyweightKg,
   onRequestBodyweight,
   muscleGroups,
+  hasVariants,
+  variantId,
+  variantName,
+  onChangeVariant,
   locked,
   notes,
   record,
@@ -107,6 +143,10 @@ export function ExerciseBlock({
     ? sets.reduce((sum, s) => sum + (s.calories ?? 0), 0)
     : 0;
   const medal = !isCardio && record && record <= 3 ? recordStyles[record] : null;
+  const [showVariants, setShowVariants] = useState(false);
+  const [variantOptions, setVariantOptions] = useState<{ id: number; name: string }[]>([]);
+  const [variantBusy, setVariantBusy] = useState(false);
+  const [newVariant, setNewVariant] = useState("");
   const [showNotes, setShowNotes] = useState(false);
   const [savedNotes, setSavedNotes] = useState(notes || "");
   const [showTimer, setShowTimer] = useState(false);
@@ -116,6 +156,49 @@ export function ExerciseBlock({
   const [deletingExercise, setDeletingExercise] = useState(false);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const notesVisible = !!savedNotes || showNotes;
+
+  // La salle reste modifiable meme sur une seance passee ou cloturee : on
+  // corrige souvent apres coup, ou on retiquette d'anciennes seances apres
+  // avoir declare ses salles.
+  const openVariants = async () => {
+    if (showVariants) return setShowVariants(false);
+    setShowVariants(true);
+    const res = await fetch(`/api/exercises/${exerciseId}/variants`);
+    const data = res.ok ? await res.json() : [];
+    setVariantOptions(Array.isArray(data) ? data : []);
+  };
+
+  const pickVariant = async (id: number | null) => {
+    if (!onChangeVariant || variantBusy) return;
+    setVariantBusy(true);
+    try {
+      await onChangeVariant(sessionExerciseId, id);
+      setShowVariants(false);
+    } finally {
+      setVariantBusy(false);
+    }
+  };
+
+  const createAndPickVariant = async () => {
+    const name = newVariant.trim();
+    if (!name || variantBusy) return;
+    setVariantBusy(true);
+    try {
+      const res = await fetch(`/api/exercises/${exerciseId}/variants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const created = res.ok ? await res.json() : null;
+      setNewVariant("");
+      if (created?.id) {
+        await onChangeVariant?.(sessionExerciseId, created.id);
+        setShowVariants(false);
+      }
+    } finally {
+      setVariantBusy(false);
+    }
+  };
 
   const handleAddSet = async (w: number, r: number) => {
     await onAddSet(sessionExerciseId, w, r);
@@ -171,6 +254,19 @@ export function ExerciseBlock({
             {muscleGroups.map((mg) => (
               <Badge key={mg} variant="secondary" className="text-[10px] font-bold">{mg}</Badge>
             ))}
+            {hasVariants && (
+              <button
+                onClick={openVariants}
+                className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold transition-all active:scale-95 ${
+                  variantName
+                    ? "bg-primary/15 text-primary hover:bg-primary/25"
+                    : "bg-secondary/50 text-muted-foreground ring-1 ring-primary/30 hover:text-primary"
+                }`}
+              >
+                <MapPin className="size-3" />
+                {variantName ?? "Salle ?"}
+              </button>
+            )}
             {!isCardio && totalVolume > 0 && (
               <Badge variant="outline" className="border-primary/20 text-[10px] text-primary">
                 {Math.round(totalVolume)} kg vol.
@@ -230,6 +326,62 @@ export function ExerciseBlock({
 
       <CardContent>
         {/* Notes */}
+        {showVariants && (
+          <div className="mb-3 rounded-xl border border-primary/20 bg-secondary/30 p-3">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-primary/50">
+              Salle de cette séance
+            </p>
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {variantOptions.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => pickVariant(v.id)}
+                  disabled={variantBusy}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all active:scale-95 disabled:opacity-50 ${
+                    variantId === v.id
+                      ? "bg-gradient-orange-intense text-black shadow-lg"
+                      : "bg-secondary/50 text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  {v.name}
+                </button>
+              ))}
+              <button
+                onClick={() => pickVariant(null)}
+                disabled={variantBusy}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all active:scale-95 disabled:opacity-50 ${
+                  variantId == null
+                    ? "bg-gradient-orange-intense text-black shadow-lg"
+                    : "bg-secondary/50 text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                Aucune
+              </button>
+            </div>
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                createAndPickVariant();
+              }}
+            >
+              <input
+                value={newVariant}
+                onChange={(e) => setNewVariant(e.target.value)}
+                placeholder="Nouvelle salle"
+                className="h-9 flex-1 rounded-lg bg-secondary/50 px-3 text-xs font-medium outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/40"
+              />
+              <button
+                type="submit"
+                disabled={!newVariant.trim() || variantBusy}
+                className="rounded-lg bg-secondary px-3 text-xs font-bold disabled:opacity-50"
+              >
+                Ajouter
+              </button>
+            </form>
+          </div>
+        )}
+
         {notesVisible && (
           <div className="mb-3 flex gap-2">
             <textarea
@@ -258,9 +410,24 @@ export function ExerciseBlock({
         {/* Last performance — muscu only */}
         {!isCardio && !locked && lastPerf && lastPerf.sets.length > 0 && (
           <div className="mb-3 rounded-lg border border-primary/10 bg-primary/5 px-3 py-2.5">
-            <div className="mb-2 flex items-center gap-1.5">
-              <History className="size-3 text-primary/40" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Derniere perf</span>
+            <div className="mb-2">
+              <div className="flex items-center gap-1.5">
+                <History className="size-3 shrink-0 text-primary/40" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-primary/40">
+                  Derniere perf
+                </span>
+                <span className="ml-auto text-[10px] font-bold text-primary/50">
+                  {formatLastPerfDate(lastPerf.date)}
+                </span>
+              </div>
+              <p className="mt-1 text-[10px] font-medium text-muted-foreground">
+                {ordinal(lastPerf.position)} exercice sur {lastPerf.totalExercises}
+                {(() => {
+                  const d = daysAgo(lastPerf.date);
+                  if (d <= 0) return null;
+                  return ` \u00b7 il y a ${d} jour${d > 1 ? "s" : ""}`;
+                })()}
+              </p>
             </div>
             <div className="grid grid-cols-1 gap-1">
               {lastPerf.sets.map((s, i) => (

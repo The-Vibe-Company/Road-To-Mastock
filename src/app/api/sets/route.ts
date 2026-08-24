@@ -8,9 +8,18 @@ import {
 } from "@/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { getAuthUser } from "@/lib/auth";
+import { notFound, ownsSessionExercise, unauthorized } from "@/lib/ownership";
 
 export async function POST(request: Request) {
+  const auth = await getAuthUser();
+  if (!auth) return unauthorized();
+
   const body = await request.json();
+
+  if (!(await ownsSessionExercise(Number(body.sessionExerciseId), auth.userId))) {
+    return notFound();
+  }
 
   const [countResult, [seRow]] = await Promise.all([
     db.select({ value: count() }).from(sets).where(eq(sets.sessionExerciseId, body.sessionExerciseId)),
@@ -18,6 +27,7 @@ export async function POST(request: Request) {
       .select({
         exerciseId: sessionExercises.exerciseId,
         sessionId: sessionExercises.sessionId,
+        variantId: sessionExercises.variantId,
         kind: exercises.kind,
         isAssisted: exercises.isAssisted,
       })
@@ -72,7 +82,13 @@ export async function POST(request: Request) {
   // these vary with bodyweight and are derived).
   if (!isCardio && !isAssisted && seRow && typeof body.weightKg === "number" && body.weightKg > 0) {
     db.insert(exerciseWeights)
-      .values({ exerciseId: seRow.exerciseId, weightKg: body.weightKg })
+      // Le palier est rattache a la version utilisee ce jour-la : les plaques
+      // d'une salle ne valent pas pour l'autre.
+      .values({
+        exerciseId: seRow.exerciseId,
+        variantId: seRow.variantId ?? null,
+        weightKg: body.weightKg,
+      })
       .onConflictDoNothing()
       .then(() => {});
   }

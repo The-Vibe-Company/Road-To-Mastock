@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Trophy, Calendar, Clock, Flame } from "lucide-react";
 import { BackButton } from "@/components/back-button";
+import { WeightSteps } from "@/components/weight-steps";
 
 interface ExerciseInfo {
   id: number;
   name: string;
   kind: "muscu" | "cardio";
   isAssisted: boolean;
+  hasVariants?: boolean;
   muscleGroup: string | null;
   muscleGroups: string[];
 }
@@ -137,6 +139,12 @@ export default function ExerciseDetail({
           </div>
         )}
       </div>
+
+      {/* Paliers : uniquement pour la muscu classique — en cardio il n'y a pas
+          de poids, et en assiste le poids est derive du poids de corps. */}
+      {!isCardio && !exercise.isAssisted && (
+        <WeightSteps exerciseId={exercise.id} hasVariants={exercise.hasVariants ?? false} />
+      )}
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-2 gap-3">

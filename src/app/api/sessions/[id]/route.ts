@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { sessions, sessionExercises, sets, exercises, exerciseWeights } from "@/lib/db/schema";
+import { sessions, sessionExercises, sets, exercises, exerciseVariants, exerciseWeights } from "@/lib/db/schema";
 import { eq, and, sql, inArray, asc } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { resolveMuscleGroups } from "@/lib/muscle-groups";
@@ -33,6 +33,9 @@ export async function GET(
       isAssisted: exercises.isAssisted,
       muscleGroup: exercises.muscleGroup,
       muscleGroups: exercises.muscleGroups,
+      hasVariants: exercises.hasVariants,
+      variantId: sessionExercises.variantId,
+      variantName: exerciseVariants.name,
       sortOrder: sessionExercises.sortOrder,
       locked: sessionExercises.locked,
       notes: sessionExercises.notes,
@@ -49,6 +52,7 @@ export async function GET(
     })
     .from(sessionExercises)
     .innerJoin(exercises, eq(sessionExercises.exerciseId, exercises.id))
+    .leftJoin(exerciseVariants, eq(sessionExercises.variantId, exerciseVariants.id))
     .leftJoin(sets, eq(sets.sessionExerciseId, sessionExercises.id))
     .where(eq(sessionExercises.sessionId, sessionId))
     .orderBy(sessionExercises.sortOrder, sets.setNumber);
@@ -76,6 +80,9 @@ export async function GET(
       isAssisted: boolean;
       muscleGroup: string | null;
       muscleGroups: string[];
+      hasVariants: boolean;
+      variantId: number | null;
+      variantName: string | null;
       sortOrder: number;
       locked: boolean;
       notes: string | null;
@@ -94,6 +101,9 @@ export async function GET(
         isAssisted: row.isAssisted ?? false,
         muscleGroup: groups[0] ?? null,
         muscleGroups: groups,
+        hasVariants: row.hasVariants ?? false,
+        variantId: row.variantId ?? null,
+        variantName: row.variantName ?? null,
         sortOrder: row.sortOrder ?? 0,
         locked: row.locked,
         notes: row.notes,
@@ -118,47 +128,119 @@ export async function GET(
 
   const exerciseList = [...grouped.values()].sort((a, b) => a.sortOrder - b.sortOrder);
   const exerciseIds = [...new Set(exerciseList.map((e) => e.exerciseId))];
-  const muscuExerciseIds = [...new Set(exerciseList.filter((e) => e.kind !== "cardio").map((e) => e.exerciseId))];
+  // Records, paliers et derniere perf se calculent par (exercice, version) :
+  // les plaques d'une salle ne valent pas pour une autre.
+  const variantKey = (exerciseId: number, variantId: number | null) =>
+    `${exerciseId}:${variantId ?? 0}`;
+  const muscuPairs = [
+    ...new Map(
+      exerciseList
+        .filter((e) => e.kind !== "cardio")
+        .map((e) => [
+          variantKey(e.exerciseId, e.variantId),
+          { exerciseId: e.exerciseId, variantId: e.variantId },
+        ]),
+    ).values(),
+  ];
 
   // Fetch last session's sets for each muscu exercise (previous performance).
   // Cardio doesn't surface a "last perf" panel.
-  const lastPerf: Record<number, { date: string; sets: { weightKg: number; reps: number }[] }> = {};
+  const lastPerf: Record<
+    string,
+    {
+      date: string;
+      // Rang de l'exercice dans la seance precedente (1 = premier fait) et
+      // nombre total d'exercices de cette seance : "3e sur 6".
+      position: number;
+      totalExercises: number;
+      sets: { weightKg: number; reps: number }[];
+    }
+  > = {};
 
-  if (muscuExerciseIds.length > 0) {
+  if (muscuPairs.length > 0) {
     const lastPerfRows = (await db.execute(sql`
-      WITH last_se AS (
-        SELECT DISTINCT ON (se.exercise_id)
+      WITH wanted(exercise_id, variant_id) AS (
+        VALUES ${sql.join(
+          muscuPairs.map(
+            (p) => sql`(${p.exerciseId}::int, ${p.variantId}::int)`,
+          ),
+          sql`, `,
+        )}
+      ),
+      last_se AS (
+        SELECT DISTINCT ON (se.exercise_id, se.variant_id)
           se.id AS se_id,
           se.exercise_id,
+          se.variant_id,
+          se.session_id,
+          se.sort_order,
           s.date
         FROM session_exercises se
         JOIN sessions s ON s.id = se.session_id
-        WHERE se.exercise_id IN (${sql.join(muscuExerciseIds.map(id => sql`${id}`), sql`, `)})
-          AND s.user_id = ${auth.userId}
+        -- IS NOT DISTINCT FROM : NULL (exercice sans version) doit matcher NULL.
+        JOIN wanted w ON w.exercise_id = se.exercise_id
+                     AND se.variant_id IS NOT DISTINCT FROM w.variant_id
+        WHERE s.user_id = ${auth.userId}
           AND se.session_id != ${sessionId}
-        ORDER BY se.exercise_id, s.date DESC, s.created_at DESC
+          -- Derniere seance ou l'exercice a vraiment ete FAIT : sans ce filtre,
+          -- un exercice ajoute puis laisse vide effacait la derniere perf.
+          AND EXISTS (
+            SELECT 1 FROM sets st2
+            WHERE st2.session_exercise_id = se.id
+              AND st2.weight_kg IS NOT NULL
+          )
+        ORDER BY se.exercise_id, se.variant_id, s.date DESC, s.created_at DESC
+      ),
+      pos AS (
+        SELECT
+          lse.exercise_id,
+          lse.variant_id,
+          (
+            SELECT COUNT(*) FROM session_exercises se2
+            WHERE se2.session_id = lse.session_id
+              AND (COALESCE(se2.sort_order, 0), se2.id)
+                  <= (COALESCE(lse.sort_order, 0), lse.se_id)
+          )::int AS position,
+          (
+            SELECT COUNT(*) FROM session_exercises se3
+            WHERE se3.session_id = lse.session_id
+          )::int AS total_exercises
+        FROM last_se lse
       )
       SELECT
         lse.exercise_id,
+        lse.variant_id,
         lse.date,
+        p.position,
+        p.total_exercises,
         st.weight_kg,
         st.reps,
         st.set_number
       FROM last_se lse
+      JOIN pos p ON p.exercise_id = lse.exercise_id
+                AND p.variant_id IS NOT DISTINCT FROM lse.variant_id
       JOIN sets st ON st.session_exercise_id = lse.se_id
       WHERE st.weight_kg IS NOT NULL
       ORDER BY lse.exercise_id, st.set_number
     `)) as unknown as { rows?: any[] };
 
     const rows = (lastPerfRows.rows ?? lastPerfRows) as unknown as {
-      exercise_id: number; date: string; weight_kg: number; reps: number; set_number: number;
+      exercise_id: number; variant_id: number | null; date: string;
+      position: number; total_exercises: number;
+      weight_kg: number; reps: number; set_number: number;
     }[];
 
     for (const row of rows) {
-      if (!lastPerf[row.exercise_id]) {
-        lastPerf[row.exercise_id] = { date: row.date, sets: [] };
+      const key = variantKey(row.exercise_id, row.variant_id);
+      if (!lastPerf[key]) {
+        lastPerf[key] = {
+          date: row.date,
+          position: Number(row.position),
+          totalExercises: Number(row.total_exercises),
+          sets: [],
+        };
       }
-      lastPerf[row.exercise_id].sets.push({
+      lastPerf[key].sets.push({
         weightKg: Number(row.weight_kg),
         reps: Number(row.reps),
       });
@@ -174,6 +256,7 @@ export async function GET(
         SELECT
           se.id AS se_id,
           se.exercise_id,
+          se.variant_id,
           COALESCE(MAX(st.weight_kg), 0) AS max_weight,
           COALESCE(SUM(st.weight_kg * st.reps), 0) AS total_volume
         FROM session_exercises se
@@ -181,14 +264,14 @@ export async function GET(
         LEFT JOIN sets st ON st.session_exercise_id = se.id
         WHERE se.exercise_id IN (${sql.join(exerciseIds.map(id => sql`${id}`), sql`, `)})
           AND s.user_id = ${auth.userId}
-        GROUP BY se.id, se.exercise_id
+        GROUP BY se.id, se.exercise_id, se.variant_id
       ),
       ranked AS (
         SELECT
           se_id,
           exercise_id,
-          RANK() OVER (PARTITION BY exercise_id ORDER BY max_weight DESC) AS weight_rank,
-          RANK() OVER (PARTITION BY exercise_id ORDER BY total_volume DESC) AS volume_rank
+          RANK() OVER (PARTITION BY exercise_id, variant_id ORDER BY max_weight DESC) AS weight_rank,
+          RANK() OVER (PARTITION BY exercise_id, variant_id ORDER BY total_volume DESC) AS volume_rank
         FROM exercise_stats
         WHERE max_weight > 0
       )
@@ -206,16 +289,23 @@ export async function GET(
   }
 
   // Fetch known weights per exercise
-  const knownWeightsMap: Record<number, number[]> = {};
+  // Paliers ranges par (exercice, version) : la suggestion de poids doit
+  // proposer les plaques de la salle du jour.
+  const knownWeightsMap: Record<string, number[]> = {};
   if (exerciseIds.length > 0) {
     const weightRows = await db
-      .select({ exerciseId: exerciseWeights.exerciseId, weightKg: exerciseWeights.weightKg })
+      .select({
+        exerciseId: exerciseWeights.exerciseId,
+        variantId: exerciseWeights.variantId,
+        weightKg: exerciseWeights.weightKg,
+      })
       .from(exerciseWeights)
       .where(inArray(exerciseWeights.exerciseId, exerciseIds))
       .orderBy(asc(exerciseWeights.weightKg));
     for (const row of weightRows) {
-      if (!knownWeightsMap[row.exerciseId]) knownWeightsMap[row.exerciseId] = [];
-      knownWeightsMap[row.exerciseId].push(row.weightKg);
+      const key = variantKey(row.exerciseId, row.variantId);
+      if (!knownWeightsMap[key]) knownWeightsMap[key] = [];
+      knownWeightsMap[key].push(row.weightKg);
     }
   }
 
@@ -229,8 +319,8 @@ export async function GET(
             rankings[e.sessionExerciseId].volumeRank ?? 999
           )
         : null,
-      lastPerf: lastPerf[e.exerciseId] || null,
-      knownWeights: knownWeightsMap[e.exerciseId] || [],
+      lastPerf: lastPerf[variantKey(e.exerciseId, e.variantId)] || null,
+      knownWeights: knownWeightsMap[variantKey(e.exerciseId, e.variantId)] || [],
     })),
   });
 }

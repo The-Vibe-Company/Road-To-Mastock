@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { SessionCard } from "./session-card";
 import { Dashboard } from "./dashboard";
+import { ExerciseRanking } from "./exercise-ranking";
 
 interface Session {
   id: number;
@@ -15,40 +16,43 @@ interface Session {
   bronze: number;
 }
 
+type Tab = "dashboard" | "sessions" | "exercises";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "sessions", label: "Seances" },
+  { id: "exercises", label: "Exercices" },
+];
+
 export function HomeTabs({ sessions }: { sessions: Session[] }) {
   const searchParams = useSearchParams();
-  const initial = searchParams.get("tab") === "sessions" ? "sessions" : "dashboard";
-  const [tab, setTab] = useState<"dashboard" | "sessions">(initial);
+  const fromUrl = searchParams.get("tab");
+  const initial: Tab =
+    fromUrl === "sessions" || fromUrl === "exercises" ? fromUrl : "dashboard";
+  const [tab, setTab] = useState<Tab>(initial);
 
-  const switchTab = (t: "dashboard" | "sessions") => {
+  const switchTab = (t: Tab) => {
     setTab(t);
-    window.history.replaceState(null, "", t === "dashboard" ? "/" : "/?tab=sessions");
+    window.history.replaceState(null, "", t === "dashboard" ? "/" : `/?tab=${t}`);
   };
 
   return (
     <>
       {/* Tabs */}
-      <div className="mb-6 flex items-center gap-2 rounded-xl bg-secondary/50 p-1">
-        <button
-          onClick={() => switchTab("dashboard")}
-          className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-all ${
-            tab === "dashboard"
-              ? "bg-gradient-orange-intense text-black shadow-lg"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Dashboard
-        </button>
-        <button
-          onClick={() => switchTab("sessions")}
-          className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-all ${
-            tab === "sessions"
-              ? "bg-gradient-orange-intense text-black shadow-lg"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Seances
-        </button>
+      <div className="mb-6 flex items-center gap-1 rounded-xl bg-secondary/50 p-1">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => switchTab(t.id)}
+            className={`flex-1 rounded-lg px-2 py-2 text-sm font-bold transition-all ${
+              tab === t.id
+                ? "bg-gradient-orange-intense text-black shadow-lg"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Content */}
@@ -85,6 +89,7 @@ export function HomeTabs({ sessions }: { sessions: Session[] }) {
           </div>
         )
       )}
+      {tab === "exercises" && <ExerciseRanking />}
     </>
   );
 }

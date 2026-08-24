@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
 import { HomeTabs } from "@/components/home-tabs";
 import { NewSessionButton } from "@/components/new-session-button";
+import { RefreshOnReturn } from "@/components/refresh-on-return";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,7 @@ export default async function Home() {
 
   return (
     <div className="flex min-h-dvh flex-col px-4 pb-28 pt-10">
+      <RefreshOnReturn />
       {/* Hero */}
       <div className="hero-gradient -mx-4 -mt-10 mb-8 px-4 pb-6 pt-12">
         <div className="mb-2 flex items-center justify-between">

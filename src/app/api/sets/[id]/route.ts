@@ -2,14 +2,21 @@ import { db } from "@/lib/db";
 import { sets, sessionExercises, exercises, sessions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { getAuthUser } from "@/lib/auth";
+import { notFound, ownsSet, unauthorized } from "@/lib/ownership";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await getAuthUser();
+  if (!auth) return unauthorized();
+
   const { id } = await params;
-  const body = await request.json();
   const setId = parseInt(id);
+  if (!(await ownsSet(setId, auth.userId))) return notFound();
+
+  const body = await request.json();
 
   const [meta] = await db
     .select({
@@ -77,7 +84,12 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await getAuthUser();
+  if (!auth) return unauthorized();
+
   const { id } = await params;
+  if (!(await ownsSet(parseInt(id), auth.userId))) return notFound();
+
   await db.delete(sets).where(eq(sets.id, parseInt(id)));
   revalidatePath("/");
   return Response.json({ ok: true });

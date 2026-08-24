@@ -11,15 +11,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Flame, Sparkles, Loader2, Activity } from "lucide-react";
+import { Plus, Search, Flame, Sparkles, Loader2, Activity, MapPin } from "lucide-react";
 import { MUSCLE_GROUPS } from "@/lib/muscle-groups";
 
 interface Exercise {
   id: number;
   name: string;
   kind?: "muscu" | "cardio";
+  hasVariants?: boolean;
   muscleGroup: string | null;
   muscleGroups: string[];
+}
+
+interface Variant {
+  id: number;
+  name: string;
 }
 
 interface FrequentExercise extends Exercise {
@@ -29,7 +35,7 @@ interface FrequentExercise extends Exercise {
 interface ExercisePickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (exercise: Exercise) => void | Promise<void>;
+  onSelect: (exercise: Exercise, variantId: number | null) => void | Promise<void>;
 }
 
 export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerProps) {
@@ -41,10 +47,16 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
   const [newMuscles, setNewMuscles] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [selectingId, setSelectingId] = useState<number | null>(null);
+  // Machine qui change selon la salle : on demande laquelle avant d'ajouter.
+  const [variantFor, setVariantFor] = useState<Exercise | null>(null);
+  const [variantOptions, setVariantOptions] = useState<Variant[]>([]);
+  const [newVariant, setNewVariant] = useState("");
 
   useEffect(() => {
     if (open) {
       setSelectingId(null);
+      setVariantFor(null);
+      setNewVariant("");
       fetch("/api/exercises")
         .then((r) => r.json())
         .then(setExercises);
@@ -58,12 +70,46 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
 
   const handleSelect = async (exercise: Exercise) => {
     if (selectingId !== null) return;
+
+    if (exercise.hasVariants) {
+      const res = await fetch(`/api/exercises/${exercise.id}/variants`);
+      const data = res.ok ? await res.json() : [];
+      setVariantOptions(Array.isArray(data) ? data : []);
+      setVariantFor(exercise);
+      return;
+    }
+
     setSelectingId(exercise.id);
     try {
-      await onSelect(exercise);
+      await onSelect(exercise, null);
     } finally {
       setSelectingId(null);
     }
+  };
+
+  const chooseVariant = async (variantId: number | null) => {
+    const exercise = variantFor;
+    if (!exercise || selectingId !== null) return;
+    setSelectingId(exercise.id);
+    try {
+      await onSelect(exercise, variantId);
+      setVariantFor(null);
+      setNewVariant("");
+    } finally {
+      setSelectingId(null);
+    }
+  };
+
+  const createVariantAndSelect = async () => {
+    const name = newVariant.trim();
+    if (!name || !variantFor || selectingId !== null) return;
+    const res = await fetch(`/api/exercises/${variantFor.id}/variants`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const created = res.ok ? await res.json() : null;
+    if (created?.id) await chooseVariant(created.id);
   };
 
   const handleCreate = async () => {
@@ -79,7 +125,7 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
     setNewMuscles([]);
     setShowCreate(false);
     try {
-      await onSelect(exercise);
+      await onSelect(exercise, null);
     } finally {
       setCreating(false);
     }
@@ -185,8 +231,76 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
             </div>
           )}
 
+          {/* Choix de la salle, pour les machines qui changent d'une salle a
+              l'autre. On remplace la liste tant que le choix n'est pas fait. */}
+          {variantFor && (
+            <div className="rounded-2xl border border-primary/20 bg-secondary/30 p-4">
+              <p className="mb-1 flex items-center gap-1.5 text-sm font-bold">
+                <MapPin className="size-4 text-primary" />
+                {variantFor.name}
+              </p>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Cette machine change selon la salle. Laquelle aujourd&apos;hui ?
+              </p>
+
+              {variantOptions.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-1.5">
+                  {variantOptions.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => chooseVariant(v.id)}
+                      disabled={selectingId !== null}
+                      className="rounded-lg bg-gradient-orange-intense px-3 py-2 text-xs font-bold text-black shadow-lg transition-all active:scale-95 disabled:opacity-60"
+                    >
+                      {v.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <form
+                className="mb-3 flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createVariantAndSelect();
+                }}
+              >
+                <Input
+                  placeholder="Nouvelle salle"
+                  value={newVariant}
+                  onChange={(e) => setNewVariant(e.target.value)}
+                  className="h-10 bg-secondary/50 text-sm font-medium"
+                />
+                <Button
+                  type="submit"
+                  disabled={!newVariant.trim() || selectingId !== null}
+                  className="h-10 shrink-0 bg-secondary px-3 font-bold"
+                >
+                  <Plus className="size-4" strokeWidth={3} />
+                </Button>
+              </form>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setVariantFor(null)}
+                  disabled={selectingId !== null}
+                  className="text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  Retour
+                </button>
+                <button
+                  onClick={() => chooseVariant(null)}
+                  disabled={selectingId !== null}
+                  className="text-xs font-bold text-muted-foreground hover:text-primary disabled:opacity-50"
+                >
+                  Sans preciser
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* List */}
-          <div className="flex-1 overflow-y-auto pb-6">
+          <div className={`flex-1 overflow-y-auto pb-6 ${variantFor ? "hidden" : ""}`}>
             {/* Frequent exercises */}
             {!search && frequentExercises.length > 0 && (
               <div className="mb-5">
