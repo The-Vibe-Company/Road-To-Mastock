@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { exerciseCatalog, exercises, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { setAuthCookie } from "@/lib/auth";
@@ -43,6 +43,23 @@ export async function POST(request: Request) {
       name: name.trim(),
     })
     .returning({ id: users.id, email: users.email, name: users.name });
+
+  // Les exercices appartiennent a leur proprietaire : on part d'une copie du
+  // catalogue de reference, que le nouvel inscrit peut renommer ou supprimer
+  // sans impacter personne.
+  const catalog = await db.select().from(exerciseCatalog);
+  if (catalog.length > 0) {
+    await db.insert(exercises).values(
+      catalog.map((c) => ({
+        userId: user.id,
+        name: c.name,
+        kind: c.kind,
+        isAssisted: c.isAssisted,
+        muscleGroup: c.muscleGroup,
+        muscleGroups: c.muscleGroups,
+      })),
+    );
+  }
 
   await setAuthCookie(user.id);
 

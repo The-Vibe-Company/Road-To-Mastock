@@ -17,7 +17,7 @@ export async function GET(
   const [exercise] = await db
     .select()
     .from(exercises)
-    .where(eq(exercises.id, exerciseId));
+    .where(and(eq(exercises.id, exerciseId), eq(exercises.userId, auth.userId)));
 
   if (!exercise) {
     return Response.json({ error: "Exercise not found" }, { status: 404 });
@@ -98,6 +98,7 @@ export async function GET(
       name: exercise.name,
       kind: exercise.kind ?? "muscu",
       isAssisted: exercise.isAssisted ?? false,
+      hasVariants: exercise.hasVariants ?? false,
       muscleGroup: groups[0] ?? null,
       muscleGroups: groups,
     },

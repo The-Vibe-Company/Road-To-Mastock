@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { exercises } from "@/lib/db/schema";
-import { asc, ilike, or } from "drizzle-orm";
+import { and, asc, eq, ilike } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { resolveMuscleGroups } from "@/lib/muscle-groups";
 import type { NextRequest } from "next/server";
@@ -12,10 +12,15 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const q = searchParams.get("q");
 
+  // Catalogue perso : jamais les exercices d'un autre utilisateur.
   const result = await db
     .select()
     .from(exercises)
-    .where(q ? or(ilike(exercises.name, `%${q}%`)) : undefined)
+    .where(
+      q
+        ? and(eq(exercises.userId, auth.userId), ilike(exercises.name, `%${q}%`))
+        : eq(exercises.userId, auth.userId),
+    )
     .orderBy(asc(exercises.name));
 
   return Response.json(
@@ -26,6 +31,7 @@ export async function GET(request: NextRequest) {
         name: e.name,
         kind: e.kind ?? "muscu",
         isAssisted: e.isAssisted ?? false,
+        hasVariants: e.hasVariants ?? false,
         muscleGroup: groups[0] ?? null,
         muscleGroups: groups,
       };
@@ -66,6 +72,7 @@ export async function POST(request: Request) {
   const [result] = await db
     .insert(exercises)
     .values({
+      userId: auth.userId,
       name: body.name.trim(),
       muscleGroup: groups[0] ?? null,
       muscleGroups: groups,
@@ -77,7 +84,12 @@ export async function POST(request: Request) {
     const [existing] = await db
       .select()
       .from(exercises)
-      .where(ilike(exercises.name, body.name.trim()));
+      .where(
+        and(
+          eq(exercises.userId, auth.userId),
+          ilike(exercises.name, body.name.trim()),
+        ),
+      );
     if (!existing) {
       return Response.json({ error: "Conflict resolution failed" }, { status: 500 });
     }

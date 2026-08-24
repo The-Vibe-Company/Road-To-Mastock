@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ExercisePicker } from "./exercise-picker";
@@ -28,6 +28,8 @@ interface ExerciseSet {
 
 interface LastPerf {
   date: string;
+  position: number;
+  totalExercises: number;
   sets: { weightKg: number; reps: number }[];
 }
 
@@ -39,6 +41,9 @@ interface SessionExercise {
   isAssisted: boolean;
   muscleGroup: string | null;
   muscleGroups: string[];
+  hasVariants: boolean;
+  variantId: number | null;
+  variantName: string | null;
   locked: boolean;
   notes: string | null;
   record: number | null;
@@ -61,6 +66,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showBodyweightPicker, setShowBodyweightPicker] = useState(false);
   const [loading, setLoading] = useState(true);
+  const pendingScrollRef = useRef<number | null>(null);
 
   const refreshSession = useCallback(async () => {
     const res = await fetch(`/api/sessions/${sessionId}`);
@@ -73,17 +79,33 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
     refreshSession();
   }, [refreshSession]);
 
-  const handleSelectExercise = async (exercise: {
-    id: number;
-    name: string;
-    muscleGroup: string | null;
-    muscleGroups: string[];
-  }) => {
-    await fetch("/api/session-exercises", {
+  useEffect(() => {
+    const id = pendingScrollRef.current;
+    if (id === null) return;
+    pendingScrollRef.current = null;
+    document
+      .querySelector(`[data-session-exercise-id="${id}"]`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [session]);
+
+  const handleSelectExercise = async (
+    exercise: {
+      id: number;
+      name: string;
+      muscleGroup: string | null;
+      muscleGroups: string[];
+    },
+    variantId: number | null,
+  ) => {
+    const res = await fetch("/api/session-exercises", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, exerciseId: exercise.id }),
+      body: JSON.stringify({ sessionId, exerciseId: exercise.id, variantId }),
     });
+    const created = res.ok ? await res.json() : null;
+    // Le nouvel exercice est ajoute en bas de liste, souvent hors ecran : on
+    // memorise son id pour aller le chercher une fois qu'il est monte.
+    pendingScrollRef.current = created?.id ?? null;
     await refreshSession();
     setShowPicker(false);
   };
@@ -258,6 +280,20 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ locked }),
     });
+  };
+
+  // Changer la salle d'un exercice deja fait : records, paliers et derniere
+  // perf de ce bloc basculent sur la nouvelle version.
+  const handleChangeVariant = async (
+    sessionExerciseId: number,
+    variantId: number | null,
+  ) => {
+    await fetch(`/api/session-exercises/${sessionExerciseId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ variantId }),
+    });
+    await refreshSession();
   };
 
   const handleUpdateNotes = async (sessionExerciseId: number, notes: string) => {
@@ -444,34 +480,42 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
       ) : (
         <div className="space-y-4">
           {exercises.map((ex, i) => (
-            <ExerciseBlock
+            <div
               key={ex.sessionExerciseId}
-              sessionExerciseId={ex.sessionExerciseId}
-              exerciseId={ex.exerciseId}
-              name={ex.name}
-              kind={ex.kind}
-              isAssisted={ex.isAssisted}
-              bodyweightKg={session.bodyweightKg}
-              onRequestBodyweight={() => setShowBodyweightPicker(true)}
-              muscleGroups={ex.muscleGroups}
-              locked={ex.locked}
-              notes={ex.notes}
-              record={ex.record}
-              lastPerf={ex.lastPerf}
-              knownWeights={ex.knownWeights}
-              sets={ex.sets}
-              onAddSet={handleAddSet}
-              onAddCardioSet={handleAddCardioSet}
-              onAddAssistedSet={handleAddAssistedSet}
-              onDeleteSet={handleDeleteSet}
-              onRemoveExercise={handleRemoveExercise}
-              onToggleLock={handleToggleLock}
-              onUpdateNotes={handleUpdateNotes}
-              canMoveUp={i > 0}
-              canMoveDown={i < exercises.length - 1}
-              onMoveUp={() => handleMoveExercise(i, "up")}
-              onMoveDown={() => handleMoveExercise(i, "down")}
-            />
+              data-session-exercise-id={ex.sessionExerciseId}
+            >
+              <ExerciseBlock
+                sessionExerciseId={ex.sessionExerciseId}
+                exerciseId={ex.exerciseId}
+                name={ex.name}
+                kind={ex.kind}
+                isAssisted={ex.isAssisted}
+                bodyweightKg={session.bodyweightKg}
+                onRequestBodyweight={() => setShowBodyweightPicker(true)}
+                muscleGroups={ex.muscleGroups}
+                hasVariants={ex.hasVariants}
+                variantId={ex.variantId}
+                variantName={ex.variantName}
+                onChangeVariant={handleChangeVariant}
+                locked={ex.locked}
+                notes={ex.notes}
+                record={ex.record}
+                lastPerf={ex.lastPerf}
+                knownWeights={ex.knownWeights}
+                sets={ex.sets}
+                onAddSet={handleAddSet}
+                onAddCardioSet={handleAddCardioSet}
+                onAddAssistedSet={handleAddAssistedSet}
+                onDeleteSet={handleDeleteSet}
+                onRemoveExercise={handleRemoveExercise}
+                onToggleLock={handleToggleLock}
+                onUpdateNotes={handleUpdateNotes}
+                canMoveUp={i > 0}
+                canMoveDown={i < exercises.length - 1}
+                onMoveUp={() => handleMoveExercise(i, "up")}
+                onMoveDown={() => handleMoveExercise(i, "down")}
+              />
+            </div>
           ))}
         </div>
       )}

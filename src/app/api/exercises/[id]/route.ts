@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { exercises } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { resolveMuscleGroups } from "@/lib/muscle-groups";
 
@@ -24,8 +24,9 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
-  const updates: Record<string, string | string[] | null> = {};
+  const updates: Record<string, string | string[] | boolean | null> = {};
   if (body.name?.trim()) updates.name = body.name.trim();
+  if (typeof body.hasVariants === "boolean") updates.hasVariants = body.hasVariants;
 
   const groups = normalizeGroups(body.muscleGroups);
   if (groups !== undefined) {
@@ -44,10 +45,14 @@ export async function PATCH(
     return Response.json({ error: "Nothing to update" }, { status: 400 });
   }
 
+  // Le filtre sur userId fait tout le travail : renommer n'agit que sur SA
+  // copie, et un exercice d'un autre utilisateur ressort en 404.
   const [updated] = await db
     .update(exercises)
     .set(updates)
-    .where(eq(exercises.id, parseInt(id)))
+    .where(
+      and(eq(exercises.id, parseInt(id)), eq(exercises.userId, auth.userId)),
+    )
     .returning();
 
   if (!updated) {
@@ -58,6 +63,7 @@ export async function PATCH(
   return Response.json({
     id: updated.id,
     name: updated.name,
+    hasVariants: updated.hasVariants,
     muscleGroup: ug[0] ?? null,
     muscleGroups: ug,
   });

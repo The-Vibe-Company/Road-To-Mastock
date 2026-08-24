@@ -31,7 +31,9 @@ export async function GET(
 
   const stats = await getUserStats(friendUserId);
 
+  // Pas de max-age : les seances se creent via des route handlers, et un cache
+  // navigateur de 60s reservait des stats perimees juste apres une creation.
   return Response.json(stats, {
-    headers: { "Cache-Control": "private, max-age=60" },
+    headers: { "Cache-Control": "private, no-store" },
   });
 }
