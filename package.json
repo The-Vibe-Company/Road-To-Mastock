@@ -20,7 +20,8 @@
     "animals:enrich": "npx tsx scripts/enrich-animals.ts",
     "cards:assign-numbers": "npx tsx scripts/assign-card-numbers.ts",
     "cards:generate-packs": "python3 scripts/generate-pack-art.py",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "check:plan": "npx tsx scripts/check-session-plan.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

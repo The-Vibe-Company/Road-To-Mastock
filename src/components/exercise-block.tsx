@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,9 @@ import { CardioSetRow } from "./cardio-set-row";
 import { AssistedSetForm, type AssistedPayload } from "./assisted-set-form";
 import { AssistedSetRow } from "./assisted-set-row";
 import { RestTimer } from "./rest-timer";
-import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2, AlertTriangle, MapPin } from "lucide-react";
+import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2, AlertTriangle, MapPin, ListOrdered } from "lucide-react";
 import { cardioMachineFromName } from "@/lib/cardio";
+import { computeSessionPlan } from "@/lib/session-plan";
 
 interface ExerciseSet {
   id: number;
@@ -143,6 +144,7 @@ export function ExerciseBlock({
     ? sets.reduce((sum, s) => sum + (s.calories ?? 0), 0)
     : 0;
   const medal = !isCardio && record && record <= 3 ? recordStyles[record] : null;
+  const [applyToken, setApplyToken] = useState(0);
   const [showVariants, setShowVariants] = useState(false);
   const [variantOptions, setVariantOptions] = useState<{ id: number; name: string }[]>([]);
   const [variantBusy, setVariantBusy] = useState(false);
@@ -199,6 +201,33 @@ export function ExerciseBlock({
       setVariantBusy(false);
     }
   };
+
+  // Programme du jour, déduit des paliers et de la dernière séance faite.
+  // Pas pour le cardio (pas de poids) ni pour l'assisté (poids dérivé du corps).
+  const plan = useMemo(
+    () =>
+      isCardio || isAssisted
+        ? null
+        : computeSessionPlan(knownWeights, lastPerf?.sets ?? null),
+    [isCardio, isAssisted, knownWeights, lastPerf],
+  );
+  // Si une série enregistrée s'écarte du programme, on cesse de prescrire :
+  // continuer à proposer plan[i] serait faux, et barrer plan[0] comme « fait »
+  // alors qu'un autre poids a été soulevé serait mensonger.
+  const onPlan =
+    plan !== null &&
+    sets.every(
+      // Tolérance : les poids sont stockés en float4 côté base, la valeur
+      // optimiste vient du JS. Une comparaison stricte ferait clignoter le
+      // bandeau en « Hors plan » le temps du rafraîchissement.
+      (s, i) =>
+        i >= plan.weights.length ||
+        Math.abs((s.weightKg ?? 0) - plan.weights[i]) < 0.01,
+    );
+  const plannedWeight =
+    plan && onPlan && sets.length < plan.weights.length
+      ? plan.weights[sets.length]
+      : undefined;
 
   const handleAddSet = async (w: number, r: number) => {
     await onAddSet(sessionExerciseId, w, r);
@@ -407,6 +436,60 @@ export function ExerciseBlock({
           </div>
         )}
 
+        {/* Programme du jour — muscu non assistée, dès qu'on a assez de paliers */}
+        {plan && !locked && (
+          <div className="mb-3 rounded-lg border border-l-2 border-primary/10 border-l-primary/50 bg-primary/5 px-3 py-2.5">
+            <div className="flex items-center gap-1.5">
+              <ListOrdered className="size-3 shrink-0 text-primary/40" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-primary/40">
+                Plan du jour · kg
+              </span>
+              <span className="ml-auto text-[10px] font-bold text-primary/50">
+                {!onPlan
+                  ? "Hors plan"
+                  : `${plan.pattern === "ascendant" ? "Montée" : "Pyramide"}${
+                      plan.shifted ? " · +1 palier" : ""
+                    }`}
+              </span>
+            </div>
+            {plan.atCeiling && onPlan && (
+              <p className="mt-1 text-[10px] font-medium text-muted-foreground">
+                Plafond atteint — ajoute des paliers sur la fiche de l&apos;exercice
+                pour continuer à progresser.
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              {plan.weights.map((w, i) => {
+                const done = onPlan && i < sets.length;
+                const current = onPlan && i === sets.length;
+                return (
+                  <span
+                    key={i}
+                    className={`rounded-md px-2 py-1 text-xs font-black tabular-nums ${
+                      done
+                        ? "bg-secondary/40 text-muted-foreground line-through"
+                        : current
+                          ? "bg-gradient-orange-intense text-black shadow-lg"
+                          : "bg-secondary/50 text-primary/70"
+                    }`}
+                  >
+                    {w}
+                  </span>
+                );
+              })}
+              {plannedWeight != null && (
+                <button
+                  type="button"
+                  onClick={() => setApplyToken((n) => n + 1)}
+                  className="ml-auto rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-primary/60 transition-colors hover:text-primary active:scale-95"
+                >
+                  Appliquer
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Last performance — muscu only */}
         {!isCardio && !locked && lastPerf && lastPerf.sets.length > 0 && (
           <div className="mb-3 rounded-lg border border-primary/10 bg-primary/5 px-3 py-2.5">
@@ -520,6 +603,8 @@ export function ExerciseBlock({
             lastWeight={lastSet?.weightKg ?? undefined}
             lastReps={lastSet?.reps ?? undefined}
             knownWeights={knownWeights}
+            plannedWeight={plannedWeight}
+            applyToken={applyToken}
           />
         )}
 
