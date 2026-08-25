@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Check, Loader2 } from "lucide-react";
@@ -10,6 +10,12 @@ interface SetFormProps {
   lastWeight?: number;
   lastReps?: number;
   knownWeights?: number[];
+  /** Poids prévu par le programme du jour pour cette série. Prioritaire sur la
+   *  simple montée d'un palier. */
+  plannedWeight?: number;
+  /** Change à chaque appui sur « Appliquer » pour réimposer le poids prévu,
+   *  même si l'utilisateur avait saisi autre chose. */
+  applyToken?: number;
 }
 
 function getNextWeight(currentWeight: number | undefined, knownWeights: number[]): number | undefined {
@@ -19,23 +25,61 @@ function getNextWeight(currentWeight: number | undefined, knownWeights: number[]
   return next ?? currentWeight;
 }
 
-export function SetForm({ onAdd, lastWeight, lastReps, knownWeights = [] }: SetFormProps) {
-  const suggestedWeight = lastWeight != null
-    ? getNextWeight(lastWeight, knownWeights) ?? lastWeight
-    : undefined;
+export function SetForm({
+  onAdd,
+  lastWeight,
+  lastReps,
+  knownWeights = [],
+  plannedWeight,
+  applyToken,
+}: SetFormProps) {
+  const suggestedWeight =
+    plannedWeight ??
+    (lastWeight != null
+      ? getNextWeight(lastWeight, knownWeights) ?? lastWeight
+      : undefined);
 
   const [weight, setWeight] = useState(suggestedWeight?.toString() || "");
   const [reps, setReps] = useState(lastReps?.toString() || "10");
   const [submitting, setSubmitting] = useState(false);
+  // Dès que l'utilisateur touche au champ, on cesse d'y écrire : le parent se
+  // re-rend à chaque rafraîchissement de la séance (y compris déclenché par un
+  // AUTRE exercice), et sans ce garde-fou sa saisie serait effacée.
+  const [edited, setEdited] = useState(false);
+  // Lu dans les effets sans en être une dépendance : le tableau change
+  // d'identité à chaque rafraîchissement alors que son contenu est stable.
+  const knownWeightsRef = useRef(knownWeights);
+  knownWeightsRef.current = knownWeights;
 
-  // Update suggestions when lastWeight/lastReps change (new set added)
+  const suggestFor = (last: number | undefined) =>
+    plannedWeight ??
+    (last != null
+      ? getNextWeight(last, knownWeightsRef.current) ?? last
+      : undefined);
+
+  // Une série vient d'être enregistrée : on repart d'une saisie propre.
   useEffect(() => {
-    if (lastWeight != null) {
-      const next = getNextWeight(lastWeight, knownWeights) ?? lastWeight;
-      setWeight(next.toString());
-    }
+    const next = suggestFor(lastWeight);
+    if (next != null) setWeight(next.toString());
     setReps("10");
-  }, [lastWeight, lastReps, knownWeights]);
+    setEdited(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastWeight, lastReps]);
+
+  // Le programme a été recalculé : on ne l'impose que si le champ est intact.
+  useEffect(() => {
+    if (edited || plannedWeight == null) return;
+    setWeight(plannedWeight.toString());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plannedWeight]);
+
+  // « Appliquer » : on réimpose le poids prévu, sans toucher aux reps saisies.
+  useEffect(() => {
+    if (applyToken == null || plannedWeight == null) return;
+    setWeight(plannedWeight.toString());
+    setEdited(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +105,10 @@ export function SetForm({ onAdd, lastWeight, lastReps, knownWeights = [] }: SetF
           min="0"
           placeholder="0"
           value={weight}
-          onChange={(e) => setWeight(e.target.value)}
+          onChange={(e) => {
+            setWeight(e.target.value);
+            setEdited(true);
+          }}
           className="h-11 bg-secondary/50 pr-8 text-center text-base font-bold"
         />
         <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
