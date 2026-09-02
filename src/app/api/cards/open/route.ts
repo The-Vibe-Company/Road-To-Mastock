@@ -117,6 +117,16 @@ export async function POST() {
 
   // Énergie des Gardiens : chargée aux clôtures de séance, consommée ici.
   const charges = await loadCharges(auth.userId);
+  // Les odds de CE tirage, photographiées avant consommation : la modale
+  // d'ouverture les affiche — l'impact des cartes, noir sur blanc.
+  const hatUsed = buildPackHat(charges);
+  const hatTotal = Object.values(hatUsed).reduce((a, b) => a + b, 0);
+  const oddsUsed = {
+    hat: Object.fromEntries(
+      Object.entries(hatUsed).map(([k, w]) => [k, hatTotal > 0 ? Math.round((w / hatTotal) * 100) : 0]),
+    ),
+    innerShift: (charges.inner_pokemon ?? 0) - (charges.inner_animal ?? 0),
+  };
   const packType: PackType = DEBUG_FORCE_PACK ?? rollPackTypeFromHat(charges);
   const category = DEBUG_FORCE_ANIMAL
     ? "animal"
@@ -207,6 +217,7 @@ export async function POST() {
         ? { id: talent.id, family: talent.family, name: talent.name, description: talent.description }
         : null,
       tokens: tokensRemaining,
+      oddsUsed,
     });
   }
 
@@ -285,6 +296,7 @@ export async function POST() {
       ? { id: talent.id, family: talent.family, name: talent.name, description: talent.description }
       : null,
     tokens: tokensRemaining,
+    oddsUsed,
   });
 }
 

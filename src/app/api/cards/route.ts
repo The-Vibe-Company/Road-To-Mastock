@@ -128,6 +128,9 @@ export async function GET() {
       wheel: Object.fromEntries(
         wheel.map((o) => [o.reward, Math.round((o.weight / wheelTotal) * 100)]),
       ),
+      // La Balance : décalage du curseur animal/pokémon des packs mixtes,
+      // en points de pourcentage (positif = vers les Pokémon).
+      innerShift: (charges.inner_pokemon ?? 0) - (charges.inner_animal ?? 0),
     },
     animals: {
       cards: withNick(ownedAnimals, "animal"),
