@@ -625,9 +625,9 @@ export default function CollectionPage() {
         </div>
       )}
 
-      {/* La Forge : sa jauge vit sa vie, filtre actif ou pas — pleine,
+      {/* La Forge : sa jauge est TOUJOURS là, même vide — pleine (20),
           elle paie un tour de la Roue (un fragment garanti, au tirage). */}
-      {(data.charges?.forge ?? 0) > 0 && (
+      {(
         <div className="mb-3 flex items-center gap-2.5 rounded-2xl bg-secondary/30 px-4 py-2.5 ring-1 ring-border">
           <Flame className="size-4 text-primary" />
           <div className="min-w-0 flex-1">
@@ -651,7 +651,10 @@ export default function CollectionPage() {
               {forging ? "Elle tourne..." : "Lancer la Roue"}
             </button>
           ) : (
-            <span className="font-mono text-[10px] font-black tabular-nums text-muted-foreground">
+            <span
+              className="font-mono text-[10px] font-black tabular-nums text-muted-foreground"
+              title="Les Gardiens forgerons la remplissent à chaque éveil — pleine, un fragment t'attend au tirage"
+            >
               {data.charges?.forge ?? 0}/20
             </span>
           )}
