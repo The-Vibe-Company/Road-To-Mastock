@@ -56,6 +56,8 @@ export interface OpenResult {
   creature: Creature;
   isDuplicate: boolean;
   shardsGranted: number;
+  // Les odds photographiées au moment du tirage (avant consommation).
+  oddsUsed?: LiveOdds;
   // Talent caché découvert à la première obtention de cette carte.
   talent?: {
     id: string;
@@ -202,7 +204,42 @@ const RARITY_ITEMS: ReelItem[] = RARITIES.map((r) => ({
 }));
 
 // ─── Preview rows ────────────────────────────────────────────────────────
-function PackPreviewRow() {
+// Les pourcentages VIVANTS : le chapeau chargé par les Gardiens, pas les
+// poids de base. Quand l'énergie a bougé une porte, la valeur s'affiche en
+// couleur avec sa base barrée — l'impact des cartes se voit, enfin.
+
+export interface LiveOdds {
+  hat: Partial<Record<PackType, number>>;
+  innerShift?: number;
+}
+
+function LivePct({
+  live,
+  base,
+  className = "font-mono text-[11px] font-bold tabular-nums",
+}: {
+  live: number;
+  base: number;
+  className?: string;
+}) {
+  const boosted = live > base;
+  const nerfed = live < base;
+  if (!boosted && !nerfed) {
+    return <span className={`${className} text-muted-foreground`}>{live}%</span>;
+  }
+  return (
+    <span className="flex flex-col items-center leading-tight">
+      <span className={`${className} ${boosted ? "text-emerald-300" : "text-red-300"}`}>
+        {live}%
+      </span>
+      <span className="font-mono text-[9px] tabular-nums text-muted-foreground/60 line-through decoration-1">
+        {base}%
+      </span>
+    </span>
+  );
+}
+
+function PackPreviewRow({ odds }: { odds?: LiveOdds }) {
   return (
     <div className="flex w-full items-end justify-between gap-2">
       {PACK_TYPES.map((t) => (
@@ -211,18 +248,26 @@ function PackPreviewRow() {
           <p className="text-[10px] font-black uppercase tracking-wider text-foreground/85 text-center leading-tight">
             {PACK_SHORT_NAME[t]}
           </p>
-          <span className="font-mono text-[11px] font-bold tabular-nums text-muted-foreground">
-            {PACK_TYPE_WEIGHTS[t]}%
-          </span>
+          <LivePct
+            live={odds?.hat[t] ?? PACK_TYPE_WEIGHTS[t]}
+            base={PACK_TYPE_WEIGHTS[t]}
+          />
         </div>
       ))}
     </div>
   );
 }
 
-function CategoryPreviewRow({ packType }: { packType: PackType }) {
-  const pPokemon = Math.round(PACK_CATEGORY_PROB_POKEMON[packType] * 100);
+function CategoryPreviewRow({ packType, odds }: { packType: PackType; odds?: LiveOdds }) {
+  const base = PACK_CATEGORY_PROB_POKEMON[packType];
+  // La Balance ne penche que les packs mixtes — 1 point = 1 %, bornes 5/95.
+  const shifted =
+    base > 0 && base < 1
+      ? Math.min(0.95, Math.max(0.05, base + (odds?.innerShift ?? 0) / 100))
+      : base;
+  const pPokemon = Math.round(shifted * 100);
   const pAnimal = 100 - pPokemon;
+  const basePokemon = Math.round(base * 100);
   return (
     <div className="flex w-full items-end justify-around gap-6">
       <div className="flex flex-1 flex-col items-center gap-3">
@@ -230,18 +275,22 @@ function CategoryPreviewRow({ packType }: { packType: PackType }) {
         <p className="text-sm font-black uppercase tracking-wider text-foreground">
           Animal
         </p>
-        <span className="font-mono text-base font-black tabular-nums text-muted-foreground">
-          {pAnimal}%
-        </span>
+        <LivePct
+          live={pAnimal}
+          base={100 - basePokemon}
+          className="font-mono text-base font-black tabular-nums"
+        />
       </div>
       <div className="flex flex-1 flex-col items-center gap-3">
         <PokemonEmblem size={168} />
         <p className="text-sm font-black uppercase tracking-wider text-foreground">
           Pokémon
         </p>
-        <span className="font-mono text-base font-black tabular-nums text-muted-foreground">
-          {pPokemon}%
-        </span>
+        <LivePct
+          live={pPokemon}
+          base={basePokemon}
+          className="font-mono text-base font-black tabular-nums"
+        />
       </div>
     </div>
   );
@@ -280,10 +329,16 @@ function RarityPreviewRow({ packType }: { packType: PackType }) {
 export function PackOpenModal({
   result,
   onClose,
+  odds,
 }: {
   result: OpenResult;
   onClose: () => void;
+  // Le chapeau au moment de l'ouverture : les impacts des Gardiens, visibles.
+  odds?: LiveOdds;
 }) {
+  // Priorité aux odds du tirage lui-même (photographiées côté serveur) —
+  // le fallback est l'état courant du chapeau.
+  const liveOdds = result.oddsUsed ?? odds;
   // Décors d'ouverture débloqués par les Talents.
   const { has } = useTalents();
   const hasAnneaux = has("anneaux");
@@ -376,7 +431,7 @@ export function PackOpenModal({
 
             {phase === "ready" && (
               <>
-                <PackPreviewRow />
+                <PackPreviewRow odds={liveOdds} />
                 <Button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -427,7 +482,7 @@ export function PackOpenModal({
 
             {phase === "ready" && (
               <>
-                <CategoryPreviewRow packType={result.packType} />
+                <CategoryPreviewRow packType={result.packType} odds={liveOdds} />
                 <Button
                   onClick={(e) => {
                     e.stopPropagation();

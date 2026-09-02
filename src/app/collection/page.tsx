@@ -99,6 +99,7 @@ interface CollectionData {
   odds?: {
     hat: Record<PackType, number>;
     innerPokemon: number;
+    innerShift?: number;
     wheel: Record<string, number>;
   };
 }
@@ -445,15 +446,24 @@ export default function CollectionPage() {
                 return (
                   <span
                     key={key}
-                    className={`rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums ${
+                    className={`rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums ring-1 ${
                       boosted
-                        ? "bg-primary/15 text-primary"
+                        ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30"
                         : nerfed
-                          ? "bg-secondary/50 text-muted-foreground/60 line-through decoration-1"
-                          : "bg-secondary/50 text-muted-foreground"
+                          ? "bg-red-500/10 text-red-300 ring-red-500/30"
+                          : "bg-secondary/50 text-muted-foreground ring-transparent"
                     }`}
                   >
-                    {label} {pct}%
+                    {label}{" "}
+                    {boosted || nerfed ? (
+                      <>
+                        <span className="text-muted-foreground/50 line-through decoration-1">{base}%</span>
+                        {"\u2009→\u2009"}
+                        {pct}%
+                      </>
+                    ) : (
+                      <>{pct}%</>
+                    )}
                   </span>
                 );
               })}
@@ -755,7 +765,7 @@ export default function CollectionPage() {
       )}
 
       {modalResult && (
-        <PackOpenModal result={modalResult} onClose={() => setModalResult(null)} />
+        <PackOpenModal result={modalResult} onClose={() => setModalResult(null)} odds={data.odds} />
       )}
       {detailCreature && (
         <CardDetailModal
