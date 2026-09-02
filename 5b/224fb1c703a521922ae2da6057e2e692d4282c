@@ -1,0 +1,36 @@
+src/app/api/sessions/[id]/terminate/route.ts
+  s_6dc77352c5bc09::t_d97c7dc3e943e9 10,56-57,103,165
+src/components/terminate-session-button.tsx
+  s_6dc77352c5bc09::t_50f0dd6a63965d 6,51-66,89-93,110-112,135,166-186,278-377
+  s_6dc77352c5bc09::t_28ebd94a4d7d3c 378
+src/app/manuel/page.tsx
+  s_6dc77352c5bc09::t_86fe83ca657f27 115-123
+src/app/api/sessions/[id]/route.ts
+  s_6dc77352c5bc09::t_0752d3b72f0ab7 7,317-322,325
+src/app/api/sessions/[id]/cardio-draft/route.ts
+  s_6dc77352c5bc09::t_d97c7dc3e943e9 1-42
+scripts/add-cardio-draws.ts
+  s_6dc77352c5bc09::t_944e29b7b52531 1-30
+src/lib/db/schema.ts
+  s_6dc77352c5bc09::t_e988789ceeea85 319-335
+src/lib/guardians.ts
+  s_6dc77352c5bc09::t_9a796dea463668 6,9,12,16,20-21,163-225,412-421,797-984
+src/lib/powers.ts
+  s_6dc77352c5bc09::t_b35cb74bf7226f 1384-1393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5b224fb1c703a521922ae2da6057e2e692d4282c",
+  "prompts": {},
+  "sessions": {
+    "s_6dc77352c5bc09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c821057a-6589-4ccc-9a68-ecc9f4e69e12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}
