@@ -1,0 +1,24 @@
+src/app/exercises/[id]/page.tsx
+  s_6dc77352c5bc09::t_f7436926247841 584-585,589,596
+  s_6dc77352c5bc09::t_dc85a5b53e370c 608-611
+src/components/accent-provider.tsx
+  s_6dc77352c5bc09::t_e20ae5e74b128c 32-46,49-70,75-77
+src/app/layout.tsx
+  s_6dc77352c5bc09::t_e20ae5e74b128c 7,50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "377c9e3b991e3beade3b3909d1a55870f2227ea7",
+  "prompts": {},
+  "sessions": {
+    "s_6dc77352c5bc09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c821057a-6589-4ccc-9a68-ecc9f4e69e12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}

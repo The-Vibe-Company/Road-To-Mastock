@@ -1,0 +1,113 @@
+src/app/api/sessions/[id]/terminate/route.ts
+  s_6dc77352c5bc09::t_d97c7dc3e943e9 10,56-57,106,168
+src/components/terminate-session-button.tsx
+  s_6dc77352c5bc09::t_50f0dd6a63965d 6,52-59,62-69,101-105,125-127,156,187-207,418-434,436-437,452,455-456,458-462,470-472,474-478,486-530
+  s_6dc77352c5bc09::t_28ebd94a4d7d3c 531
+  s_6dc77352c5bc09::t_d7aee4c9dbc7cf 435,438-451,453-454,467,483
+  s_6dc77352c5bc09::t_50da8852a6ddd5 60-61,457,463-466,468-469,473,479-482,484-485
+  s_6dc77352c5bc09::t_d0d632476ff498 106-108,147-152,221-223,227-302
+src/app/manuel/page.tsx
+  s_6dc77352c5bc09::t_86fe83ca657f27 115-123
+  s_6dc77352c5bc09::t_1c28137a7c9128 173-178,181
+  s_6dc77352c5bc09::t_36980d687317ea 168-172
+  s_6dc77352c5bc09::t_fe05d8f5616fc8 179-180
+src/app/api/sessions/[id]/route.ts
+  s_6dc77352c5bc09::t_0752d3b72f0ab7 7,317-322,325
+src/app/api/sessions/[id]/cardio-draft/route.ts
+  s_6dc77352c5bc09::t_d97c7dc3e943e9 1-42
+scripts/add-cardio-draws.ts
+  s_6dc77352c5bc09::t_944e29b7b52531 1-30
+src/lib/db/schema.ts
+  s_6dc77352c5bc09::t_e988789ceeea85 322-338
+  s_6dc77352c5bc09::t_f842ed1fabeb67 21-23
+src/lib/guardians.ts
+  s_6dc77352c5bc09::t_9a796dea463668 6,9,12,16,20-21,168-230,418-427,793-807,811-838,840-843,845-848,850-851,853-854,856-871,873-875,878-905,908,910-912,915-923,925-934,936-937,939-962,965-977,980-982,985-992,1000
+  s_6dc77352c5bc09::t_08e9316e56754e 22,60-61,70,299,368,696-703,737-742,753,924,935,938,963-964,978-979,983-984,993-999
+  s_6dc77352c5bc09::t_4af78d5d7bb231 654
+  s_6dc77352c5bc09::t_36980d687317ea 757-759
+  s_6dc77352c5bc09::t_9fd03296191b53 23,808-810,839,844,849,852,855,872,876-877,906-907,909,913-914
+src/lib/powers.ts
+  s_6dc77352c5bc09::t_b35cb74bf7226f 1505-1514
+  s_6dc77352c5bc09::t_f842ed1fabeb67 1460-1480,1485-1504
+  s_6dc77352c5bc09::t_fe05d8f5616fc8 1481-1484
+  s_6dc77352c5bc09::t_2193824cbd9b41 1068,1430-1434,1436,1440,1443-1446,1449,1451-1455
+  s_6dc77352c5bc09::t_b4ecdf336d874f 62,410,1070,1429,1435
+  s_6dc77352c5bc09::t_c21039adc9af53 791,1437-1439,1441-1442,1447-1448,1450
+  s_6dc77352c5bc09::t_9fd03296191b53 1217-1230,1233-1239,1242-1247,1250-1256,1259-1262,1265-1267
+  s_6dc77352c5bc09::t_d7aee4c9dbc7cf 1231-1232,1240-1241,1248-1249,1257-1258,1263-1264
+src/app/api/exercises/[id]/history/route.ts
+  s_6dc77352c5bc09::t_e7cf88d88ccf7c 8-9
+  s_6dc77352c5bc09::t_fcc1632323131a 2,101-116,129
+src/app/api/exercises/[id]/unbind/route.ts
+  s_6dc77352c5bc09::t_e7cf88d88ccf7c 1-69
+src/components/home-extras.tsx
+  s_6dc77352c5bc09::t_ae744f0765b2fe 54,789-855,858-861,863-919,1103-1106,1116,1130-1134
+  s_6dc77352c5bc09::t_fe05d8f5616fc8 862
+  s_6dc77352c5bc09::t_459fd1642ecca5 450-452
+  s_6dc77352c5bc09::t_36980d687317ea 856-857
+  s_6dc77352c5bc09::t_92846becaa7253 56-57,920-959
+  s_6dc77352c5bc09::t_d20d48664babcd 960-963
+scripts/add-magnesie.ts
+  s_6dc77352c5bc09::t_f842ed1fabeb67 1-16
+src/components/card-detail-modal.tsx
+  s_6dc77352c5bc09::t_397e77d9dc14a8 4,9,103-104,235-246
+  s_6dc77352c5bc09::t_a0dfc7c40ea081 247-249
+src/app/exercises/[id]/page.tsx
+  s_6dc77352c5bc09::t_550b6f4bba5588 7,30,129-133,139-143,307-309,311-332
+  s_6dc77352c5bc09::t_00e18f2d9d2968 134-138
+  s_6dc77352c5bc09::t_9215466d382feb 76-77
+  s_6dc77352c5bc09::t_36980d687317ea 310,338-339
+src/app/api/magnesie/route.ts
+  s_6dc77352c5bc09::t_e7cf88d88ccf7c 1-48
+src/app/collection/page.tsx
+  s_6dc77352c5bc09::t_3fe6553d8f4d57 625-626,629,631-639,641-643,645-648,650-653,659-663
+  s_6dc77352c5bc09::t_4af78d5d7bb231 125-127,174-187,603-624
+  s_6dc77352c5bc09::t_383f137e626dc3 627
+  s_6dc77352c5bc09::t_20d30697815e19 640,644,658
+  s_6dc77352c5bc09::t_0b9633151c16ec 649
+  s_6dc77352c5bc09::t_677e1752e8671c 102,449,451,453-454,457-466,771
+  s_6dc77352c5bc09::t_c35f5c4481a05c 628,630,654-657
+src/app/api/cards/forge/route.ts
+  s_6dc77352c5bc09::t_4af78d5d7bb231 1-36
+src/app/api/cards/fusion/route.ts
+  s_6dc77352c5bc09::t_2193824cbd9b41 36-38
+src/app/api/exercises/[id]/route.ts
+  s_6dc77352c5bc09::t_36980d687317ea 75,83-100
+  s_6dc77352c5bc09::t_4ca574f4a1d5c8 101-103
+src/app/api/cards/route.ts
+  s_6dc77352c5bc09::t_677e1752e8671c 131-133
+src/app/api/cards/open/route.ts
+  s_6dc77352c5bc09::t_fe9ba209bf664f 120-129,220,299
+src/components/pack-open-modal.tsx
+  s_6dc77352c5bc09::t_fe9ba209bf664f 342-344,437,488
+  s_6dc77352c5bc09::t_4566aa6a8511e0 62-63
+  s_6dc77352c5bc09::t_677e1752e8671c 210-245,254-257,264-271,273,281-285,292-296,335,339-340
+  s_6dc77352c5bc09::t_37a63daa8295c2 5,25-26,45,632-659,662-663,666,669-674
+src/components/mascot-picker.tsx
+  s_6dc77352c5bc09::t_50da8852a6ddd5 16,21,28,45-54,288-292
+src/app/page.tsx
+  s_6dc77352c5bc09::t_0cbc738f5a6c89 126,128
+  s_6dc77352c5bc09::t_b11376cfe9f86b 118-120,124,127,129,133
+src/app/oracle/page.tsx
+  s_6dc77352c5bc09::t_28946e065df90e 265-273
+  s_6dc77352c5bc09::t_5c9c17724f80b3 4,57-70,283-288,294-295,338-358
+  s_6dc77352c5bc09::t_ab14b93faa0640 359-361
+src/app/globals.css
+  s_6dc77352c5bc09::t_92846becaa7253 363-406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9a81c2417e1358532302f79d9ae45239c47aa6ca",
+  "prompts": {},
+  "sessions": {
+    "s_6dc77352c5bc09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c821057a-6589-4ccc-9a68-ecc9f4e69e12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}
