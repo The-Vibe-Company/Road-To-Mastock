@@ -29,12 +29,52 @@ function applyPreset(preset: AccentPreset) {
   root.style.setProperty("--accent-gradient-start", preset.gradientStart);
   root.style.setProperty("--accent-gradient-mid", preset.gradientMid);
   root.style.setProperty("--accent-gradient-end", preset.gradientEnd);
+  // Mémorise les valeurs RÉSOLUES : le script inline du layout les
+  // réapplique avant la première peinture — plus de flash orange.
+  try {
+    localStorage.setItem(
+      "rtm-accent",
+      JSON.stringify({
+        l: preset.l,
+        c: preset.c,
+        h: preset.h,
+        gs: preset.gradientStart,
+        gm: preset.gradientMid,
+        ge: preset.gradientEnd,
+      }),
+    );
+  } catch {}
 }
+
+// Le script inline (injecté dans le layout, avant tout) : rejoue l'accent
+// et le thème mémorisés pendant que React se réveille.
+export const ACCENT_BOOT_SCRIPT = `
+try {
+  var a = JSON.parse(localStorage.getItem("rtm-accent") || "null");
+  if (a) {
+    var r = document.documentElement;
+    r.style.setProperty("--accent-l", String(a.l));
+    r.style.setProperty("--accent-c", String(a.c));
+    r.style.setProperty("--accent-h", String(a.h));
+    r.style.setProperty("--accent-gradient-start", a.gs);
+    r.style.setProperty("--accent-gradient-mid", a.gm);
+    r.style.setProperty("--accent-gradient-end", a.ge);
+  }
+  var t = localStorage.getItem("rtm-theme");
+  if (t === "light" || t === "dark") {
+    document.documentElement.classList.remove("dark", "light");
+    document.documentElement.classList.add(t);
+  }
+} catch (e) {}
+`;
 
 function applyTheme(theme: "dark" | "light") {
   const root = document.documentElement;
   root.classList.remove("dark", "light");
   root.classList.add(theme);
+  try {
+    localStorage.setItem("rtm-theme", theme);
+  } catch {}
 }
 
 export function AccentProvider({ children }: { children: React.ReactNode }) {

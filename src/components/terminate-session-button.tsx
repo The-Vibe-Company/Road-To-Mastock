@@ -106,6 +106,9 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   // Le carrousel de l'Éveil : un Gardien par écran, à la clôture.
   const [showAwakening, setShowAwakening] = useState(false);
   const [awakeStep, setAwakeStep] = useState(0);
+  const [closeError, setCloseError] = useState<string | null>(null);
+  // Le garde-fou : on ne clôture pas d'un pouce distrait.
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const { has, assets } = useTalents();
   const [showConfetti, setShowConfetti] = useState(false);
   const [showPsyduck, setShowPsyduck] = useState(false);
@@ -135,9 +138,14 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
     if (busy || !state) return;
     setBusy(true);
     setReward(null);
+    setCloseError(null);
     try {
       const r = await fetch(`/api/sessions/${sessionId}/terminate`, { method: "POST" });
-      if (!r.ok) return;
+      if (!r.ok) {
+        const err = await r.json().catch(() => null);
+        if (err?.error) setCloseError(err.error);
+        return;
+      }
       const data = await r.json();
       if (data.specialTokenGranted) {
         setReward({ type: "special", weekPosition: data.weekPosition ?? null });
@@ -584,8 +592,13 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
 
   return (
     <div className="mb-6">
+      {closeError && (
+        <p className="mb-2 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-bold leading-snug text-red-300 ring-1 ring-red-500/30">
+          {closeError}
+        </p>
+      )}
       <Button
-        onClick={handleTerminate}
+        onClick={() => setConfirmOpen(true)}
         disabled={busy}
         size="lg"
         className="h-14 w-full rounded-2xl bg-gradient-orange-intense text-base font-bold text-black shadow-lg glow-orange disabled:opacity-100"
@@ -597,6 +610,49 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
         )}
         {busy ? "Clôture..." : "Terminer la séance"}
       </Button>
+
+      {/* La confirmation : la clôture engage la journée, pas de pouce distrait */}
+      {confirmOpen && (
+        <div
+          className="fixed inset-0 z-[116] flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center"
+          onClick={() => setConfirmOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-t-3xl border-t-2 border-t-primary/40 bg-background px-6 pb-8 pt-6 sm:rounded-3xl sm:border-2 sm:border-primary/30"
+          >
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/70">
+              Dernière vérification
+            </p>
+            <h2 className="mt-1 text-2xl tracking-tight">Clôturer la séance ?</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              La clôture éveille tes Gardiens, prend le{" "}
+              <strong className="text-foreground">jeton du jour</strong> — une
+              seule clôture par jour — et remet le chapeau à zéro pour la
+              prochaine récolte.
+            </p>
+            <div className="mt-5 flex gap-2">
+              <Button
+                onClick={() => setConfirmOpen(false)}
+                variant="outline"
+                className="h-12 flex-1 rounded-2xl border-border text-sm font-bold text-muted-foreground"
+              >
+                Pas encore
+              </Button>
+              <Button
+                onClick={() => {
+                  setConfirmOpen(false);
+                  handleTerminate();
+                }}
+                className="h-12 flex-1 rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
+              >
+                <Lock className="size-4" strokeWidth={3} />
+                Oui, clôture
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
