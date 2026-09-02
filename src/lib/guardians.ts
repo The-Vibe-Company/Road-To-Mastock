@@ -20,6 +20,7 @@ import {
   ENERGY_BY_RARITY,
   cardioDrawCount,
   magnesieOf,
+  powerShorts,
   FORGE_THRESHOLD,
   HAT_DIRECTIONS,
   POLARITY_POINTS,
@@ -804,6 +805,9 @@ export interface CardioDraw {
     rarity: Rarity;
     imageUrl: string | null;
   };
+  // Ce que fera chaque sens, en trois mots — le joueur choisit en sachant.
+  attract: string;
+  repel: string;
 }
 
 // Appelé une seule fois, dans le bloc idempotent de terminate.
@@ -832,23 +836,23 @@ export async function drawCardioReserves(
   const postedPokemon = new Set(posted.map((r) => r.p).filter((x): x is number => x != null));
 
   const ownedAnimals = await db
-    .select({ id: animals.id, name: animals.name, rarity: animals.rarity, imageUrl: animals.imageUrl })
+    .select({ id: animals.id, name: animals.name, rarity: animals.rarity, imageUrl: animals.imageUrl, subtype: animals.lineage })
     .from(userCards)
     .innerJoin(animals, eq(userCards.animalId, animals.id))
     .where(eq(userCards.userId, userId));
   const ownedPokemon = await db
-    .select({ id: pokemon.id, name: pokemon.name, rarity: pokemon.rarity, imageUrl: pokemon.imageUrl })
+    .select({ id: pokemon.id, name: pokemon.name, rarity: pokemon.rarity, imageUrl: pokemon.imageUrl, subtype: pokemon.primaryType })
     .from(userPokemonCards)
     .innerJoin(pokemon, eq(userPokemonCards.pokemonId, pokemon.id))
     .where(eq(userPokemonCards.userId, userId));
 
-  const pool: { category: "animal" | "pokemon"; id: number; name: string; rarity: Rarity; imageUrl: string | null }[] = [
+  const pool: { category: "animal" | "pokemon"; id: number; name: string; rarity: Rarity; imageUrl: string | null; subtype: string | null }[] = [
     ...ownedAnimals
       .filter((c) => !postedAnimals.has(c.id))
-      .map((c) => ({ category: "animal" as const, id: c.id, name: c.name, rarity: c.rarity as Rarity, imageUrl: c.imageUrl })),
+      .map((c) => ({ category: "animal" as const, id: c.id, name: c.name, rarity: c.rarity as Rarity, imageUrl: c.imageUrl, subtype: c.subtype })),
     ...ownedPokemon
       .filter((c) => !postedPokemon.has(c.id))
-      .map((c) => ({ category: "pokemon" as const, id: c.id, name: c.name, rarity: c.rarity as Rarity, imageUrl: c.imageUrl })),
+      .map((c) => ({ category: "pokemon" as const, id: c.id, name: c.name, rarity: c.rarity as Rarity, imageUrl: c.imageUrl, subtype: c.subtype })),
   ];
   if (pool.length === 0) return [];
 
@@ -865,9 +869,12 @@ export async function drawCardioReserves(
       .insert(sessionCardioDraws)
       .values({ sessionId, userId, cardCategory: c.category, cardId: c.id })
       .returning({ id: sessionCardioDraws.id });
+    const shorts = powerShorts(c.category, c.subtype, c.rarity);
     draws.push({
       drawId: row.id,
       card: { category: c.category, name: c.name, rarity: c.rarity, imageUrl: c.imageUrl },
+      attract: shorts.attract,
+      repel: shorts.repel,
     });
   }
   return draws;
@@ -896,12 +903,15 @@ export async function pendingCardioDraws(
   for (const r of rows) {
     const card =
       r.category === "animal"
-        ? (await db.select({ name: animals.name, rarity: animals.rarity, imageUrl: animals.imageUrl }).from(animals).where(eq(animals.id, r.cardId)))[0]
-        : (await db.select({ name: pokemon.name, rarity: pokemon.rarity, imageUrl: pokemon.imageUrl }).from(pokemon).where(eq(pokemon.id, r.cardId)))[0];
+        ? (await db.select({ name: animals.name, rarity: animals.rarity, imageUrl: animals.imageUrl, subtype: animals.lineage }).from(animals).where(eq(animals.id, r.cardId)))[0]
+        : (await db.select({ name: pokemon.name, rarity: pokemon.rarity, imageUrl: pokemon.imageUrl, subtype: pokemon.primaryType }).from(pokemon).where(eq(pokemon.id, r.cardId)))[0];
     if (!card) continue;
+    const shorts = powerShorts(r.category as "animal" | "pokemon", card.subtype ?? null, card.rarity as Rarity);
     draws.push({
       drawId: r.id,
       card: { category: r.category as "animal" | "pokemon", name: card.name, rarity: card.rarity as Rarity, imageUrl: card.imageUrl },
+      attract: shorts.attract,
+      repel: shorts.repel,
     });
   }
   return draws;
