@@ -316,6 +316,23 @@ export const userCharges = pgTable(
 
 // Miracles à limite hebdomadaire (le Vœu de Jirachi, le Pas de Qilin...) :
 // une ligne par (utilisateur, miracle, semaine ISO de la séance).
+// L'Échappée : cartes tirées par le cardio (un tirage par quart d'heure
+// entamé après le premier), en attente du choix attractif/répulsif.
+export const sessionCardioDraws = pgTable("session_cardio_draws", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  cardCategory: text("card_category").notNull(), // 'animal' | 'pokemon'
+  cardId: integer("card_id").notNull(),
+  mode: text("mode"), // choisi à la résolution
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 export const userMiracleUses = pgTable(
   "user_miracle_uses",
   {

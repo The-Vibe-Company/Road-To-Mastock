@@ -3,17 +3,22 @@ import {
   animals,
   exercises,
   pokemon,
+  sessionCardioDraws,
   sessionExercises,
     sets,
+  userCards,
   userCharges,
   userMiracleUses,
+  userPokemonCards,
   userShards,
   users,
 } from "@/lib/db/schema";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Rarity } from "@/lib/rarities";
 import {
   DIRECTION_CAPS,
+  ENERGY_BY_RARITY,
+  cardioDrawCount,
   FORGE_THRESHOLD,
   HAT_DIRECTIONS,
   POLARITY_POINTS,
@@ -153,6 +158,69 @@ async function claimWeekly(userId: number, miracle: string, sessionDate: string)
     .onConflictDoNothing()
     .returning({ id: userMiracleUses.id });
   return rows.length > 0;
+}
+
+
+// ─── L'éveil à polarité, partagé ────────────────────────────────────────────
+// Utilisé par les Gardiens posés (commun → épique) ET par les cartes tirées
+// de l'Échappée du cardio. Applique le métier de la carte dans le sens
+// choisi et raconte le geste.
+export function applyPolarityAwakening(params: {
+  category: "animal" | "pokemon";
+  subtype: string | null;
+  pts: number;
+  repel: boolean;
+  add: (d: Direction, n: number) => void;
+}): { powerName: string; detail: string; direction: Direction; metier: ReturnType<typeof metierOf> } {
+  const { category, subtype, pts, repel, add } = params;
+  const family = category === "animal" ? "Animal" : "Pokémon";
+  const metier = metierOf(category, subtype);
+  let direction: Direction;
+  let powerName = "";
+  let detail = "";
+
+  if (metier === "lest") {
+    // Le Lest travaille le Basique dans les deux sens.
+    direction = repel ? "purge_basic" : "pack_basic";
+    add(direction, pts);
+    powerName = repel ? "Le Lest — Répulsif" : "Le Lest — Attractif";
+    detail = repel
+      ? `${pts} ticket${pts > 1 ? "s" : ""} Basique dévoré${pts > 1 ? "s" : ""}`
+      : `+${pts} ticket${pts > 1 ? "s" : ""} Basique`;
+  } else if (metier === "etincelle") {
+    // L'Étincelle sème du Mythique en dixièmes, ou brûle le Basique.
+    if (repel) {
+      direction = "purge_basic";
+      add(direction, pts);
+      powerName = "L'Étincelle — Répulsif";
+      detail = `${pts} ticket${pts > 1 ? "s" : ""} Basique brûlé${pts > 1 ? "s" : ""}`;
+    } else {
+      direction = "mythic_sparks";
+      add(direction, pts);
+      powerName = "L'Étincelle";
+      detail = `+${(pts / 10).toFixed(1).replace(".", ",")} ticket Mythique semé`;
+    }
+  } else if (metier === "balance") {
+    // La Balance penche le curseur intérieur des packs mixtes.
+    const ownSide: Direction = category === "animal" ? "inner_animal" : "inner_pokemon";
+    const otherSide: Direction = category === "animal" ? "inner_pokemon" : "inner_animal";
+    direction = repel ? otherSide : ownSide;
+    add(direction, pts);
+    const target = direction === "inner_animal" ? "les animaux" : "les Pokémon";
+    powerName = repel ? "La Balance — Répulsif" : "La Balance — Attractif";
+    detail = `curseur des packs mixtes : ${pts} % vers ${target}`;
+  } else {
+    // La Famille : le pack de sa famille, dans le sens choisi.
+    direction = repel
+      ? category === "animal" ? "repel_animal" : "repel_pokemon"
+      : category === "animal" ? "pack_animal" : "pack_pokemon";
+    add(direction, pts);
+    powerName = repel ? "La Famille — Répulsif" : "La Famille — Attractif";
+    detail = repel
+      ? `${pts} ticket${pts > 1 ? "s" : ""} ${family} dévoré${pts > 1 ? "s" : ""}`
+      : `+${pts} ticket${pts > 1 ? "s" : ""} ${family}`;
+  }
+  return { powerName, detail, direction, metier };
 }
 
 // ─── Résolution ─────────────────────────────────────────────────────────────
@@ -341,53 +409,16 @@ export async function resolveGuardians(params: {
     if (rarity !== "legendary" && rarity !== "mythic") {
       // ── Étage 1 : la Polarité, selon le métier de la carte ──
       const pts = (POLARITY_POINTS[rarity] ?? 1) + (arceusAwake ? 1 : 0);
-      const family = e.side.category === "animal" ? "Animal" : "Pokémon";
-      const metier = metierOf(e.side.category, card.subtype);
-      const repel = e.mode === "repel";
-      let direction: Direction;
-
-      if (metier === "lest") {
-        // Le Lest travaille le Basique dans les deux sens.
-        direction = repel ? "purge_basic" : "pack_basic";
-        add(direction, pts);
-        g.powerName = repel ? "Le Lest — Répulsif" : "Le Lest — Attractif";
-        g.detail = repel
-          ? `${pts} ticket${pts > 1 ? "s" : ""} Basique dévoré${pts > 1 ? "s" : ""}`
-          : `+${pts} ticket${pts > 1 ? "s" : ""} Basique`;
-      } else if (metier === "etincelle") {
-        // L'Étincelle sème du Mythique en dixièmes, ou brûle le Basique.
-        if (repel) {
-          direction = "purge_basic";
-          add(direction, pts);
-          g.powerName = "L'Étincelle — Répulsif";
-          g.detail = `${pts} ticket${pts > 1 ? "s" : ""} Basique brûlé${pts > 1 ? "s" : ""}`;
-        } else {
-          direction = "mythic_sparks";
-          add(direction, pts);
-          g.powerName = "L'Étincelle";
-          g.detail = `+${(pts / 10).toFixed(1).replace(".", ",")} ticket Mythique semé`;
-        }
-      } else if (metier === "balance") {
-        // La Balance penche le curseur intérieur des packs mixtes.
-        const ownSide: Direction = e.side.category === "animal" ? "inner_animal" : "inner_pokemon";
-        const otherSide: Direction = e.side.category === "animal" ? "inner_pokemon" : "inner_animal";
-        direction = repel ? otherSide : ownSide;
-        add(direction, pts);
-        const target =
-          direction === "inner_animal" ? "les animaux" : "les Pokémon";
-        g.powerName = repel ? "La Balance — Répulsif" : "La Balance — Attractif";
-        g.detail = `curseur des packs mixtes : ${pts} % vers ${target}`;
-      } else {
-        // La Famille : le pack de sa famille, dans le sens choisi.
-        direction = repel
-          ? e.side.category === "animal" ? "repel_animal" : "repel_pokemon"
-          : e.side.category === "animal" ? "pack_animal" : "pack_pokemon";
-        add(direction, pts);
-        g.powerName = repel ? "La Famille — Répulsif" : "La Famille — Attractif";
-        g.detail = repel
-          ? `${pts} ticket${pts > 1 ? "s" : ""} ${family} dévoré${pts > 1 ? "s" : ""}`
-          : `+${pts} ticket${pts > 1 ? "s" : ""} ${family}`;
-      }
+      const awakening = applyPolarityAwakening({
+        category: e.side.category,
+        subtype: card.subtype,
+        pts,
+        repel: e.mode === "repel",
+        add,
+      });
+      g.powerName = awakening.powerName;
+      g.detail = awakening.detail;
+      const { direction, metier } = awakening;
 
       // L'Écho des meutes légendaires imite les gestes de Famille uniquement
       // — les curseurs et étincelles ne se copient pas.
@@ -762,4 +793,192 @@ export async function guardianBondStatus(
 
   if (beaten) return { locked: false, unlockAt: null, grace: false };
   return { locked: true, unlockAt, grace: false };
+}
+
+// ─── L'Échappée ─────────────────────────────────────────────────────────────
+// Sur les machines de cardio, chaque quart d'heure ENTAMÉ après le premier
+// tire une carte au hasard dans la réserve — les cartes possédées qui ne
+// gardent aucune machine. Le joueur les place ensuite en attractif ou
+// répulsif dans la cérémonie de clôture : leur éveil s'applique alors.
+
+export interface CardioDraw {
+  drawId: number;
+  card: {
+    category: "animal" | "pokemon";
+    name: string;
+    rarity: Rarity;
+    imageUrl: string | null;
+  };
+}
+
+// Appelé une seule fois, dans le bloc idempotent de terminate.
+export async function drawCardioReserves(
+  userId: number,
+  sessionId: number,
+): Promise<CardioDraw[]> {
+  // Minutes de cardio par machine de la séance.
+  const res = (await db.execute(sql`
+    SELECT se.exercise_id, COALESCE(SUM(st.duration_minutes), 0)::int AS minutes
+    FROM session_exercises se
+    JOIN sets st ON st.session_exercise_id = se.id
+    WHERE se.session_id = ${sessionId} AND st.duration_minutes IS NOT NULL
+    GROUP BY se.exercise_id
+  `)) as unknown as { rows?: { minutes: number }[] };
+  const rows = ((res.rows ?? res) as unknown as { minutes: number }[]) ?? [];
+  const wanted = rows.reduce((n, r) => n + cardioDrawCount(r.minutes), 0);
+  if (wanted === 0) return [];
+
+  // La réserve : cartes possédées qui ne gardent aucune machine.
+  const posted = await db
+    .select({ a: exercises.mascotAnimalId, p: exercises.mascotPokemonId })
+    .from(exercises)
+    .where(eq(exercises.userId, userId));
+  const postedAnimals = new Set(posted.map((r) => r.a).filter((x): x is number => x != null));
+  const postedPokemon = new Set(posted.map((r) => r.p).filter((x): x is number => x != null));
+
+  const ownedAnimals = await db
+    .select({ id: animals.id, name: animals.name, rarity: animals.rarity, imageUrl: animals.imageUrl })
+    .from(userCards)
+    .innerJoin(animals, eq(userCards.animalId, animals.id))
+    .where(eq(userCards.userId, userId));
+  const ownedPokemon = await db
+    .select({ id: pokemon.id, name: pokemon.name, rarity: pokemon.rarity, imageUrl: pokemon.imageUrl })
+    .from(userPokemonCards)
+    .innerJoin(pokemon, eq(userPokemonCards.pokemonId, pokemon.id))
+    .where(eq(userPokemonCards.userId, userId));
+
+  const pool: { category: "animal" | "pokemon"; id: number; name: string; rarity: Rarity; imageUrl: string | null }[] = [
+    ...ownedAnimals
+      .filter((c) => !postedAnimals.has(c.id))
+      .map((c) => ({ category: "animal" as const, id: c.id, name: c.name, rarity: c.rarity as Rarity, imageUrl: c.imageUrl })),
+    ...ownedPokemon
+      .filter((c) => !postedPokemon.has(c.id))
+      .map((c) => ({ category: "pokemon" as const, id: c.id, name: c.name, rarity: c.rarity as Rarity, imageUrl: c.imageUrl })),
+  ];
+  if (pool.length === 0) return [];
+
+  // Mélange de Fisher-Yates, puis on prend ce que la réserve peut donner.
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const picked = pool.slice(0, Math.min(wanted, pool.length));
+
+  const draws: CardioDraw[] = [];
+  for (const c of picked) {
+    const [row] = await db
+      .insert(sessionCardioDraws)
+      .values({ sessionId, userId, cardCategory: c.category, cardId: c.id })
+      .returning({ id: sessionCardioDraws.id });
+    draws.push({
+      drawId: row.id,
+      card: { category: c.category, name: c.name, rarity: c.rarity, imageUrl: c.imageUrl },
+    });
+  }
+  return draws;
+}
+
+// Les tirages encore en attente de placement (pour re-proposer après reload).
+export async function pendingCardioDraws(
+  userId: number,
+  sessionId: number,
+): Promise<CardioDraw[]> {
+  const rows = await db
+    .select({
+      id: sessionCardioDraws.id,
+      category: sessionCardioDraws.cardCategory,
+      cardId: sessionCardioDraws.cardId,
+    })
+    .from(sessionCardioDraws)
+    .where(
+      and(
+        eq(sessionCardioDraws.sessionId, sessionId),
+        eq(sessionCardioDraws.userId, userId),
+        isNull(sessionCardioDraws.resolvedAt),
+      ),
+    );
+  const draws: CardioDraw[] = [];
+  for (const r of rows) {
+    const card =
+      r.category === "animal"
+        ? (await db.select({ name: animals.name, rarity: animals.rarity, imageUrl: animals.imageUrl }).from(animals).where(eq(animals.id, r.cardId)))[0]
+        : (await db.select({ name: pokemon.name, rarity: pokemon.rarity, imageUrl: pokemon.imageUrl }).from(pokemon).where(eq(pokemon.id, r.cardId)))[0];
+    if (!card) continue;
+    draws.push({
+      drawId: r.id,
+      card: { category: r.category as "animal" | "pokemon", name: card.name, rarity: card.rarity as Rarity, imageUrl: card.imageUrl },
+    });
+  }
+  return draws;
+}
+
+export interface DraftAwakening {
+  card: { category: "animal" | "pokemon"; name: string; rarity: Rarity; imageUrl: string | null };
+  powerName: string;
+  detail: string;
+}
+
+// Le placement : chaque carte tirée s'éveille dans le sens choisi. Les
+// grandes cartes (légendaire, mythique) pèsent leur rang — ±8 et ±13 —
+// via le métier Famille : l'Échappée est un geste de tickets, pas un
+// second éveil de prodige.
+export async function resolveCardioDraft(
+  userId: number,
+  sessionId: number,
+  choices: { drawId: number; mode: MascotMode }[],
+): Promise<{ awakenings: DraftAwakening[]; charges: Charges }> {
+  const awakenings: DraftAwakening[] = [];
+  const deltas: Charges = {};
+  const add = (d: Direction, n: number) => {
+    deltas[d] = (deltas[d] ?? 0) + n;
+  };
+
+  for (const choice of choices) {
+    if (choice.mode !== "attract" && choice.mode !== "repel") continue;
+    // Claim d'abord : chaque tirage ne se résout qu'une seule fois.
+    const claimed = await db
+      .update(sessionCardioDraws)
+      .set({ mode: choice.mode, resolvedAt: new Date() })
+      .where(
+        and(
+          eq(sessionCardioDraws.id, choice.drawId),
+          eq(sessionCardioDraws.sessionId, sessionId),
+          eq(sessionCardioDraws.userId, userId),
+          isNull(sessionCardioDraws.resolvedAt),
+        ),
+      )
+      .returning({ category: sessionCardioDraws.cardCategory, cardId: sessionCardioDraws.cardId });
+    if (claimed.length === 0) continue;
+
+    const { category, cardId } = claimed[0];
+    const card =
+      category === "animal"
+        ? (await db.select({ name: animals.name, rarity: animals.rarity, imageUrl: animals.imageUrl, subtype: animals.lineage }).from(animals).where(eq(animals.id, cardId)))[0]
+        : (await db.select({ name: pokemon.name, rarity: pokemon.rarity, imageUrl: pokemon.imageUrl, subtype: pokemon.primaryType }).from(pokemon).where(eq(pokemon.id, cardId)))[0];
+    if (!card) continue;
+
+    const rarity = card.rarity as Rarity;
+    const big = rarity === "legendary" || rarity === "mythic";
+    const pts = big ? ENERGY_BY_RARITY[rarity] : (POLARITY_POINTS[rarity] ?? 1);
+    const a = applyPolarityAwakening({
+      category: category as "animal" | "pokemon",
+      // Les grandes cartes pèsent en Famille, les autres suivent leur métier.
+      subtype: big ? null : (card.subtype ?? null),
+      pts,
+      repel: choice.mode === "repel",
+      add,
+    });
+    awakenings.push({
+      card: { category: category as "animal" | "pokemon", name: card.name, rarity, imageUrl: card.imageUrl },
+      powerName: `L'Échappée — ${a.powerName}`,
+      detail: a.detail,
+    });
+  }
+
+  const charges = await loadCharges(userId);
+  for (const [d, delta] of Object.entries(deltas) as [Direction, number][]) {
+    charges[d] = Math.min(DIRECTION_CAPS[d], Math.max(0, (charges[d] ?? 0) + delta));
+  }
+  await saveCharges(userId, charges);
+  return { awakenings, charges };
 }

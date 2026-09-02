@@ -1381,6 +1381,16 @@ export const FORGE_DISCOUNT_COST = 2;
 // Le Gardien lié : record battu depuis la pose, ou 30 jours d'attente.
 export const GUARDIAN_BOND_DAYS = 30;
 
+// L'Échappée : sur une machine de cardio, chaque quart d'heure ENTAMÉ
+// après le premier tire une carte au hasard dans la réserve (les cartes
+// possédées non associées à une machine), à placer en attractif ou
+// répulsif à la clôture.
+//   14 min → 0 · 16 min → 1 · 29 min → 1 · 31 min → 2 · 61 min → 4
+export function cardioDrawCount(minutes: number): number {
+  if (!minutes || minutes <= 0) return 0;
+  return Math.max(0, Math.ceil(minutes / 15) - 1);
+}
+
 // Nombre minimal de séances d'historique sur une machine pour qu'un record
 // y compte (badge, Gardiens à record : Banshee, Sphinx, Marshadow…) : sans
 // ce verrou, la première séance est un record automatique.

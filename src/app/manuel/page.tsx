@@ -112,6 +112,15 @@ export default function ManuelPage() {
             <B>La Balance</B> — penche le 75/25 des packs mixtes vers les
             animaux ou les Pokémon (1 à 6 % par éveil).
           </p>
+          <p>
+            <B>L&apos;Échappée</B> — sur une machine de cardio, chaque quart
+            d&apos;heure <B>entamé</B> après le premier tire une carte au
+            hasard dans ta réserve (tes cartes qui ne gardent aucune
+            machine). À la clôture, tu places chacune en Attractif ou
+            Répulsif : son éveil part dans le chapeau. Les légendaires et
+            mythiques tirés pèsent leur rang : ±8 et ±13 tickets de leur
+            famille. 16 min → 1 carte, 31 min → 2, une heure → 4.
+          </p>
         </Section>
 
         <Section icon={<Star className="size-4" />} title="Les Prodiges et les Miracles (légendaire et mythique)">

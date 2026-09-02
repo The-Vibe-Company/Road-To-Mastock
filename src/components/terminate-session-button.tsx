@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, Lock, Loader2, Star, Trophy, Flame, Ticket, Shield } from "@/components/icons";
+import { CheckCircle2, Lock, Loader2, Star, Trophy, Flame, Ticket, Shield, Magnet, ShieldOff, Activity } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useTalents } from "./talents-provider";
 import { RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
@@ -48,6 +48,22 @@ interface RewardInfo {
   weekPosition: number | null;
 }
 
+interface CardioDraw {
+  drawId: number;
+  card: {
+    category: "animal" | "pokemon";
+    name: string;
+    rarity: Rarity;
+    imageUrl: string | null;
+  };
+}
+
+interface DraftAwakening {
+  card: { category: "animal" | "pokemon"; name: string; rarity: Rarity; imageUrl: string | null };
+  powerName: string;
+  detail: string;
+}
+
 interface AwakenedGuardian {
   exerciseId: number;
   exerciseName: string;
@@ -70,6 +86,11 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   const [guardians, setGuardians] = useState<AwakenedGuardian[]>([]);
   const [recordCount, setRecordCount] = useState(0);
   const [newTrophies, setNewTrophies] = useState<{ id: string; name: string; rewardLabel: string }[]>([]);
+  // L'Échappée : cartes tirées par le cardio, en attente de placement.
+  const [draws, setDraws] = useState<CardioDraw[]>([]);
+  const [drawModes, setDrawModes] = useState<Record<number, "attract" | "repel">>({});
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [draftResults, setDraftResults] = useState<DraftAwakening[]>([]);
   const { has, assets } = useTalents();
   const [showConfetti, setShowConfetti] = useState(false);
   const [showPsyduck, setShowPsyduck] = useState(false);
@@ -86,6 +107,9 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
       tokensGrantedAt: data.tokensGrantedAt ?? null,
       hasSets,
     });
+    if (Array.isArray(data.cardioDraws) && data.cardioDraws.length > 0) {
+      setDraws(data.cardioDraws);
+    }
   };
 
   useEffect(() => {
@@ -108,6 +132,7 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
       setGuardians(Array.isArray(data.guardians) ? data.guardians : []);
       setRecordCount(data.recordCount ?? 0);
       setNewTrophies(Array.isArray(data.newTrophies) ? data.newTrophies : []);
+      if (Array.isArray(data.cardioDraws)) setDraws(data.cardioDraws);
 
       // Reliques de clôture — chacune ne s'éveille que si son talent est là.
       const gotReward = data.tokenGranted || data.specialTokenGranted;
@@ -135,6 +160,27 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
       await refresh();
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleDraft = async () => {
+    if (draftBusy || draws.some((d) => !drawModes[d.drawId])) return;
+    setDraftBusy(true);
+    try {
+      const r = await fetch(`/api/sessions/${sessionId}/cardio-draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          choices: draws.map((d) => ({ drawId: d.drawId, mode: drawModes[d.drawId] })),
+        }),
+      });
+      if (!r.ok) return;
+      const data = await r.json();
+      setDraftResults(Array.isArray(data.awakenings) ? data.awakenings : []);
+      setDraws([]);
+      setDrawModes({});
+    } finally {
+      setDraftBusy(false);
     }
   };
 
@@ -228,6 +274,107 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
             </div>
           </Link>
         ))}
+
+        {/* L'Échappée : le cardio a tiré des cartes de la réserve — place-les */}
+        {draws.length > 0 && (
+          <div className="mt-1 overflow-hidden rounded-xl bg-background/60 p-3 ring-1 ring-sky-500/40">
+            <div className="mb-1 flex items-center gap-1.5">
+              <Activity className="size-3.5 text-sky-400" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-300">
+                L&apos;Échappée — {draws.length} carte{draws.length > 1 ? "s" : ""} tirée{draws.length > 1 ? "s" : ""}
+              </span>
+            </div>
+            <p className="mb-2.5 text-[11px] leading-snug text-muted-foreground">
+              Ton cardio a fait sortir des cartes de ta réserve. Place chacune :
+              son éveil part dans le chapeau, dans le sens que tu choisis.
+            </p>
+            <div className="space-y-2">
+              {draws.map((d, i) => (
+                <div
+                  key={d.drawId}
+                  className="animate-card-reveal flex items-center gap-2.5 rounded-lg bg-secondary/30 p-2 ring-1 ring-border"
+                  style={{ animationDelay: `${i * 0.45}s`, animationFillMode: "backwards" }}
+                >
+                  <div className={`relative size-11 shrink-0 overflow-hidden rounded-lg ${RARITY_COLORS[d.card.rarity].bg} ring-1 ${RARITY_COLORS[d.card.rarity].ring}`}>
+                    {d.card.imageUrl && (
+                      <Image src={d.card.imageUrl} alt="" fill unoptimized className="object-cover" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`truncate text-xs font-black ${RARITY_COLORS[d.card.rarity].text}`}>
+                      {d.card.name}
+                    </p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                      {RARITY_LABELS[d.card.rarity]}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <button
+                      onClick={() => setDrawModes((m) => ({ ...m, [d.drawId]: "attract" }))}
+                      className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                        drawModes[d.drawId] === "attract"
+                          ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/50"
+                          : "bg-secondary/60 text-muted-foreground ring-1 ring-border"
+                      }`}
+                    >
+                      <Magnet className="size-3" />
+                      Attire
+                    </button>
+                    <button
+                      onClick={() => setDrawModes((m) => ({ ...m, [d.drawId]: "repel" }))}
+                      className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                        drawModes[d.drawId] === "repel"
+                          ? "bg-red-500/20 text-red-300 ring-1 ring-red-500/50"
+                          : "bg-secondary/60 text-muted-foreground ring-1 ring-border"
+                      }`}
+                    >
+                      <ShieldOff className="size-3" />
+                      Repousse
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button
+              onClick={handleDraft}
+              disabled={draftBusy || draws.some((d) => !drawModes[d.drawId])}
+              className="mt-2.5 h-10 w-full rounded-xl bg-sky-500 text-xs font-black uppercase tracking-wider text-black hover:bg-sky-400 disabled:opacity-40"
+            >
+              {draftBusy ? <Loader2 className="size-4 animate-spin" /> : <Shield className="size-4" />}
+              Éveiller les renforts
+            </Button>
+          </div>
+        )}
+
+        {/* Les renforts éveillés : le résultat du placement */}
+        {draftResults.length > 0 && (
+          <div className="mt-1 rounded-xl bg-background/60 p-3 ring-1 ring-sky-500/30">
+            <div className="mb-2 flex items-center gap-1.5">
+              <Activity className="size-3.5 text-sky-400" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-300">
+                Renforts éveillés
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {draftResults.map((a, i) => (
+                <div key={i} className="animate-card-reveal flex items-center gap-2.5" style={{ animationDelay: `${i * 0.25}s`, animationFillMode: "backwards" }}>
+                  <div className="relative size-9 shrink-0 overflow-hidden rounded-lg bg-secondary/50">
+                    {a.card.imageUrl && (
+                      <Image src={a.card.imageUrl} alt="" fill unoptimized className="object-contain p-0.5" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`truncate text-xs font-bold ${RARITY_COLORS[a.card.rarity].text}`}>{a.card.name}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">
+                      <span className="font-bold text-foreground/70">{a.powerName}</span>
+                      <span className="text-primary/80"> · {a.detail}</span>
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* La récolte : les Gardiens éveillés par cette séance */}
         {guardians.length > 0 && (
