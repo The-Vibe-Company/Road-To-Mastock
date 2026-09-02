@@ -1,43 +1,49 @@
 import { db } from "@/lib/db";
 import { exercises, userCards, userPokemonCards, users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { earnedTrophyIds, type TrophyStats } from "@/lib/trophies";
+import { TROPHIES, earnedTrophyIds, type TrophyStats } from "@/lib/trophies";
 
 // Les statistiques du cabinet : tout se recalcule depuis les données réelles,
 // rien n'est stocké — un trophée ne peut pas mentir.
-export async function computeTrophyStats(userId: number): Promise<TrophyStats> {
+export async function computeTrophyStats(
+  userId: number,
+  // L'état « avant cette séance » : on recalcule tout comme si elle
+  // n'existait pas — c'est ce qui permet de montrer l'avancée à la clôture.
+  excludeSessionId?: number,
+): Promise<TrophyStats> {
+  const excl = excludeSessionId != null ? sql`AND s.id != ${excludeSessionId}` : sql``;
   // Séances, tonnage, variété, meilleure semaine — en une passe.
   const mainRes = (await db.execute(sql`
     SELECT
       (SELECT COUNT(*)::int FROM sessions s
-        WHERE s.user_id = ${userId} AND s.tokens_granted_at IS NOT NULL) AS sessions,
+        WHERE s.user_id = ${userId} AND s.tokens_granted_at IS NOT NULL ${excl}) AS sessions,
       (SELECT COALESCE(SUM(st.weight_kg * st.reps), 0)::float
         FROM sets st
         JOIN session_exercises se ON se.id = st.session_exercise_id
         JOIN sessions s ON s.id = se.session_id
-        WHERE s.user_id = ${userId}) AS tonnage,
+        WHERE s.user_id = ${userId} ${excl}) AS tonnage,
       (SELECT COUNT(DISTINCT se.exercise_id)::int
         FROM session_exercises se
         JOIN sessions s ON s.id = se.session_id
         JOIN sets st ON st.session_exercise_id = se.id
-        WHERE s.user_id = ${userId}) AS exercises,
+        WHERE s.user_id = ${userId} ${excl}) AS exercises,
       (SELECT COALESCE(MAX(n), 0)::int FROM (
         SELECT COUNT(*)::int AS n FROM sessions s
-        WHERE s.user_id = ${userId} AND s.tokens_granted_at IS NOT NULL
+        WHERE s.user_id = ${userId} AND s.tokens_granted_at IS NOT NULL ${excl}
         GROUP BY DATE_TRUNC('week', s.date::timestamp)
       ) w) AS best_week,
       (SELECT COUNT(*)::int FROM sets st
         JOIN session_exercises se ON se.id = st.session_exercise_id
         JOIN sessions s ON s.id = se.session_id
-        WHERE s.user_id = ${userId}) AS total_sets,
+        WHERE s.user_id = ${userId} ${excl}) AS total_sets,
       (SELECT COALESCE(MAX(st.weight_kg), 0)::float FROM sets st
         JOIN session_exercises se ON se.id = st.session_exercise_id
         JOIN sessions s ON s.id = se.session_id
-        WHERE s.user_id = ${userId}) AS max_weight,
+        WHERE s.user_id = ${userId} ${excl}) AS max_weight,
       (SELECT COALESCE(SUM(st.duration_minutes), 0)::int FROM sets st
         JOIN session_exercises se ON se.id = st.session_exercise_id
         JOIN sessions s ON s.id = se.session_id
-        WHERE s.user_id = ${userId}) AS cardio_minutes
+        WHERE s.user_id = ${userId} ${excl}) AS cardio_minutes
   `)) as unknown as { rows?: Record<string, unknown>[] };
   const main = ((mainRes.rows ?? mainRes) as unknown as {
     sessions: number; tonnage: number; exercises: number; best_week: number;
@@ -53,7 +59,7 @@ export async function computeTrophyStats(userId: number): Promise<TrophyStats> {
       FROM session_exercises se
       JOIN sessions s ON s.id = se.session_id
       JOIN sets st ON st.session_exercise_id = se.id
-      WHERE s.user_id = ${userId} AND st.weight_kg IS NOT NULL
+      WHERE s.user_id = ${userId} AND st.weight_kg IS NOT NULL ${excl}
       GROUP BY se.exercise_id, se.variant_id, se.session_id, s.date, s.created_at
     )
     SELECT COUNT(*)::int AS records FROM (
@@ -73,8 +79,8 @@ export async function computeTrophyStats(userId: number): Promise<TrophyStats> {
 
   // Semaines consécutives, en remontant depuis la plus récente.
   const weeksRes = (await db.execute(sql`
-    SELECT DISTINCT DATE_TRUNC('week', date::timestamp)::date AS wk
-    FROM sessions WHERE user_id = ${userId} AND tokens_granted_at IS NOT NULL
+    SELECT DISTINCT DATE_TRUNC('week', s.date::timestamp)::date AS wk
+    FROM sessions s WHERE s.user_id = ${userId} AND s.tokens_granted_at IS NOT NULL ${excl}
     ORDER BY wk DESC
   `)) as unknown as { rows?: { wk: string }[] };
   const weeks = ((weeksRes.rows ?? weeksRes) as unknown as { wk: string }[]).map((r) => new Date(r.wk).getTime());
@@ -127,4 +133,41 @@ export async function claimNewTrophies(userId: number): Promise<string[]> {
       .where(eq(users.id, userId));
   }
   return fresh;
+}
+
+// ─── L'avancée de la clôture ────────────────────────────────────────────────
+// Ce que CETTE séance a fait avancer : pour chaque famille dont le compteur
+// a bougé, le prochain trophée visé avec l'avant → après. Les trophées
+// GAGNÉS par la séance ne sont pas listés ici — ils ont leur célébration.
+
+export interface TrophyProgressStep {
+  stat: string;
+  name: string;
+  target: number;
+  before: number;
+  after: number;
+}
+
+export async function sessionTrophyProgress(
+  userId: number,
+  sessionId: number,
+): Promise<TrophyProgressStep[]> {
+  const [after, before] = await Promise.all([
+    computeTrophyStats(userId),
+    computeTrophyStats(userId, sessionId),
+  ]);
+  const steps: TrophyProgressStep[] = [];
+  for (const stat of Object.keys(after) as (keyof TrophyStats)[]) {
+    const b = Number(before[stat] ?? 0);
+    const a = Number(after[stat] ?? 0);
+    if (a <= b) continue;
+    const ladder = TROPHIES.filter((t) => t.stat === stat).sort((x, y) => x.target - y.target);
+    const next = ladder.find((t) => t.target > b);
+    if (!next) continue;
+    if (a >= next.target) continue; // gagné à cette clôture → célébré à part
+    steps.push({ stat, name: next.name, target: next.target, before: b, after: a });
+  }
+  // Les plus proches du but d'abord, cinq au maximum.
+  steps.sort((x, y) => y.after / y.target - x.after / x.target);
+  return steps.slice(0, 5);
 }

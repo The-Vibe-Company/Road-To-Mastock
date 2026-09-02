@@ -7,12 +7,12 @@ import type { Rarity } from "@/lib/rarities";
 // s'assume. Le texte du bloc est en blanc gras sur fond près du noir, il
 // garde son contraste même par-dessus l'artwork.
 const MASCOT_OPACITY: Record<Rarity, string> = {
-  common: "opacity-[0.09]",
-  uncommon: "opacity-[0.11]",
-  rare: "opacity-[0.13]",
-  epic: "opacity-[0.16]",
-  legendary: "opacity-[0.18]",
-  mythic: "opacity-[0.21]",
+  common: "opacity-[0.15]",
+  uncommon: "opacity-[0.17]",
+  rare: "opacity-[0.20]",
+  epic: "opacity-[0.24]",
+  legendary: "opacity-[0.27]",
+  mythic: "opacity-[0.30]",
 };
 
 // Lavis coloré réservé aux hautes raretés : en dessous le fond reste neutre,
