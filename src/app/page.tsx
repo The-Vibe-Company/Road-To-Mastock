@@ -115,21 +115,22 @@ export default async function Home() {
       {/* Hero — l'affiche : titre pleine largeur, puis la rangée d'outils */}
       <div className="hero-gradient relative -mx-4 -mt-10 mb-8 overflow-hidden px-4 pb-6 pt-12">
         {/* L'Étendard : la carte flotte derrière le titre */}
-        {/* L'Étendard : la carte choisie habille TOUTE la home — plein
-            écran, fondue vers le bas pour laisser respirer le contenu. */}
+        {/* L'Étendard : une couronne sur le HAUT de la home — l'image
+            règne sur le premier écran puis s'efface avant les listes.
+            Confinée à la colonne (max-w-lg), jamais pleine page desktop. */}
         {bannerUrl && (
           <div
             aria-hidden
-            className="pointer-events-none fixed inset-0 -z-10 select-none"
+            className="pointer-events-none fixed inset-x-0 top-0 -z-10 mx-auto h-[46dvh] max-w-lg select-none"
             style={{
               maskImage:
-                "linear-gradient(to bottom, black, rgba(0,0,0,0.75) 55%, rgba(0,0,0,0.35) 85%, rgba(0,0,0,0.15))",
+                "linear-gradient(to bottom, black 35%, rgba(0,0,0,0.5) 70%, transparent)",
               WebkitMaskImage:
-                "linear-gradient(to bottom, black, rgba(0,0,0,0.75) 55%, rgba(0,0,0,0.35) 85%, rgba(0,0,0,0.15))",
+                "linear-gradient(to bottom, black 35%, rgba(0,0,0,0.5) 70%, transparent)",
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={bannerUrl} alt="" className="size-full object-cover opacity-30" />
+            <img src={bannerUrl} alt="" className="size-full object-cover object-top opacity-25" />
           </div>
         )}
         <h1 className="text-4xl leading-[0.95] tracking-tight">
