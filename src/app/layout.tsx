@@ -4,6 +4,7 @@ import { AccentProvider } from "@/components/accent-provider";
 import { TalentsProvider } from "@/components/talents-provider";
 import { TrophiesProvider } from "@/components/trophies-provider";
 import { HydrationWatchdog, WATCHDOG_SCRIPT } from "@/components/hydration-watchdog";
+import { ACCENT_BOOT_SCRIPT } from "@/components/accent-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -46,6 +47,8 @@ export default function RootLayout({
     <html lang="fr" className={`dark ${geistSans.variable} ${anton.variable}`}>
       <body>
         <script dangerouslySetInnerHTML={{ __html: WATCHDOG_SCRIPT }} />
+        {/* L'accent mémorisé, appliqué avant la première peinture. */}
+        <script dangerouslySetInnerHTML={{ __html: ACCENT_BOOT_SCRIPT }} />
         <HydrationWatchdog />
         <AccentProvider>
           <TalentsProvider>
