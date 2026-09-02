@@ -1,0 +1,29 @@
+src/lib/guardians.ts
+  s_6dc77352c5bc09::t_0ecbe9a459d0a7 744-762
+scripts/add-guardian-snapshot.ts
+  s_6dc77352c5bc09::t_bd9fa3c38af706 1-17
+src/lib/db/schema.ts
+  s_6dc77352c5bc09::t_bd9fa3c38af706 154-158
+src/app/api/sessions/[id]/route.ts
+  s_6dc77352c5bc09::t_577dccb10844f9 6,43-44,321-322,324-334
+  s_6dc77352c5bc09::t_d622ec51d71696 93-94
+  s_6dc77352c5bc09::t_12355490e1cded 116-117
+src/lib/mascots.ts
+  s_6dc77352c5bc09::t_577dccb10844f9 170-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0a1b73cd2e6d8447f36c1f166c659f62b9eb17dd",
+  "prompts": {},
+  "sessions": {
+    "s_6dc77352c5bc09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c821057a-6589-4ccc-9a68-ecc9f4e69e12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}
