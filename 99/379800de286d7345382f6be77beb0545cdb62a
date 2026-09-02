@@ -1,0 +1,92 @@
+src/app/api/sessions/[id]/terminate/route.ts
+  s_6dc77352c5bc09::t_d97c7dc3e943e9 10,56-57,103,165
+src/components/terminate-session-button.tsx
+  s_6dc77352c5bc09::t_50f0dd6a63965d 6,51-66,89-93,110-112,135,166-186,278-377
+  s_6dc77352c5bc09::t_28ebd94a4d7d3c 378
+src/app/manuel/page.tsx
+  s_6dc77352c5bc09::t_86fe83ca657f27 115-123
+  s_6dc77352c5bc09::t_1c28137a7c9128 173-178,181
+  s_6dc77352c5bc09::t_36980d687317ea 168-172
+  s_6dc77352c5bc09::t_fe05d8f5616fc8 179-180
+src/app/api/sessions/[id]/route.ts
+  s_6dc77352c5bc09::t_0752d3b72f0ab7 7,317-322,325
+src/app/api/sessions/[id]/cardio-draft/route.ts
+  s_6dc77352c5bc09::t_d97c7dc3e943e9 1-42
+scripts/add-cardio-draws.ts
+  s_6dc77352c5bc09::t_944e29b7b52531 1-30
+src/lib/db/schema.ts
+  s_6dc77352c5bc09::t_e988789ceeea85 322-338
+  s_6dc77352c5bc09::t_f842ed1fabeb67 21-23
+src/lib/guardians.ts
+  s_6dc77352c5bc09::t_9a796dea463668 6,9,12,16,20-21,167-229,417-426,792-913,915-924,926-927,929-952,955-967,970-972,975-982,990
+  s_6dc77352c5bc09::t_08e9316e56754e 22,59-60,69,298,367,695-702,736-741,752,914,925,928,953-954,968-969,973-974,983-989
+  s_6dc77352c5bc09::t_4af78d5d7bb231 653
+  s_6dc77352c5bc09::t_36980d687317ea 756-758
+src/lib/powers.ts
+  s_6dc77352c5bc09::t_b35cb74bf7226f 1454-1463
+  s_6dc77352c5bc09::t_f842ed1fabeb67 1409-1429,1434-1453
+  s_6dc77352c5bc09::t_fe05d8f5616fc8 1430-1433
+  s_6dc77352c5bc09::t_2193824cbd9b41 1068,1379-1383,1385,1389,1392-1395,1398,1400-1404
+  s_6dc77352c5bc09::t_b4ecdf336d874f 62,410,1070,1378,1384
+  s_6dc77352c5bc09::t_c21039adc9af53 791,1386-1388,1390-1391,1396-1397,1399
+src/app/api/exercises/[id]/history/route.ts
+  s_6dc77352c5bc09::t_e7cf88d88ccf7c 8-9
+  s_6dc77352c5bc09::t_fcc1632323131a 2,101-116,129
+src/app/api/exercises/[id]/unbind/route.ts
+  s_6dc77352c5bc09::t_e7cf88d88ccf7c 1-69
+src/components/home-extras.tsx
+  s_6dc77352c5bc09::t_ae744f0765b2fe 54,800-866,869-872,874-930,1070-1073,1083,1097-1101
+  s_6dc77352c5bc09::t_fe05d8f5616fc8 873
+  s_6dc77352c5bc09::t_459fd1642ecca5 461-463
+  s_6dc77352c5bc09::t_36980d687317ea 867-868
+scripts/add-magnesie.ts
+  s_6dc77352c5bc09::t_f842ed1fabeb67 1-16
+src/components/card-detail-modal.tsx
+  s_6dc77352c5bc09::t_397e77d9dc14a8 4,9,103-104,235-246
+  s_6dc77352c5bc09::t_a0dfc7c40ea081 247-249
+src/app/exercises/[id]/page.tsx
+  s_6dc77352c5bc09::t_550b6f4bba5588 7,30,129-133,139-143,307-309,311-332
+  s_6dc77352c5bc09::t_00e18f2d9d2968 134-138
+  s_6dc77352c5bc09::t_9215466d382feb 76-77
+  s_6dc77352c5bc09::t_36980d687317ea 310,338-339
+src/app/api/magnesie/route.ts
+  s_6dc77352c5bc09::t_e7cf88d88ccf7c 1-48
+src/app/collection/page.tsx
+  s_6dc77352c5bc09::t_3fe6553d8f4d57 625-626,628-639,641-643,645-648,650-654,656-660
+  s_6dc77352c5bc09::t_4af78d5d7bb231 125-127,174-187,603-624
+  s_6dc77352c5bc09::t_383f137e626dc3 627
+  s_6dc77352c5bc09::t_20d30697815e19 640,644,655
+  s_6dc77352c5bc09::t_0b9633151c16ec 649
+  s_6dc77352c5bc09::t_677e1752e8671c 102,449,451,453-454,457-466,768
+src/app/api/cards/forge/route.ts
+  s_6dc77352c5bc09::t_4af78d5d7bb231 1-36
+src/app/api/cards/fusion/route.ts
+  s_6dc77352c5bc09::t_2193824cbd9b41 36-38
+src/app/api/exercises/[id]/route.ts
+  s_6dc77352c5bc09::t_36980d687317ea 75,83-100
+  s_6dc77352c5bc09::t_4ca574f4a1d5c8 101-103
+src/app/api/cards/route.ts
+  s_6dc77352c5bc09::t_677e1752e8671c 131-133
+src/app/api/cards/open/route.ts
+  s_6dc77352c5bc09::t_fe9ba209bf664f 120-129,220,299
+src/components/pack-open-modal.tsx
+  s_6dc77352c5bc09::t_fe9ba209bf664f 339-341,434,485
+  s_6dc77352c5bc09::t_4566aa6a8511e0 59-60
+  s_6dc77352c5bc09::t_677e1752e8671c 207-242,251-254,261-268,270,278-282,289-293,332,336-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "99379800de286d7345382f6be77beb0545cdb62a",
+  "prompts": {},
+  "sessions": {
+    "s_6dc77352c5bc09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c821057a-6589-4ccc-9a68-ecc9f4e69e12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}
