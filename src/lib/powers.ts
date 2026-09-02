@@ -1214,6 +1214,57 @@ export function polarityBreakdown(
   };
 }
 
+// ─── Affichage : les étiquettes courtes (listes serrées) ────────────────────
+// Pour le sélecteur de Gardien et les tirages de l'Échappée : ce que fait
+// la carte, en trois mots. Les grandes cartes tirées par l'Échappée pèsent
+// leur rang en Famille (±8 légendaire, ±13 mythique).
+export function powerShorts(
+  category: "animal" | "pokemon",
+  subtype: string | null,
+  rarity: Rarity,
+): { tiny: string; attract: string; repel: string } {
+  const family = category === "animal" ? "Animal" : "Pokémon";
+  if (rarity === "legendary" || rarity === "mythic") {
+    const pts = ENERGY_BY_RARITY[rarity];
+    return {
+      tiny: `±${pts} ${family}`,
+      attract: `+${pts} ${family}`,
+      repel: `−${pts} ${family}`,
+    };
+  }
+  const pts = POLARITY_POINTS[rarity] ?? 1;
+  const metier = metierOf(category, subtype);
+  if (metier === "lest") {
+    return {
+      tiny: `±${pts} Basique`,
+      attract: `+${pts} Basique`,
+      repel: `−${pts} Basique`,
+    };
+  }
+  if (metier === "etincelle") {
+    const sparkTxt = (pts / 10).toFixed(1).replace(".", ",");
+    return {
+      tiny: `+${sparkTxt} Myth / −${pts} Bas`,
+      attract: `+${sparkTxt} Mythique`,
+      repel: `−${pts} Basique`,
+    };
+  }
+  if (metier === "balance") {
+    const own = category === "animal" ? "Animaux" : "Pokémon";
+    const other = category === "animal" ? "Pokémon" : "Animaux";
+    return {
+      tiny: `±${pts} % curseur`,
+      attract: `+${pts} % ${own}`,
+      repel: `+${pts} % ${other}`,
+    };
+  }
+  return {
+    tiny: `±${pts} ${family}`,
+    attract: `+${pts} ${family}`,
+    repel: `−${pts} ${family}`,
+  };
+}
+
 // ─── Affichage : le pouvoir d'une carte, en toutes lettres ──────────────────
 
 export function powerLabel(

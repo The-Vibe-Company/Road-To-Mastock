@@ -56,6 +56,8 @@ interface CardioDraw {
     rarity: Rarity;
     imageUrl: string | null;
   };
+  attract: string;
+  repel: string;
 }
 
 interface DraftAwakening {
@@ -292,44 +294,57 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
               {draws.map((d, i) => (
                 <div
                   key={d.drawId}
-                  className="animate-card-reveal flex items-center gap-2.5 rounded-lg bg-secondary/30 p-2 ring-1 ring-border"
+                  className="animate-card-reveal rounded-lg bg-secondary/30 p-2 ring-1 ring-border"
                   style={{ animationDelay: `${i * 0.45}s`, animationFillMode: "backwards" }}
                 >
-                  <div className={`relative size-11 shrink-0 overflow-hidden rounded-lg ${RARITY_COLORS[d.card.rarity].bg} ring-1 ${RARITY_COLORS[d.card.rarity].ring}`}>
-                    {d.card.imageUrl && (
-                      <Image src={d.card.imageUrl} alt="" fill unoptimized className="object-cover" />
-                    )}
+                  <div className="flex items-center gap-2.5">
+                    <div className={`relative size-11 shrink-0 overflow-hidden rounded-lg ${RARITY_COLORS[d.card.rarity].bg} ring-1 ${RARITY_COLORS[d.card.rarity].ring}`}>
+                      {d.card.imageUrl && (
+                        <Image src={d.card.imageUrl} alt="" fill unoptimized className="object-cover" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate text-xs font-black ${RARITY_COLORS[d.card.rarity].text}`}>
+                        {d.card.name}
+                      </p>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                        {RARITY_LABELS[d.card.rarity]}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={`truncate text-xs font-black ${RARITY_COLORS[d.card.rarity].text}`}>
-                      {d.card.name}
-                    </p>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                      {RARITY_LABELS[d.card.rarity]}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
+                  {/* Chaque bouton dit CE QU'IL FERA pour cette carte-là */}
+                  <div className="mt-2 grid grid-cols-2 gap-1.5">
                     <button
                       onClick={() => setDrawModes((m) => ({ ...m, [d.drawId]: "attract" }))}
-                      className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                      className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 transition-all active:scale-95 ${
                         drawModes[d.drawId] === "attract"
                           ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/50"
                           : "bg-secondary/60 text-muted-foreground ring-1 ring-border"
                       }`}
                     >
-                      <Magnet className="size-3" />
-                      Attire
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider">
+                        <Magnet className="size-3" />
+                        Attire
+                      </span>
+                      <span className="font-mono text-[10px] font-bold tabular-nums text-emerald-300/90">
+                        {d.attract}
+                      </span>
                     </button>
                     <button
                       onClick={() => setDrawModes((m) => ({ ...m, [d.drawId]: "repel" }))}
-                      className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                      className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 transition-all active:scale-95 ${
                         drawModes[d.drawId] === "repel"
                           ? "bg-red-500/20 text-red-300 ring-1 ring-red-500/50"
                           : "bg-secondary/60 text-muted-foreground ring-1 ring-border"
                       }`}
                     >
-                      <ShieldOff className="size-3" />
-                      Repousse
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider">
+                        <ShieldOff className="size-3" />
+                        Repousse
+                      </span>
+                      <span className="font-mono text-[10px] font-bold tabular-nums text-red-300/90">
+                        {d.repel}
+                      </span>
                     </button>
                   </div>
                 </div>
