@@ -407,7 +407,7 @@ export const PRODIGES: Record<string, ProdigeDef> = {
     id: "golem",
     name: "Le Socle Gravé",
     description:
-      "Fait pour bâtir, jamais pour détruire : à son éveil, +8 dans la jauge de Forge. Jauge pleine (10), ta prochaine fusion coûte 2 fragments au lieu de 3.",
+      "Fait pour bâtir, jamais pour détruire : à son éveil, +8 dans la jauge de Forge. Jauge pleine (10), la Roue de la Forge t'offre un fragment au tirage.",
     effect: { kind: "hat", add: { forge: 8 }, detail: "+8 dans la jauge de Forge" },
   },
   "animal:naga": {
@@ -788,7 +788,7 @@ function fmtAdd(d: Direction, n: number): string {
     case "inner_pokemon": return `dans un pack Basique, la carte tirée est animale à 75 % / Pokémon à 25 % — ce curseur bouge de ${n} % vers les Pokémon`;
     case "inner_animal": return `dans un pack Basique, la carte tirée est animale à 75 % / Pokémon à 25 % — ce curseur bouge de ${n} % vers les animaux`;
     case "wheel_x3": return `+${n} tickets sur la case ×3 de la roue des jetons spéciaux`;
-    case "forge": return `+${n} dans la jauge de Forge — visible sur la barre de fusion de la Collection ; pleine à 10, ta prochaine fusion coûte 2 fragments au lieu de 3`;
+    case "forge": return `+${n} dans la jauge de Forge — visible sur la barre de fusion de la Collection ; pleine à 10, elle paie un tour de la Roue de la Forge : un fragment garanti, sa rareté au tirage (40 % commun → 1 % mythique)`;
     case "curee": return `${n} charges de Curée : tes ${n} prochains doublons tirés rapportent chacun 1 fragment de plus`;
     case "banquise": return `ouvrir un pack consomme normalement tous tes tickets — là, jusqu'à ${n} tickets par direction restent dans le chapeau après ta prochaine ouverture`;
     case "no_basic": return n > 1 ? `tes ${n} prochains packs refusent d'être Basiques` : `ton prochain pack refuse d'être Basique`;
@@ -1065,9 +1065,9 @@ export const MIRACLES: Record<string, Miracle> = {
     id: "forge-vivante",
     name: "La Forge Vivante",
     description:
-      "À son éveil, la machine de guerre remplit la Forge d'un coup : ta prochaine fusion coûte 2 fragments au lieu de 3, sans attendre.",
+      "À son éveil, la machine de guerre remplit la Forge d'un coup : la Roue de la Forge est payée, un fragment t'attend au tirage, sans attendre.",
     rules:
-      "À chaque éveil : remplit la jauge de Forge d'un coup (10/10) — ta prochaine fusion coûte 2 fragments au lieu de 3. La jauge est visible sur la barre de fusion de la Collection.",
+      "À chaque éveil : remplit la jauge de Forge d'un coup (10/10) — un tour de la Roue de la Forge payé : un fragment garanti, sa rareté au tirage. La jauge est visible sur la barre de fusion de la Collection.",
   },
   "pokemon:celebi": {
     id: "second-souffle",
@@ -1376,7 +1376,32 @@ export const WHEEL_SPELLS: Direction[] = [
 ];
 
 export const FORGE_THRESHOLD = 10;
-export const FORGE_DISCOUNT_COST = 2;
+
+// ─── La Roue de la Forge ────────────────────────────────────────────────────
+// La fusion coûte TOUJOURS 3 fragments. La jauge de Forge sert à autre
+// chose : pleine (10 points), elle paie un tour de la Roue de la Forge —
+// un fragment garanti, dont la rareté se joue aux pourcentages.
+export const FORGE_WHEEL_COST = 10;
+
+export const FORGE_WHEEL_ODDS: Record<Rarity, number> = {
+  common: 40,
+  uncommon: 30,
+  rare: 17,
+  epic: 9,
+  legendary: 3,
+  mythic: 1,
+};
+
+// Tirage pur (injectable pour les tests) : renvoie la rareté gagnée.
+export function drawForgeFragment(rand: () => number = Math.random): Rarity {
+  const total = Object.values(FORGE_WHEEL_ODDS).reduce((a, b) => a + b, 0);
+  let roll = rand() * total;
+  for (const [rarity, weight] of Object.entries(FORGE_WHEEL_ODDS) as [Rarity, number][]) {
+    roll -= weight;
+    if (roll < 0) return rarity;
+  }
+  return "common";
+}
 
 // Le Gardien lié : record battu depuis la pose, ou 30 jours d'attente.
 export const GUARDIAN_BOND_DAYS = 30;
@@ -1402,10 +1427,10 @@ export const MAGNESIE_YIELD: Record<Rarity, number> = {
 export const UNBIND_PRICE: Record<Rarity, number> = {
   common: 4,
   uncommon: 6,
-  rare: 10,
-  epic: 16,
-  legendary: 25,
-  mythic: 40,
+  rare: 9,
+  epic: 12,
+  legendary: 16,
+  mythic: 20,
 };
 
 // Hachage djb2 : stable pour toujours, indépendant de la base.

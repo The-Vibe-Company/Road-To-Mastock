@@ -458,8 +458,9 @@ function GuideScreen({ index, total }: { index: number; total: number }) {
           carte de ta collection.
           <br />
           <br />
-          Attention : un Gardien posé est <strong className="text-foreground">lié</strong>.
-          Pour en changer, bats ton record sur cette machine… ou attends 30 jours.
+          Attention : un Gardien posé est <strong className="text-foreground">lié</strong> —
+          à une seule machine à la fois, et pour 30 jours… sauf à payer sa
+          magnésie, la poudre qui délie.
         </>
       ),
     },
@@ -863,13 +864,13 @@ function MagnesieAnnounceModal() {
             La <span className="text-sky-300">Magnésie</span>
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Un Gardien lié se libère en battant ton record sur sa machine, ou
-            après 30 jours. Désormais, il y a une troisième voie :{" "}
+            Un Gardien lié ne se libère qu&apos;après 30 jours. Désormais, il
+            y a une seconde voie :{" "}
             <strong className="text-foreground">payer sa magnésie</strong> —
             la poudre qui délie — au prix du rang de la carte libérée.
           </p>
           <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-            {([["Commun", 4], ["Peu commun", 6], ["Rare", 10], ["Épique", 16], ["Légendaire", 25], ["Mythique", 40]] as const).map(([label, price]) => (
+            {([["Commun", 4], ["Peu commun", 6], ["Rare", 9], ["Épique", 12], ["Légendaire", 16], ["Mythique", 20]] as const).map(([label, price]) => (
               <span key={label} className="rounded-md bg-secondary/50 px-2 py-1 font-mono text-[10px] font-black tabular-nums text-muted-foreground ring-1 ring-border">
                 {label} {price}
               </span>

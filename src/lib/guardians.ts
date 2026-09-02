@@ -650,7 +650,7 @@ export async function resolveGuardians(params: {
               break;
             case "forge-vivante":
               add("forge", FORGE_THRESHOLD);
-              g.detail = "Forge remplie — ta prochaine fusion coûte 2 fragments";
+              g.detail = "Forge remplie — la Roue de la Forge t'attend dans la Collection";
               break;
             case "second-souffle":
               g.detail = "la moitié de ton énergie survivra à chaque remise à zéro";
@@ -753,8 +753,9 @@ export async function resolveGuardians(params: {
 }
 
 // ─── Le Gardien lié ─────────────────────────────────────────────────────────
-// Depuis la pose : soit un record (charge max OU volume) a été battu sur la
-// machine, soit 30 jours sont passés. Sinon, la carte reste.
+// Depuis son premier éveil, un Gardien est lié à sa machine : pour le
+// libérer, attendre 30 jours depuis la pose… ou payer sa magnésie. Rien
+// d'autre — pas même un record.
 
 export async function guardianBondStatus(
   exerciseId: number,
@@ -786,31 +787,6 @@ export async function guardianBondStatus(
   }
 
   if (Date.now() >= unlockDate.getTime()) return { locked: false, unlockAt: null, grace: false };
-
-  // Record battu depuis la pose ? On cherche la MEILLEURE séance (poids et
-  // volume) : si la plus ancienne à détenir le meilleur est postérieure à la
-  // pose, c'est qu'un record est tombé depuis.
-  const res = (await db.execute(sql`
-    WITH per_session AS (
-      SELECT s.date, MAX(st.weight_kg) AS maxw, SUM(st.weight_kg * st.reps) AS vol
-      FROM session_exercises se
-      JOIN sessions s ON s.id = se.session_id
-      JOIN sets st ON st.session_exercise_id = se.id
-      WHERE se.exercise_id = ${exerciseId} AND s.user_id = ${userId}
-        AND st.weight_kg IS NOT NULL
-      GROUP BY s.id, s.date
-    )
-    SELECT
-      (SELECT date FROM per_session ORDER BY maxw DESC, date ASC LIMIT 1) AS best_w,
-      (SELECT date FROM per_session ORDER BY vol DESC, date ASC LIMIT 1) AS best_v
-  `)) as unknown as { rows?: { best_w: string | null; best_v: string | null }[] };
-  const [row] = ((res.rows ?? res) as unknown as { best_w: string | null; best_v: string | null }[]);
-  const cutoff = assignedAt.toISOString().slice(0, 10);
-  const beaten =
-    (row?.best_w != null && row.best_w >= cutoff) ||
-    (row?.best_v != null && row.best_v >= cutoff);
-
-  if (beaten) return { locked: false, unlockAt: null, grace: false };
   return { locked: true, unlockAt, grace: false };
 }
 

@@ -307,7 +307,7 @@ export default function ExerciseDetail({
                   <div className="mt-1.5">
                     <p className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400/90">
                       <Lock className="size-3" />
-                      Gardien lié — bats ton record ici, ou libre le{" "}
+                      Gardien lié — libre le{" "}
                       {exercise.mascotBond.unlockAt
                         ? new Date(exercise.mascotBond.unlockAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
                         : "..."}
@@ -335,8 +335,8 @@ export default function ExerciseDetail({
                     {exercise.mascotBond?.grace && (
                       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
                         Libre jusqu&apos;à son premier éveil — ensuite la carte
-                        sera <span className="font-bold text-amber-400/90">liée</span> :
-                        record sur cette machine, ou le{" "}
+                        sera <span className="font-bold text-amber-400/90">liée</span>{" "}
+                        jusqu&apos;au{" "}
                         <span className="font-bold text-foreground">
                           {exercise.mascotBond.unlockAt
                             ? new Date(exercise.mascotBond.unlockAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })

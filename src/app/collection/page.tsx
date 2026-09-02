@@ -121,6 +121,9 @@ export default function CollectionPage() {
   const [opening, setOpening] = useState(false);
   const [fusing, setFusing] = useState<Rarity | null>(null);
   const [converting, setConverting] = useState<Rarity | null>(null);
+  // La Roue de la Forge : tirage en cours, puis le fragment gagné.
+  const [forging, setForging] = useState(false);
+  const [forgeWin, setForgeWin] = useState<{ rarity: Rarity; category: Category } | null>(null);
   const [modalResult, setModalResult] = useState<OpenResult | null>(null);
   const [detailCreature, setDetailCreature] = useState<DetailedCreature | null>(null);
   const [showSpinWheel, setShowSpinWheel] = useState(false);
@@ -164,6 +167,20 @@ export default function CollectionPage() {
       await refresh();
     } finally {
       setOpening(false);
+    }
+  };
+
+  const handleForgeWheel = async () => {
+    if (forging) return;
+    setForging(true);
+    try {
+      const r = await fetch("/api/cards/forge", { method: "POST" });
+      if (!r.ok) return;
+      const win = await r.json();
+      setForgeWin({ rarity: win.rarity, category: win.category });
+      await refresh();
+    } finally {
+      setForging(false);
     }
   };
 
@@ -573,6 +590,64 @@ export default function CollectionPage() {
         </div>
       )}
 
+      {/* La Roue de la Forge : le fragment gagné, révélé en grand */}
+      {forgeWin && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/85 backdrop-blur-sm"
+          onClick={() => setForgeWin(null)}
+        >
+          <div className="animate-card-reveal flex flex-col items-center px-8 text-center">
+            <div className="pointer-events-none absolute size-64 rounded-full bg-primary/15 blur-3xl" />
+            <Flame className={`size-14 ${TIER_TEXT[forgeWin.rarity]}`} />
+            <p className="mt-4 font-mono text-[10px] font-black uppercase tracking-[0.35em] text-primary/70">
+              La Roue de la Forge
+            </p>
+            <p className={`mt-2 text-3xl font-black tracking-tighter ${TIER_TEXT[forgeWin.rarity]}`}>
+              +1 fragment {RARITY_LABELS[forgeWin.rarity].toLowerCase()}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {forgeWin.category === "animal" ? "côté animaux" : "côté Pokémon"}
+            </p>
+            <p className="mt-5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70">
+              Toucher pour continuer
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* La Forge : sa jauge vit sa vie, filtre actif ou pas — pleine,
+          elle paie un tour de la Roue (un fragment garanti, au tirage). */}
+      {(data.charges?.forge ?? 0) > 0 && (
+        <div className="mb-3 flex items-center gap-2.5 rounded-2xl bg-secondary/30 px-4 py-2.5 ring-1 ring-border">
+          <Flame className="size-4 text-primary" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-black uppercase tracking-widest text-primary/80">
+              La Forge
+            </p>
+            <div className="mt-1 flex h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-secondary/60">
+              <div
+                className="bg-gradient-orange rounded-full"
+                style={{ width: `${Math.min(100, ((data.charges?.forge ?? 0) / 10) * 100)}%` }}
+              />
+            </div>
+          </div>
+          {(data.charges?.forge ?? 0) >= 10 ? (
+            <button
+              onClick={handleForgeWheel}
+              disabled={forging}
+              className="animate-pulse rounded-lg bg-primary/20 px-2.5 py-1.5 font-mono text-[10px] font-black uppercase tracking-wider text-primary ring-1 ring-primary/50 transition-all active:scale-95"
+              title="Roue de la Forge — un fragment garanti : 40 % commun, 30 % peu commun, 17 % rare, 9 % épique, 3 % légendaire, 1 % mythique"
+            >
+              {forging ? "Elle tourne..." : "Lancer la Roue"}
+            </button>
+          ) : (
+            <span className="font-mono text-[10px] font-black tabular-nums text-muted-foreground">
+              {data.charges?.forge ?? 0}/10
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Fusion bar — single tier when filter active, summary when "Tout" */}
       {fusionRarity && FUSION_NEXT[fusionRarity] ? (
         <div className="mb-5 flex items-center justify-between rounded-2xl bg-secondary/30 px-4 py-3 ring-1 ring-border">
@@ -582,20 +657,6 @@ export default function CollectionPage() {
               <span className="font-mono tabular-nums">{fusionShards}</span> fragment{fusionShards !== 1 ? "s" : ""}{" "}
               <span className="text-muted-foreground">{RARITY_LABELS[fusionRarity].toLowerCase()}</span>
             </span>
-            {/* La jauge de Forge : remplie par les Gardiens forgerons —
-                pleine, la prochaine fusion coûte 2 fragments au lieu de 3. */}
-            {(data.charges?.forge ?? 0) > 0 && (
-              <span
-                className={`rounded-md px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-wider ring-1 ${
-                  (data.charges?.forge ?? 0) >= 10
-                    ? "bg-primary/15 text-primary ring-primary/40"
-                    : "bg-secondary/60 text-muted-foreground ring-border"
-                }`}
-                title="Jauge de Forge — pleine (10), la prochaine fusion coûte 2 fragments"
-              >
-                Forge {Math.min(10, data.charges?.forge ?? 0)}/10
-              </span>
-            )}
           </div>
           <Button
             size="sm"
