@@ -8,7 +8,7 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { drawCardioReserves, resolveGuardians, type CardioDraw, type GuardianResolution } from "@/lib/guardians";
-import { claimNewTrophies } from "@/lib/trophies-server";
+import { claimNewTrophies, sessionTrophyProgress, type TrophyProgressStep } from "@/lib/trophies-server";
 import { TROPHIES } from "@/lib/trophies";
 import { revalidatePath } from "next/cache";
 
@@ -55,6 +55,8 @@ export async function POST(
   let newTrophies: string[] = [];
   // L'Échappée : cartes tirées par le cardio, à placer dans la cérémonie.
   let cardioDraws: CardioDraw[] = [];
+  // L'avancée : ce que la séance a fait progresser vers les trophées.
+  let trophyProgress: TrophyProgressStep[] = [];
   // 1ʳᵉ et 4ᵉ séance terminée de la semaine ISO (basée sur sessions.date,
   // pas la date de termination) → jeton spécial à la place du jeton normal.
   // Sessions 2/3/5+ de la semaine → jeton normal classique.
@@ -100,6 +102,7 @@ export async function POST(
         weekPosition,
       });
       newTrophies = await claimNewTrophies(auth.userId);
+      trophyProgress = await sessionTrophyProgress(auth.userId, sessionId);
       cardioDraws = await drawCardioReserves(auth.userId, sessionId);
 
       const isSpecialPosition = weekPosition === 1 || weekPosition === 4;
@@ -163,6 +166,7 @@ export async function POST(
       .filter(Boolean)
       .map((t) => ({ id: t!.id, name: t!.name, rewardLabel: t!.rewardLabel })),
     cardioDraws,
+    trophyProgress,
   });
 }
 

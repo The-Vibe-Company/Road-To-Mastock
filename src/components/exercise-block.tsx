@@ -12,11 +12,13 @@ import { CardioSetRow } from "./cardio-set-row";
 import { AssistedSetForm, type AssistedPayload } from "./assisted-set-form";
 import { AssistedSetRow } from "./assisted-set-row";
 import { RestTimer } from "./rest-timer";
-import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2, AlertTriangle, MapPin, ListOrdered } from "@/components/icons";
+import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2, AlertTriangle, MapPin, ListOrdered, Shield } from "@/components/icons";
 import { cardioMachineFromName } from "@/lib/cardio";
 import { computeSessionPlan } from "@/lib/session-plan";
 import { MascotBackdrop } from "./mascot-backdrop";
 import type { Mascot } from "@/lib/mascot-types";
+import { powerLabel, powerShorts } from "@/lib/powers";
+import { RARITY_COLORS } from "@/lib/rarities";
 
 interface ExerciseSet {
   id: number;
@@ -299,6 +301,19 @@ export function ExerciseBlock({
             <CardTitle className="text-base font-black tracking-tight">{name}</CardTitle>
           </Link>
           <div className="mt-2 flex flex-wrap gap-1.5">
+            {/* L'impact du Gardien, en petit : on sait ce que la carte
+                rapportera à la clôture, sans ouvrir sa fiche. */}
+            {mascot && (
+              <Badge
+                variant="outline"
+                className={`border-transparent text-[10px] font-bold ring-1 ${RARITY_COLORS[mascot.rarity].bg} ${RARITY_COLORS[mascot.rarity].text} ${RARITY_COLORS[mascot.rarity].ring}`}
+              >
+                <Shield className="mr-1 size-3" />
+                {mascot.rarity === "legendary" || mascot.rarity === "mythic"
+                  ? powerLabel(mascot.category, mascot.rarity, mascot.subtype, mascot.slug).name
+                  : powerShorts(mascot.category, mascot.subtype, mascot.rarity).tiny}
+              </Badge>
+            )}
             {medal && (
               <Badge className={`${medal.badge} text-[10px] font-bold`}>
                 <Trophy className="mr-1 size-3" />

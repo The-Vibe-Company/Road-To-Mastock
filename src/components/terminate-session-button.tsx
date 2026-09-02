@@ -7,6 +7,7 @@ import { CheckCircle2, Lock, Loader2, Star, Trophy, Flame, Ticket, Shield, Magne
 import { Button } from "@/components/ui/button";
 import { useTalents } from "./talents-provider";
 import { RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
+import { TROPHY_FAMILIES } from "@/components/trophy-medallion";
 
 // Confettis de la Mélodie (Meloetta) : purement décoratif, 40 particules.
 function ConfettiBurst() {
@@ -66,6 +67,14 @@ interface DraftAwakening {
   detail: string;
 }
 
+interface TrophyProgressStep {
+  stat: string;
+  name: string;
+  target: number;
+  before: number;
+  after: number;
+}
+
 interface AwakenedGuardian {
   exerciseId: number;
   exerciseName: string;
@@ -88,6 +97,7 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   const [guardians, setGuardians] = useState<AwakenedGuardian[]>([]);
   const [recordCount, setRecordCount] = useState(0);
   const [newTrophies, setNewTrophies] = useState<{ id: string; name: string; rewardLabel: string }[]>([]);
+  const [trophyProgress, setTrophyProgress] = useState<TrophyProgressStep[]>([]);
   // L'Échappée : cartes tirées par le cardio, en attente de placement.
   const [draws, setDraws] = useState<CardioDraw[]>([]);
   const [drawModes, setDrawModes] = useState<Record<number, "attract" | "repel">>({});
@@ -142,6 +152,7 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
       }
       setRecordCount(data.recordCount ?? 0);
       setNewTrophies(Array.isArray(data.newTrophies) ? data.newTrophies : []);
+      setTrophyProgress(Array.isArray(data.trophyProgress) ? data.trophyProgress : []);
       if (Array.isArray(data.cardioDraws)) setDraws(data.cardioDraws);
 
       // Reliques de clôture — chacune ne s'éveille que si son talent est là.
@@ -363,6 +374,46 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
             </div>
           </Link>
         ))}
+
+        {/* L'avancée : ce que la séance a fait progresser vers les trophées */}
+        {trophyProgress.length > 0 && (
+          <div className="mt-1 rounded-xl bg-background/60 p-3 ring-1 ring-border">
+            <div className="mb-2 flex items-center gap-1.5">
+              <Trophy className="size-3.5 text-yellow-400/80" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-300/80">
+                Ta route vers les trophées
+              </span>
+            </div>
+            <div className="space-y-2">
+              {trophyProgress.map((t) => {
+                const fam = TROPHY_FAMILIES[t.stat];
+                const Icon = fam?.icon;
+                const pct = Math.min(100, Math.round((t.after / t.target) * 100));
+                const beforePct = Math.min(100, Math.round((t.before / t.target) * 100));
+                return (
+                  <div key={t.stat}>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="flex min-w-0 items-center gap-1.5 truncate text-xs font-bold">
+                        {Icon && <Icon className={`size-3.5 shrink-0 ${fam.accent}`} />}
+                        <span className="truncate">{t.name}</span>
+                      </p>
+                      <p className="shrink-0 font-mono text-[10px] font-bold tabular-nums text-muted-foreground">
+                        {t.before.toLocaleString("fr-FR")}
+                        <span className="text-emerald-300"> → {t.after.toLocaleString("fr-FR")}</span>
+                        {" / "}
+                        {t.target.toLocaleString("fr-FR")}
+                      </p>
+                    </div>
+                    <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded-full bg-secondary/60">
+                      <div className="rounded-l-full bg-yellow-500/45" style={{ width: `${beforePct}%` }} />
+                      <div className="bg-gradient-orange rounded-r-full" style={{ width: `${Math.max(1, pct - beforePct)}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* L'Échappée : le cardio a tiré des cartes de la réserve — place-les */}
         {draws.length > 0 && (
