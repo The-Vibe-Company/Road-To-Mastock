@@ -360,19 +360,50 @@
 @layer utilities {
   /* ── Talents cachés ─────────────────────────────────────────────── */
 
-  /* Le Squatteur : le chat respire, s'étire de temps en temps */
-  @keyframes cat-breathe {
-    0%, 100% { transform: scaleY(1); }
-    50%      { transform: scaleY(1.04); }
+  /* Le Squatteur : le chat traverse l'écran en marchant — pattes
+     alternées, corps qui tangue, queue qui ondule. Il entre à droite,
+     sort à gauche, et recommence après une longue pause hors-champ. */
+  @keyframes cat-cross {
+    0%   { transform: translateX(calc(100vw + 60px)); }
+    55%  { transform: translateX(-80px); }
+    100% { transform: translateX(-80px); }
   }
-  @keyframes cat-stretch {
-    0%, 90%, 100% { transform: rotate(0deg) scaleX(1); }
-    93%           { transform: rotate(-6deg) scaleX(1.12); }
-    96%           { transform: rotate(3deg) scaleX(1.05); }
+  .cat-track {
+    animation: cat-cross 60s linear infinite;
+    will-change: transform;
   }
-  .cat-idle {
-    animation: cat-breathe 3.2s ease-in-out infinite, cat-stretch 24s ease-in-out infinite;
-    transform-origin: bottom center;
+  @keyframes cat-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-1.5px); }
+  }
+  .cat-body {
+    animation: cat-bob 0.55s ease-in-out infinite;
+  }
+  @keyframes cat-step-a {
+    0%, 100% { transform: rotate(14deg); }
+    50%      { transform: rotate(-14deg); }
+  }
+  @keyframes cat-step-b {
+    0%, 100% { transform: rotate(-14deg); }
+    50%      { transform: rotate(14deg); }
+  }
+  .cat-legs-a {
+    animation: cat-step-a 0.55s ease-in-out infinite;
+    transform-origin: 50% 22px;
+    transform-box: fill-box;
+  }
+  .cat-legs-b {
+    animation: cat-step-b 0.55s ease-in-out infinite;
+    transform-origin: 50% 22px;
+    transform-box: fill-box;
+  }
+  @keyframes cat-tail-sway {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(10deg); }
+  }
+  .cat-tail {
+    animation: cat-tail-sway 1.4s ease-in-out infinite;
+    transform-origin: 42px 16px;
   }
 
   /* La Sieste : Ronflex dort, sa masse se soulève lentement */

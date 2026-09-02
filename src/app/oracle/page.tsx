@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, Eye, Infinity as InfinityIcon, Layers, Anchor, Clock, Landmark, Calendar } from "@/components/icons";
+import { Download, Eye, Infinity as InfinityIcon, Layers, Anchor, Clock, Landmark, Calendar, Lock } from "@/components/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BackButton } from "@/components/back-button";
 import { Spinner } from "@/components/spinner";
@@ -54,7 +54,20 @@ export default function OraclePage() {
     );
   }
 
-  const anyOracle = ["boucle", "sept-tetes", "profondeurs", "voyage", "regard", "racines", "presage"].some(has);
+  // Les sept salles de l'Oracle : chacune tient à un talent. Les salles
+  // fermées restent VISIBLES en silhouette — on sait ce qui existe, jamais
+  // quelle carte l'ouvre.
+  const ROOMS: { id: string; label: string }[] = [
+    { id: "boucle", label: "La Frise du Temps" },
+    { id: "sept-tetes", label: "L'Anatomie du Colosse" },
+    { id: "profondeurs", label: "Les Machines Oubliées" },
+    { id: "voyage", label: "Le Voyage" },
+    { id: "regard", label: "Le Hall des Records" },
+    { id: "racines", label: "L'Archive Totale" },
+    { id: "presage", label: "La Carte du Ciel" },
+  ];
+  const lockedRooms = ROOMS.filter((r) => !has(r.id));
+  const anyOracle = ROOMS.some((r) => has(r.id));
 
   return (
     <div className="min-h-dvh px-4 pb-12 pt-6">
@@ -249,7 +262,15 @@ export default function OraclePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
+                <div
+                  className="overflow-x-auto"
+                  // En mobile, la carte dépasse l'écran : on l'ouvre sur
+                  // AUJOURD'HUI (bord droit), le passé se scrolle vers la
+                  // gauche — sinon on ne voit que des semaines vides.
+                  ref={(el) => {
+                    if (el) el.scrollLeft = el.scrollWidth;
+                  }}
+                >
                   <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="min-w-full">
                     {cells.map((c, i) => (
                       <rect
@@ -259,14 +280,19 @@ export default function OraclePage() {
                         width={cell}
                         height={cell}
                         rx={1.5}
-                        fill={c.on ? "var(--primary)" : "var(--muted)"}
-                        opacity={c.on ? 1 : 0.35}
+                        // var() ne se résout pas en attribut SVG : le fill
+                        // passe par le style (CSS), sinon cases noires.
+                        style={{
+                          fill: c.on ? "var(--primary)" : "var(--muted)",
+                          opacity: c.on ? 1 : 0.35,
+                        }}
                       />
                     ))}
                   </svg>
                 </div>
                 <p className="mt-2 font-mono text-[10px] tabular-nums text-muted-foreground">
-                  {data.yearmap.length} jour{data.yearmap.length > 1 ? "s" : ""} d&apos;entraînement sur les 365 derniers
+                  {data.yearmap.length} jour{data.yearmap.length > 1 ? "s" : ""}{" "}
+                  d&apos;entraînement sur les 365 derniers
                 </p>
               </CardContent>
             </Card>
@@ -306,6 +332,30 @@ export default function OraclePage() {
             <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
               L&apos;Oracle est muet. Ses voix sont dispersées dans le catalogue —
               continue d&apos;ouvrir des packs.
+            </p>
+          </div>
+        )}
+
+        {/* Les salles encore scellées : silhouettes, pas d'indices */}
+        {lockedRooms.length > 0 && (
+          <div className="rounded-2xl bg-secondary/20 p-4 ring-1 ring-border/60">
+            <p className="mb-2.5 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/70">
+              <Lock className="size-3.5" />
+              {lockedRooms.length} salle{lockedRooms.length > 1 ? "s" : ""} encore scellée{lockedRooms.length > 1 ? "s" : ""}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {lockedRooms.map((r) => (
+                <span
+                  key={r.id}
+                  className="rounded-md bg-secondary/40 px-2 py-1 text-[10px] font-bold text-muted-foreground/60 ring-1 ring-border/50"
+                >
+                  {r.label}
+                </span>
+              ))}
+            </div>
+            <p className="mt-2.5 text-[11px] leading-snug text-muted-foreground">
+              Chaque salle s&apos;ouvre quand la bonne carte rejoint ta
+              collection. Personne ne sait laquelle avant de la tirer.
             </p>
           </div>
         )}
