@@ -1,0 +1,42 @@
+src/lib/guardians.ts
+  s_6dc77352c5bc09::t_08e9316e56754e 22,59-60,69,298,367,695-702,736-741,752,938,949,952,977-978,992-993,997-998,1007-1013
+src/app/api/exercises/[id]/history/route.ts
+  s_6dc77352c5bc09::t_e7cf88d88ccf7c 8-9
+  s_6dc77352c5bc09::t_fcc1632323131a 2,101-116,129
+src/app/api/exercises/[id]/unbind/route.ts
+  s_6dc77352c5bc09::t_e7cf88d88ccf7c 1-69
+src/components/home-extras.tsx
+  s_6dc77352c5bc09::t_ae744f0765b2fe 54,799-929,1069-1072,1082,1096-1100
+src/lib/powers.ts
+  s_6dc77352c5bc09::t_f842ed1fabeb67 1384-1428
+scripts/add-magnesie.ts
+  s_6dc77352c5bc09::t_f842ed1fabeb67 1-16
+src/lib/db/schema.ts
+  s_6dc77352c5bc09::t_f842ed1fabeb67 21-23
+src/app/manuel/page.tsx
+  s_6dc77352c5bc09::t_1c28137a7c9128 168-179
+src/components/card-detail-modal.tsx
+  s_6dc77352c5bc09::t_397e77d9dc14a8 4,9,103-104,235-246
+  s_6dc77352c5bc09::t_a0dfc7c40ea081 247-249
+src/app/exercises/[id]/page.tsx
+  s_6dc77352c5bc09::t_550b6f4bba5588 7,30,127-132,138-142,306-331
+  s_6dc77352c5bc09::t_00e18f2d9d2968 133-137
+src/app/api/magnesie/route.ts
+  s_6dc77352c5bc09::t_e7cf88d88ccf7c 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "31faaf3ce5e909449dc2034773fae968cfddb2c9",
+  "prompts": {},
+  "sessions": {
+    "s_6dc77352c5bc09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c821057a-6589-4ccc-9a68-ecc9f4e69e12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}
