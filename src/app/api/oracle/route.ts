@@ -131,6 +131,40 @@ export async function GET() {
     payload.hall = res.rows ?? res;
   }
 
+  // Le Rapport de Force : la meilleure charge de chaque exercice rapportée
+  // au dernier poids de corps connu — la puissance relative, pas la brute.
+  if (has("rapport-force")) {
+    const bwRes = (await db.execute(sql`
+      SELECT bodyweight_kg AS bw FROM sessions
+      WHERE user_id = ${auth.userId} AND bodyweight_kg IS NOT NULL
+      ORDER BY date DESC, created_at DESC LIMIT 1
+    `)) as unknown as { rows?: { bw: number }[] };
+    const bw = Number(((bwRes.rows ?? bwRes) as unknown as { bw: number }[])[0]?.bw ?? 0);
+    if (bw > 0) {
+      const res = (await db.execute(sql`
+        SELECT e.name, MAX(st.weight_kg)::float AS best
+        FROM sets st
+        JOIN session_exercises se ON se.id = st.session_exercise_id
+        JOIN sessions s ON s.id = se.session_id
+        JOIN exercises e ON e.id = se.exercise_id
+        WHERE s.user_id = ${auth.userId} AND st.weight_kg IS NOT NULL
+        GROUP BY e.name
+        ORDER BY MAX(st.weight_kg) DESC
+        LIMIT 12
+      `)) as unknown as { rows?: { name: string; best: number }[] };
+      payload.powerRatio = {
+        bodyweight: bw,
+        rows: (((res.rows ?? res) as unknown as { name: string; best: number }[]) ?? []).map((r) => ({
+          name: r.name,
+          best: Number(r.best),
+          ratio: Number(r.best) / bw,
+        })).sort((a, b) => b.ratio - a.ratio),
+      };
+    } else {
+      payload.powerRatio = { bodyweight: 0, rows: [] };
+    }
+  }
+
   // La Carte du Ciel (Qilin) : chaque jour d'entraînement de l'année.
   if (has("presage")) {
     const res = (await db.execute(sql`

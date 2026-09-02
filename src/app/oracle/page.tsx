@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, Eye, Infinity as InfinityIcon, Layers, Anchor, Clock, Landmark, Calendar, Lock } from "@/components/icons";
+import { Download, Eye, Infinity as InfinityIcon, Layers, Anchor, Clock, Landmark, Calendar, Lock, Gauge } from "@/components/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BackButton } from "@/components/back-button";
 import { Spinner } from "@/components/spinner";
@@ -13,6 +13,7 @@ import { useTalents } from "@/components/talents-provider";
 interface OracleData {
   unlocked: string[];
   yearmap?: string[];
+  powerRatio?: { bodyweight: number; rows: { name: string; best: number; ratio: number }[] };
   timeline?: { name: string; date: string; weight: number }[];
   muscles?: { muscle: string; volume: number; sessions: number }[];
   neglected?: { name: string; last_date: string; days_ago: number }[];
@@ -65,6 +66,7 @@ export default function OraclePage() {
     { id: "regard", label: "Le Hall des Records" },
     { id: "racines", label: "L'Archive Totale" },
     { id: "presage", label: "La Carte du Ciel" },
+    { id: "rapport-force", label: "Le Rapport de Force" },
   ];
   const lockedRooms = ROOMS.filter((r) => !has(r.id));
   const anyOracle = ROOMS.some((r) => has(r.id));
@@ -335,6 +337,47 @@ export default function OraclePage() {
               continue d&apos;ouvrir des packs.
             </p>
           </div>
+        )}
+
+        {/* Le Rapport de Force : la charge rapportée au poids de corps */}
+        {has("rapport-force") && data?.powerRatio && (
+          <Card className="card-gradient-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary/60">
+                <Gauge className="size-4" />
+                Le Rapport de Force — charge / poids de corps
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.powerRatio.bodyweight <= 0 ? (
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  L&apos;ours veut d&apos;abord te peser : enregistre ton poids
+                  de corps (« Pèse-toi », en haut d&apos;une séance) et cette
+                  salle s&apos;éveillera.
+                </p>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    {data.powerRatio.rows.map((r) => (
+                      <div key={r.name} className="flex items-baseline gap-2">
+                        <p className="min-w-0 flex-1 truncate text-xs font-bold">{r.name}</p>
+                        <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">
+                          {Math.round(r.best)} kg
+                        </span>
+                        <span className={`w-14 shrink-0 text-right font-mono text-sm font-black tabular-nums ${r.ratio >= 1 ? "text-primary" : "text-foreground/80"}`}>
+                          ×{r.ratio.toFixed(2).replace(".", ",")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                    rapporté à ton poids de corps : {Math.round(data.powerRatio.bodyweight)} kg
+                    — ×1,00 = tu soulèves ton propre poids
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Les salles encore scellées : silhouettes, pas d'indices */}
