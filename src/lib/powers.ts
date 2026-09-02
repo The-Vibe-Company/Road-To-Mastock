@@ -1381,6 +1381,21 @@ export const FORGE_DISCOUNT_COST = 2;
 // Le Gardien lié : record battu depuis la pose, ou 30 jours d'attente.
 export const GUARDIAN_BOND_DAYS = 30;
 
+// L'Endurance : sur une machine de cardio, l'éveil d'un métier se
+// multiplie avec la durée pédalée/courue ce jour-là.
+//   ×1 de base, +1 par quart d'heure COMPLET, +1 bonus au cap des 30 min,
+//   +1 bonus au cap de l'heure.
+//   14 min → ×1 · 16 min → ×2 · 29 min → ×2 · 31 min → ×4 · 61 min → ×7
+export function cardioAwakeningMultiplier(minutes: number): number {
+  if (!minutes || minutes <= 0) return 1;
+  return (
+    1 +
+    Math.floor(minutes / 15) +
+    (minutes >= 30 ? 1 : 0) +
+    (minutes >= 60 ? 1 : 0)
+  );
+}
+
 // Nombre minimal de séances d'historique sur une machine pour qu'un record
 // y compte (badge, Gardiens à record : Banshee, Sphinx, Marshadow…) : sans
 // ce verrou, la première séance est un record automatique.

@@ -112,6 +112,12 @@ export default function ManuelPage() {
             <B>La Balance</B> — penche le 75/25 des packs mixtes vers les
             animaux ou les Pokémon (1 à 6 % par éveil).
           </p>
+          <p>
+            <B>L&apos;Endurance</B> — sur une machine de cardio, l&apos;éveil
+            se multiplie avec la durée du jour : ×1 de base, +1 par quart
+            d&apos;heure complet, +1 bonus à 30 min, +1 bonus à l&apos;heure.
+            14 min → ×1, 16 min → ×2, 31 min → ×4, une heure → ×7.
+          </p>
         </Section>
 
         <Section icon={<Star className="size-4" />} title="Les Prodiges et les Miracles (légendaire et mythique)">

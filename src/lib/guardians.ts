@@ -14,6 +14,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Rarity } from "@/lib/rarities";
 import {
   DIRECTION_CAPS,
+  cardioAwakeningMultiplier,
   FORGE_THRESHOLD,
   HAT_DIRECTIONS,
   POLARITY_POINTS,
@@ -177,6 +178,7 @@ export async function resolveGuardians(params: {
       setCount: sql<number>`COUNT(${sets.id})::int`,
       volume: sql<number>`COALESCE(SUM(${sets.weightKg} * ${sets.reps}), 0)::float`,
       maxWeight: sql<number>`COALESCE(MAX(${sets.weightKg}), 0)::float`,
+      cardioMinutes: sql<number>`COALESCE(SUM(${sets.durationMinutes}), 0)::int`,
     })
     .from(sessionExercises)
     .innerJoin(exercises, eq(sessionExercises.exerciseId, exercises.id))
@@ -192,6 +194,7 @@ export async function resolveGuardians(params: {
     variantId: number | null;
     volume: number;
     maxWeight: number;
+    cardioMinutes: number;
   };
   const byExercise = new Map<number, Entry>();
   for (const r of rows) {
@@ -202,6 +205,7 @@ export async function resolveGuardians(params: {
     if (existing) {
       existing.volume += r.volume;
       existing.maxWeight = Math.max(existing.maxWeight, r.maxWeight);
+      existing.cardioMinutes += r.cardioMinutes;
     } else {
       byExercise.set(r.exerciseId, {
         exerciseId: r.exerciseId,
@@ -211,6 +215,7 @@ export async function resolveGuardians(params: {
         variantId: r.variantId ?? null,
         volume: r.volume,
         maxWeight: r.maxWeight,
+        cardioMinutes: r.cardioMinutes,
       });
     }
   }
@@ -340,7 +345,11 @@ export async function resolveGuardians(params: {
 
     if (rarity !== "legendary" && rarity !== "mythic") {
       // ── Étage 1 : la Polarité, selon le métier de la carte ──
-      const pts = (POLARITY_POINTS[rarity] ?? 1) + (arceusAwake ? 1 : 0);
+      // L'Endurance : les minutes de cardio du jour multiplient l'éveil
+      // (+1 par quart d'heure complet, bonus à 30 min et à l'heure).
+      const cardioMult = cardioAwakeningMultiplier(e.cardioMinutes);
+      const pts =
+        ((POLARITY_POINTS[rarity] ?? 1) + (arceusAwake ? 1 : 0)) * cardioMult;
       const family = e.side.category === "animal" ? "Animal" : "Pokémon";
       const metier = metierOf(e.side.category, card.subtype);
       const repel = e.mode === "repel";
@@ -388,6 +397,8 @@ export async function resolveGuardians(params: {
           ? `${pts} ticket${pts > 1 ? "s" : ""} ${family} dévoré${pts > 1 ? "s" : ""}`
           : `+${pts} ticket${pts > 1 ? "s" : ""} ${family}`;
       }
+
+      if (cardioMult > 1) g.detail += ` (endurance ×${cardioMult})`;
 
       // L'Écho des meutes légendaires imite les gestes de Famille uniquement
       // — les curseurs et étincelles ne se copient pas.
