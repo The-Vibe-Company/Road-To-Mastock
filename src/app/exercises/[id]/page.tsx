@@ -581,19 +581,19 @@ export default function ExerciseDetail({
                 <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
                   <defs>
                     <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="oklch(0.7 0.2 45)" stopOpacity="0.4" />
-                      <stop offset="100%" stopColor="oklch(0.7 0.2 45)" stopOpacity="0" />
+                      <stop offset="0%" stopColor="var(--accent-gradient-mid)" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="var(--accent-gradient-mid)" stopOpacity="0" />
                     </linearGradient>
                   </defs>
                   <path d={areaPath} fill="url(#chartGrad)" />
-                  <path d={linePath} fill="none" stroke="oklch(0.7 0.2 45)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d={linePath} fill="none" style={{ stroke: "var(--accent-gradient-mid)" }} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   {hoveredPoint !== null && (
                     <line
                       x1={points[hoveredPoint].x}
                       y1={padY}
                       x2={points[hoveredPoint].x}
                       y2={H}
-                      stroke="oklch(0.7 0.2 45)"
+                      style={{ stroke: "var(--accent-gradient-mid)" }}
                       strokeWidth="1"
                       strokeDasharray="4 3"
                       opacity="0.4"
@@ -605,8 +605,10 @@ export default function ExerciseDetail({
                         cx={p.x}
                         cy={p.y}
                         r={hoveredPoint === i ? 6 : i === points.length - 1 ? 5 : 3}
-                        fill={hoveredPoint === i || i === points.length - 1 ? "oklch(0.7 0.2 45)" : "oklch(0.15 0 0)"}
-                        stroke="oklch(0.7 0.2 45)"
+                        style={{
+                          fill: hoveredPoint === i || i === points.length - 1 ? "var(--accent-gradient-mid)" : "oklch(0.15 0 0)",
+                          stroke: "var(--accent-gradient-mid)",
+                        }}
                         strokeWidth={hoveredPoint === i || i === points.length - 1 ? 0 : 1.5}
                         className="transition-all duration-150"
                       />
