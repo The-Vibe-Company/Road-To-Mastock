@@ -1,0 +1,21 @@
+src/app/collection/page.tsx
+  s_6dc77352c5bc09::t_20d30697815e19 630,634,645
+src/lib/powers.ts
+  s_6dc77352c5bc09::t_b4ecdf336d874f 62,410,791,1070,1378,1384
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7f9160db67746dbc8222c2181865fad8e4a9ec6f",
+  "prompts": {},
+  "sessions": {
+    "s_6dc77352c5bc09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c821057a-6589-4ccc-9a68-ecc9f4e69e12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}
