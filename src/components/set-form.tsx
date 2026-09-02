@@ -3,12 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2 } from "@/components/icons";
 
 interface SetFormProps {
   onAdd: (weightKg: number, reps: number) => void | Promise<void>;
   lastWeight?: number;
   lastReps?: number;
+  /** Reps proposées quand il n'y a pas de dernière série (10 par défaut —
+   *  20 sur les machines d'endurance comme le Marteau Haltères). */
+  defaultReps?: number;
   knownWeights?: number[];
   /** Poids prévu par le programme du jour pour cette série. Prioritaire sur la
    *  simple montée d'un palier. */
@@ -29,6 +32,7 @@ export function SetForm({
   onAdd,
   lastWeight,
   lastReps,
+  defaultReps = 10,
   knownWeights = [],
   plannedWeight,
   applyToken,
@@ -40,7 +44,7 @@ export function SetForm({
       : undefined);
 
   const [weight, setWeight] = useState(suggestedWeight?.toString() || "");
-  const [reps, setReps] = useState(lastReps?.toString() || "10");
+  const [reps, setReps] = useState((lastReps ?? defaultReps).toString());
   const [submitting, setSubmitting] = useState(false);
   // Dès que l'utilisateur touche au champ, on cesse d'y écrire : le parent se
   // re-rend à chaque rafraîchissement de la séance (y compris déclenché par un

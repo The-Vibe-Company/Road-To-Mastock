@@ -40,6 +40,14 @@ export async function proxy(request: NextRequest) {
     const response = NextResponse.next();
     response.headers.set("x-user-id", String(payload.userId));
 
+    // Les documents HTML ne doivent jamais être resservis depuis le cache
+    // disque lors d'un history load (Retour cross-document sur iOS) : un
+    // HTML d'un ancien build pointe vers des chunks disparus → spinner
+    // éternel. Les /api/* et assets statiques gardent leur cache normal.
+    if (!pathname.startsWith("/api/")) {
+      response.headers.set("Cache-Control", "no-store, must-revalidate");
+    }
+
     // Sliding session: if the token was issued more than a day ago,
     // re-sign it and reset the cookie so the user stays logged in as long
     // as they use the app at least once every 30 days.

@@ -5,11 +5,15 @@ const COIN_PALETTE = {
   2: { ringStart: "#fbbf24", ringEnd: "#92400e", field1: "#78350f", field2: "#451a03", text: "#fef3c7", glow: "drop-shadow(0 0 18px rgba(251,191,36,0.3))" },
   3: { ringStart: "#e7e5e4", ringEnd: "#78716c", field1: "#1c1917", field2: "#0c0a09", text: "#fafaf9", glow: "drop-shadow(0 0 22px rgba(231,229,228,0.4))" },
   4: { ringStart: "#fef08a", ringEnd: "#a16207", field1: "#451a03", field2: "#1c0d02", text: "#fef9c3", glow: "drop-shadow(0 0 36px rgba(251,191,36,0.85))" },
+  // Le ×10 du Pas de la Fortune (Qilin) — la pièce mythique.
+  10: { ringStart: "#fda4af", ringEnd: "#9f1239", field1: "#4c0519", field2: "#1c0208", text: "#ffe4e6", glow: "drop-shadow(0 0 48px rgba(244,114,182,0.95))" },
 } as const;
 
-export function JackpotCoin({ reward, size = 144 }: { reward: 1 | 2 | 3 | 4; size?: number }) {
+export type CoinReward = keyof typeof COIN_PALETTE;
+
+export function JackpotCoin({ reward, size = 144 }: { reward: CoinReward; size?: number }) {
   const p = COIN_PALETTE[reward];
-  const isJackpot = reward === 4;
+  const isJackpot = reward === 4 || reward === 10;
   const id = `coin-${reward}`;
 
   return (

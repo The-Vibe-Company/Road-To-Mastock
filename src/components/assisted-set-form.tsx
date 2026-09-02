@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2 } from "@/components/icons";
 
 export interface AssistedPayload {
   assistanceKg: number;
@@ -19,12 +19,12 @@ interface AssistedSetFormProps {
 
 export function AssistedSetForm({ bodyweightKg, onAdd, lastAssistance, lastReps }: AssistedSetFormProps) {
   const [assistance, setAssistance] = useState(lastAssistance != null ? lastAssistance.toString() : "");
-  const [reps, setReps] = useState((lastReps ?? 8).toString());
+  const [reps, setReps] = useState((lastReps ?? 10).toString());
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (lastAssistance != null) setAssistance(lastAssistance.toString());
-    setReps((lastReps ?? 8).toString());
+    setReps((lastReps ?? 10).toString());
   }, [lastAssistance, lastReps]);
 
   const a = parseFloat(assistance);

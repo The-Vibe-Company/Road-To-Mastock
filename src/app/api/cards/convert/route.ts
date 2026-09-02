@@ -4,6 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { CONVERSION_BATCH, CONVERSION_RATE, type Rarity } from "@/lib/rarities";
 import { RARITIES } from "@/lib/rarities";
+import { loadCharges, saveCharges } from "@/lib/guardians";
 
 type Category = "animal" | "pokemon";
 
@@ -26,7 +27,11 @@ export async function POST(request: Request) {
   }
 
   const batch = CONVERSION_BATCH[rarity];
-  const reward = CONVERSION_RATE[rarity];
+  // L'Orpailleur (Sol) : une charge en attente, la conversion rapporte
+  // +1 jeton, puis la charge se consume.
+  const charges = await loadCharges(auth.userId);
+  const orpailleur = (charges.orpailleur ?? 0) >= 1;
+  const reward = CONVERSION_RATE[rarity] + (orpailleur ? 1 : 0);
 
   // Atomic decrement: only succeed if user has enough shards
   const [decremented] = await db
@@ -47,6 +52,10 @@ export async function POST(request: Request) {
       { error: `Pas assez de fragments (besoin de ${batch})` },
       { status: 400 },
     );
+  }
+
+  if (orpailleur) {
+    await saveCharges(auth.userId, { ...charges, orpailleur: 0 });
   }
 
   const [updatedUser] = await db

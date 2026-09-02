@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Flame, Weight, Calendar, TrendingUp, AlertTriangle } from "lucide-react";
+import { Trophy, Flame, Weight, Calendar, TrendingUp, AlertTriangle } from "@/components/icons";
+import { Spinner } from "./spinner";
 
 interface Stats {
   totalSessions: number;
@@ -37,10 +38,7 @@ export function Dashboard({ friendUserId }: { friendUserId?: number } = {}) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-          <p className="text-sm font-medium text-primary/60">Chargement...</p>
-        </div>
+        <Spinner label="Chargement..." />
       </div>
     );
   }

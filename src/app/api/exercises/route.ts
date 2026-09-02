@@ -3,6 +3,7 @@ import { exercises } from "@/lib/db/schema";
 import { and, asc, eq, ilike } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { resolveMuscleGroups } from "@/lib/muscle-groups";
+import { loadMascotsByExercise } from "@/lib/mascots";
 import type { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -23,6 +24,8 @@ export async function GET(request: NextRequest) {
     )
     .orderBy(asc(exercises.name));
 
+  const mascots = await loadMascotsByExercise(result.map((e) => e.id));
+
   return Response.json(
     result.map((e) => {
       const groups = resolveMuscleGroups(e.muscleGroups, e.muscleGroup);
@@ -34,6 +37,7 @@ export async function GET(request: NextRequest) {
         hasVariants: e.hasVariants ?? false,
         muscleGroup: groups[0] ?? null,
         muscleGroups: groups,
+        mascot: mascots.get(e.id) ?? null,
       };
     }),
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Trash2, Clock, Flame, Route, Gauge, BarChart3 } from "lucide-react";
+import { Trash2, Clock, Flame, Route, Gauge, BarChart3 } from "@/components/icons";
 
 export interface CardioSetData {
   setNumber: number;

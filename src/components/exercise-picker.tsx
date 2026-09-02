@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Flame, Sparkles, Loader2, Activity, MapPin } from "lucide-react";
+import { Plus, Search, Flame, Loader2, Activity, MapPin } from "@/components/icons";
 import { MUSCLE_GROUPS } from "@/lib/muscle-groups";
 
 interface Exercise {
@@ -57,6 +57,7 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
       setSelectingId(null);
       setVariantFor(null);
       setNewVariant("");
+      setSearch("");
       fetch("/api/exercises")
         .then((r) => r.json())
         .then(setExercises);
@@ -82,6 +83,7 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
     setSelectingId(exercise.id);
     try {
       await onSelect(exercise, null);
+      setSearch("");
     } finally {
       setSelectingId(null);
     }
@@ -95,6 +97,7 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
       await onSelect(exercise, variantId);
       setVariantFor(null);
       setNewVariant("");
+      setSearch("");
     } finally {
       setSelectingId(null);
     }
@@ -137,10 +140,12 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
     );
   };
 
+  // Recherche insensible aux accents ET à la casse : « developpe » doit
+  // trouver « Développé couché ».
+  const fold = (v: string) =>
+    v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const filtered = search
-    ? exercises.filter((e) =>
-        e.name.toLowerCase().includes(search.toLowerCase())
-      )
+    ? exercises.filter((e) => fold(e.name).includes(fold(search)))
     : exercises;
 
   const cardioExercises = filtered.filter((e) => e.kind === "cardio");
@@ -189,7 +194,7 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
               }}
               className="h-11 shrink-0 bg-gradient-orange-intense px-4 font-bold text-black"
             >
-              <Sparkles className="size-4" />
+              <Plus className="size-4" />
               Créer
             </Button>
           </div>
@@ -300,7 +305,7 @@ export function ExercisePicker({ open, onOpenChange, onSelect }: ExercisePickerP
           )}
 
           {/* List */}
-          <div className={`flex-1 overflow-y-auto pb-6 ${variantFor ? "hidden" : ""}`}>
+          <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6 ${variantFor ? "hidden" : ""}`}>
             {/* Frequent exercises */}
             {!search && frequentExercises.length > 0 && (
               <div className="mb-5">

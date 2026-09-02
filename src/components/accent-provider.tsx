@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { ACCENT_PRESETS, type AccentPreset } from "@/lib/colors";
+import { resolveAccent, type AccentPreset } from "@/lib/colors";
 
 interface AccentContextValue {
   color: string;
@@ -45,9 +45,10 @@ export function AccentProvider({ children }: { children: React.ReactNode }) {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((user) => {
-        if (user?.accentColor && ACCENT_PRESETS[user.accentColor]) {
+        const preset = user?.accentColor ? resolveAccent(user.accentColor) : null;
+        if (preset) {
           setColorState(user.accentColor);
-          applyPreset(ACCENT_PRESETS[user.accentColor]);
+          applyPreset(preset);
         }
         if (user?.theme && (user.theme === "dark" || user.theme === "light")) {
           setThemeState(user.theme);
@@ -58,7 +59,7 @@ export function AccentProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setColor = (c: string) => {
-    const preset = ACCENT_PRESETS[c];
+    const preset = resolveAccent(c);
     if (!preset) return;
     setColorState(c);
     applyPreset(preset);

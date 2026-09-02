@@ -1,20 +1,23 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, Plus, Pencil, Check, X } from "lucide-react";
+import { ChevronRight, Plus, Pencil, Check, X } from "@/components/icons";
 import { BackButton } from "@/components/back-button";
 import { MUSCLE_GROUPS } from "@/lib/muscle-groups";
+import type { Mascot } from "@/lib/mascot-types";
 
 interface Exercise {
   id: number;
   name: string;
   muscleGroup: string | null;
   muscleGroups: string[];
+  mascot: Mascot | null;
 }
 
 export default function ExerciseCatalog() {
@@ -253,9 +256,19 @@ export default function ExerciseCatalog() {
                       <div className="flex items-center gap-1">
                         <Link
                           href={`/exercises/${ex.id}`}
-                          className="flex flex-1 items-center justify-between rounded-xl px-3 py-3 transition-all hover:bg-accent active:scale-[0.97]"
+                          className="flex flex-1 items-center justify-between gap-2 rounded-xl px-3 py-3 transition-all hover:bg-accent active:scale-[0.97]"
                         >
                           <div className="flex flex-wrap items-center gap-1.5">
+                            {ex.mascot?.imageUrl && (
+                              <Image
+                                src={ex.mascot.imageUrl}
+                                alt=""
+                                width={28}
+                                height={28}
+                                unoptimized
+                                className="size-7 shrink-0 object-contain"
+                              />
+                            )}
                             <p className="font-bold">{ex.name}</p>
                             {ex.muscleGroups
                               .filter((mg) => mg !== muscleGroup)

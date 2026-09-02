@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { X, Sparkles, ChevronRight, Gem } from "lucide-react";
+import { X, ChevronRight, Gem, Package, Eye, Cards } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { CreatureCard } from "@/components/creature-card";
 import { SlotReel, type ReelItem } from "@/components/slot-reel";
 import { AnimalEmblem } from "@/components/emblems/animal-emblem";
 import { PokemonEmblem } from "@/components/emblems/pokemon-emblem";
 import { RarityEmblem } from "@/components/emblems/rarity-emblem";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle } from "@/components/icons";
 import { FUSION_NEXT, RARITIES, RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
 import {
   PACK_DESCRIPTIONS,
@@ -21,6 +21,7 @@ import {
   type PackType,
 } from "@/lib/pack-types";
 import { PACK_ART_URLS } from "@/lib/pack-art-urls";
+import { useTalents } from "@/components/talents-provider";
 
 type Category = "animal" | "pokemon";
 type Stage = "pack" | "category" | "rarity" | "creature" | "duplicate";
@@ -55,6 +56,13 @@ export interface OpenResult {
   creature: Creature;
   isDuplicate: boolean;
   shardsGranted: number;
+  // Talent caché découvert à la première obtention de cette carte.
+  talent?: {
+    id: string;
+    family: string;
+    name: string;
+    description: string;
+  } | null;
 }
 
 const CATEGORY_LABELS: Record<Category, string> = {
@@ -276,6 +284,10 @@ export function PackOpenModal({
   result: OpenResult;
   onClose: () => void;
 }) {
+  // Décors d'ouverture débloqués par les Talents.
+  const { has } = useTalents();
+  const hasAnneaux = has("anneaux");
+  const hasZiz = has("vol-de-ziz");
   const skipCategory = result.packType === "animal_only" || result.packType === "pokemon_only";
 
   const stageOrder = useMemo<Stage[]>(
@@ -325,6 +337,24 @@ export function PackOpenModal({
       onClick={handleBackdropClick}
       className="fixed inset-0 z-[100] flex select-none items-center justify-center overflow-y-auto bg-black/85 backdrop-blur-sm"
     >
+      {/* Le Vol de Ziz : des plumes-cartes tombent du ciel pendant l'ouverture */}
+      {hasZiz && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {Array.from({ length: 14 }, (_, i) => (
+            <span
+              key={i}
+              className="ziz-feather absolute top-0 rounded-[2px] bg-gradient-to-b from-amber-200/50 to-amber-500/30"
+              style={{
+                left: `${(i * 71) % 100}%`,
+                width: 5 + (i % 3) * 2,
+                height: 14 + (i % 4) * 4,
+                animationDuration: `${4 + (i % 5)}s`,
+                animationDelay: `${(i % 7) * 0.7}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -354,7 +384,7 @@ export function PackOpenModal({
                   }}
                   className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
                 >
-                  <Sparkles className="size-4" strokeWidth={3} />
+                  <Package className="size-4" />
                   {stageActionLabel.pack}
                 </Button>
               </>
@@ -405,7 +435,7 @@ export function PackOpenModal({
                   }}
                   className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
                 >
-                  <Sparkles className="size-4" strokeWidth={3} />
+                  <Eye className="size-4" />
                   {stageActionLabel.category}
                 </Button>
               </>
@@ -451,7 +481,7 @@ export function PackOpenModal({
                   }}
                   className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
                 >
-                  <Sparkles className="size-4" strokeWidth={3} />
+                  <Eye className="size-4" />
                   {stageActionLabel.rarity}
                 </Button>
               </>
@@ -499,13 +529,21 @@ export function PackOpenModal({
                   }}
                   className="h-11 w-full max-w-xs rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
                 >
-                  <Sparkles className="size-3.5" strokeWidth={3} />
+                  <Cards className="size-3.5" />
                   Révéler la carte
                 </Button>
               </>
             ) : (
               <>
-                <div className="w-72 animate-creature-reveal">
+                <div className="relative w-72 animate-creature-reveal">
+                  {/* Les Anneaux de Hoopa : la carte sort d'un anneau doré */}
+                  {hasAnneaux && (
+                    <>
+                      <div className="hoopa-ring pointer-events-none absolute inset-[-12%] rounded-full" />
+                      <div className="hoopa-ring hoopa-ring-2 pointer-events-none absolute inset-[-12%] rounded-full" />
+                      <div className="hoopa-ring hoopa-ring-3 pointer-events-none absolute inset-[-12%] rounded-full" />
+                    </>
+                  )}
                   <CreatureCard
                     name={result.creature.name}
                     rarity={result.rarity}
@@ -532,6 +570,21 @@ export function PackOpenModal({
                     </p>
                   )}
                 </div>
+
+                {/* Le jackpot dans le jackpot : un Talent caché découvert */}
+                {result.talent && (
+                  <div className="w-full max-w-xs rounded-2xl bg-amber-400/10 px-4 py-3 text-center ring-1 ring-amber-400/60 shadow-[0_0_44px_-8px_rgba(251,191,36,0.8)] animate-card-reveal">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-300">
+                      Talent caché découvert
+                    </p>
+                    <p className="mt-1.5 text-base font-black tracking-tight text-amber-200">
+                      {result.talent.name}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-amber-100/80">
+                      {result.talent.description}
+                    </p>
+                  </div>
+                )}
 
                 <Button
                   onClick={() => (result.isDuplicate ? setStage("duplicate") : onClose())}

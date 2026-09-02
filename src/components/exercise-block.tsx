@@ -12,9 +12,11 @@ import { CardioSetRow } from "./cardio-set-row";
 import { AssistedSetForm, type AssistedPayload } from "./assisted-set-form";
 import { AssistedSetRow } from "./assisted-set-row";
 import { RestTimer } from "./rest-timer";
-import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2, AlertTriangle, MapPin, ListOrdered } from "lucide-react";
+import { Lock, Unlock, Trophy, ChevronUp, ChevronDown, StickyNote, Check, Trash2, History, Loader2, AlertTriangle, MapPin, ListOrdered } from "@/components/icons";
 import { cardioMachineFromName } from "@/lib/cardio";
 import { computeSessionPlan } from "@/lib/session-plan";
+import { MascotBackdrop } from "./mascot-backdrop";
+import type { Mascot } from "@/lib/mascot-types";
 
 interface ExerciseSet {
   id: number;
@@ -45,6 +47,9 @@ interface ExerciseBlockProps {
   bodyweightKg: number | null;
   onRequestBodyweight?: () => void;
   muscleGroups: string[];
+  // Carte associée à la machine — décor uniquement, aucune incidence sur les
+  // séries. Null tant que rien n'a été associé depuis la fiche de l'exercice.
+  mascot?: Mascot | null;
   hasVariants?: boolean;
   variantId?: number | null;
   variantName?: string | null;
@@ -69,6 +74,8 @@ interface ExerciseBlockProps {
   canMoveDown: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  // Rafraîchit la séance après un ajout de palier depuis le plan du jour.
+  onRefresh?: () => void | Promise<void>;
 }
 
 // "exercice" est masculin : 1er, puis 2e, 3e...
@@ -109,6 +116,7 @@ export function ExerciseBlock({
   bodyweightKg,
   onRequestBodyweight,
   muscleGroups,
+  mascot,
   hasVariants,
   variantId,
   variantName,
@@ -130,6 +138,7 @@ export function ExerciseBlock({
   canMoveDown,
   onMoveUp,
   onMoveDown,
+  onRefresh,
 }: ExerciseBlockProps) {
   const isCardio = kind === "cardio";
   const cardioMachine = isCardio ? cardioMachineFromName(name) : null;
@@ -156,6 +165,8 @@ export function ExerciseBlock({
   const [deleteSetId, setDeleteSetId] = useState<number | null>(null);
   const [deletingSet, setDeletingSet] = useState(false);
   const [deletingExercise, setDeletingExercise] = useState(false);
+  const [newStep, setNewStep] = useState("");
+  const [addingStep, setAddingStep] = useState(false);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const notesVisible = !!savedNotes || showNotes;
 
@@ -267,8 +278,22 @@ export function ExerciseBlock({
   };
 
   return (
-    <Card className={`${medal ? medal.card : "card-gradient-border"} ${locked ? "opacity-70" : ""}`}>
-      <CardHeader>
+    <Card
+      className={`relative ${medal ? medal.card : "card-gradient-border"} ${
+        locked ? "opacity-70" : ""
+      }`}
+    >
+      {/* Le filigrane est un frère absolu placé en premier : header et content
+          sont positionnés à leur tour, donc l'ordre du DOM suffit à les peindre
+          par-dessus, sans z-index. */}
+      {mascot?.imageUrl && (
+        <MascotBackdrop
+          imageUrl={mascot.imageUrl}
+          rarity={mascot.rarity}
+          evolved={mascot.evolved}
+        />
+      )}
+      <CardHeader className="relative">
         <div>
           <Link href={`/exercises/${exerciseId}`} className="transition-colors hover:text-primary">
             <CardTitle className="text-base font-black tracking-tight">{name}</CardTitle>
@@ -353,7 +378,7 @@ export function ExerciseBlock({
         </CardAction>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="relative">
         {/* Notes */}
         {showVariants && (
           <div className="mb-3 rounded-xl border border-primary/20 bg-secondary/30 p-3">
@@ -453,10 +478,48 @@ export function ExerciseBlock({
               </span>
             </div>
             {plan.atCeiling && onPlan && (
-              <p className="mt-1 text-[10px] font-medium text-muted-foreground">
-                Plafond atteint — ajoute des paliers sur la fiche de l&apos;exercice
-                pour continuer à progresser.
-              </p>
+              <form
+                className="mt-2 flex items-center gap-2"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const kg = Number(newStep.replace(",", "."));
+                  if (!Number.isFinite(kg) || kg <= 0 || addingStep) return;
+                  setAddingStep(true);
+                  try {
+                    await fetch(`/api/exercises/${exerciseId}/weights`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ weightKg: kg, variantId: variantId ?? null }),
+                    });
+                    setNewStep("");
+                    await onRefresh?.();
+                  } finally {
+                    setAddingStep(false);
+                  }
+                }}
+              >
+                <p className="text-[10px] font-medium leading-snug text-muted-foreground">
+                  Palier au-dessus de{" "}
+                  <span className="font-black text-primary">
+                    {Math.max(...knownWeights)} kg
+                  </span>{" "}
+                  ?
+                </p>
+                <input
+                  value={newStep}
+                  onChange={(e) => setNewStep(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="kg"
+                  className="h-8 w-16 rounded-lg bg-secondary/50 px-2 text-center font-mono text-xs font-black outline-none focus:ring-1 focus:ring-primary/40"
+                />
+                <button
+                  type="submit"
+                  disabled={!newStep.trim() || addingStep}
+                  className="rounded-lg bg-gradient-orange-intense px-2.5 py-1.5 text-[10px] font-black uppercase text-black disabled:opacity-50"
+                >
+                  {addingStep ? "..." : "Ajouter"}
+                </button>
+              </form>
             )}
             <div className="mt-2 flex flex-wrap items-center gap-1">
               {plan.weights.map((w, i) => {
@@ -602,6 +665,7 @@ export function ExerciseBlock({
             onAdd={handleAddSet}
             lastWeight={lastSet?.weightKg ?? undefined}
             lastReps={lastSet?.reps ?? undefined}
+            defaultReps={name.toLowerCase().includes("marteau") ? 20 : 10}
             knownWeights={knownWeights}
             plannedWeight={plannedWeight}
             applyToken={applyToken}
@@ -640,7 +704,7 @@ export function ExerciseBlock({
 
       {/* Delete exercise confirmation */}
       {showDeleteConfirm && (
-        <div className="border-t border-border/50 px-4 py-3">
+        <div className="relative border-t border-border/50 px-4 py-3">
           <p className="mb-3 text-center text-sm font-bold">
             Supprimer {name} ?
           </p>

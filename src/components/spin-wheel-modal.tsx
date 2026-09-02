@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { X, Sparkles, ChevronRight } from "lucide-react";
+import { X, ChevronRight, Spin } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { SlotReel } from "@/components/slot-reel";
 import { JackpotCoin } from "@/components/emblems/jackpot-coin";
 
 interface SpinResponse {
-  reward: 1 | 2 | 3 | 4;
+  reward: number;
   tokens: number;
   specialTokens: number;
 }
@@ -17,6 +17,7 @@ const COIN_ITEMS = [
   { key: "2", render: () => <JackpotCoin reward={2} size={120} /> },
   { key: "3", render: () => <JackpotCoin reward={3} size={120} /> },
   { key: "4", render: () => <JackpotCoin reward={4} size={120} /> },
+  { key: "10", render: () => <JackpotCoin reward={10} size={120} /> },
 ];
 
 export function SpinWheelModal({
@@ -27,7 +28,7 @@ export function SpinWheelModal({
   onAfterSpin?: () => void;
 }) {
   const [phase, setPhase] = useState<"ready" | "spinning" | "result">("ready");
-  const [reward, setReward] = useState<1 | 2 | 3 | 4 | null>(null);
+  const [reward, setReward] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSpin = async () => {
@@ -81,7 +82,7 @@ export function SpinWheelModal({
                 { r: 4, pct: 1 },
               ].map(({ r, pct }) => (
                 <div key={r} className="flex flex-col items-center gap-1.5">
-                  <JackpotCoin reward={r as 1 | 2 | 3 | 4} size={72} />
+                  <JackpotCoin reward={r as 1 | 2 | 3 | 4 | 10} size={72} />
                   <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                     {pct}%
                   </span>
@@ -139,7 +140,7 @@ export function SpinWheelModal({
         >
           {phase === "ready" && (
             <>
-              <Sparkles className="size-4" strokeWidth={3} />
+              <Spin className="size-4" />
               Tourner la roue
             </>
           )}
