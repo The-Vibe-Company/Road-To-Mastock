@@ -13,16 +13,19 @@ import { CreatureCard } from "@/components/creature-card";
 import { Search, PawPrint, Zap, Loader2, Vault, Check, Trash2 } from "@/components/icons";
 import { RARITIES, RARITY_LABELS, type Rarity } from "@/lib/rarities";
 import type { Mascot, MascotCategory } from "@/lib/mascot-types";
+import { powerLabel, powerShorts } from "@/lib/powers";
 
 interface OwnedCard {
   id: number;
   name: string;
+  slug?: string;
   rarity: Rarity;
   imageUrl: string | null;
   cardNumber?: number | null;
   pokedexNumber?: number | null;
   primaryType?: string | null;
   secondaryType?: string | null;
+  lineage?: string | null;
 }
 
 interface CollectionResponse {
@@ -38,6 +41,16 @@ const TIER_DOT: Record<Rarity, string> = {
   legendary: "bg-amber-400",
   mythic: "bg-rose-400",
 };
+
+// L'étiquette de pouvoir sous chaque carte du sélecteur : métier ± pour le
+// commun → épique, le NOM du prodige/miracle pour les grandes.
+function cardPowerHint(card: OwnedCard, category: MascotCategory): string {
+  const subtype = category === "animal" ? card.lineage ?? null : card.primaryType ?? null;
+  if (card.rarity === "legendary" || card.rarity === "mythic") {
+    return powerLabel(category, card.rarity, subtype, card.slug).name;
+  }
+  return powerShorts(category, subtype, card.rarity).tiny;
+}
 
 const TIER_TEXT: Record<Rarity, string> = {
   common: "text-zinc-300",
@@ -272,6 +285,11 @@ export function MascotPicker({
                                   <Check className="size-3" strokeWidth={4} />
                                 </span>
                               )}
+                              {/* Ce que fait la carte, en trois mots : on ne
+                                  choisit pas un Gardien à l'aveugle. */}
+                              <p className={`mt-1 truncate text-center text-[9px] font-bold leading-tight ${TIER_TEXT[card.rarity]}`}>
+                                {cardPowerHint(card, category)}
+                              </p>
                             </button>
                           );
                         })}

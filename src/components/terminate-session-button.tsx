@@ -56,6 +56,8 @@ interface CardioDraw {
     rarity: Rarity;
     imageUrl: string | null;
   };
+  attract: string;
+  repel: string;
 }
 
 interface DraftAwakening {
@@ -91,6 +93,9 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   const [drawModes, setDrawModes] = useState<Record<number, "attract" | "repel">>({});
   const [draftBusy, setDraftBusy] = useState(false);
   const [draftResults, setDraftResults] = useState<DraftAwakening[]>([]);
+  // Le carrousel de l'Éveil : un Gardien par écran, à la clôture.
+  const [showAwakening, setShowAwakening] = useState(false);
+  const [awakeStep, setAwakeStep] = useState(0);
   const { has, assets } = useTalents();
   const [showConfetti, setShowConfetti] = useState(false);
   const [showPsyduck, setShowPsyduck] = useState(false);
@@ -129,7 +134,12 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
       } else if (data.tokenGranted) {
         setReward({ type: "normal", weekPosition: data.weekPosition ?? null });
       }
-      setGuardians(Array.isArray(data.guardians) ? data.guardians : []);
+      const awakened = Array.isArray(data.guardians) ? data.guardians : [];
+      setGuardians(awakened);
+      if (awakened.length > 0) {
+        setAwakeStep(0);
+        setShowAwakening(true);
+      }
       setRecordCount(data.recordCount ?? 0);
       setNewTrophies(Array.isArray(data.newTrophies) ? data.newTrophies : []);
       if (Array.isArray(data.cardioDraws)) setDraws(data.cardioDraws);
@@ -197,9 +207,88 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
 
   if (!state) return null;
 
+  const awakeCurrent = guardians[Math.min(awakeStep, Math.max(0, guardians.length - 1))];
+  const awakeLast = awakeStep >= guardians.length - 1;
+
   if (state.terminatedAt) {
     return (
       <div className="mb-6 flex flex-col gap-2 rounded-2xl bg-emerald-500/10 px-4 py-3 ring-1 ring-emerald-500/30">
+        {/* ── Le carrousel de l'Éveil : les Gardiens de la séance, un par un ── */}
+        {showAwakening && awakeCurrent && (
+          <div className="fixed inset-0 z-[115] flex items-end justify-center bg-black/85 backdrop-blur-sm sm:items-center">
+            <div className="relative flex h-[29rem] max-h-[88dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border-t-2 border-t-primary/40 bg-background sm:rounded-3xl sm:border-2 sm:border-primary/30">
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-4 pt-8">
+                <div className={`pointer-events-none absolute left-1/2 top-14 size-56 -translate-x-1/2 rounded-full blur-3xl ${RARITY_COLORS[awakeCurrent.card.rarity].bg}`} />
+                <p className="text-center font-mono text-[10px] font-black uppercase tracking-[0.35em] text-primary/70">
+                  L&apos;Éveil · {awakeStep + 1} / {guardians.length}
+                </p>
+                <div key={awakeStep} className="animate-card-reveal mt-4 flex flex-col items-center text-center">
+                  <span className="rounded-md bg-secondary/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground ring-1 ring-border">
+                    {awakeCurrent.exerciseName}
+                  </span>
+                  <div className={`relative mt-4 size-28 overflow-hidden rounded-2xl ${RARITY_COLORS[awakeCurrent.card.rarity].bg} ring-2 ${RARITY_COLORS[awakeCurrent.card.rarity].ring} drop-shadow-2xl`}>
+                    {awakeCurrent.card.imageUrl && (
+                      <Image src={awakeCurrent.card.imageUrl} alt="" fill unoptimized className="object-cover" />
+                    )}
+                  </div>
+                  <p className={`mt-3 text-xl font-black tracking-tight ${RARITY_COLORS[awakeCurrent.card.rarity].text}`}>
+                    {awakeCurrent.card.name}
+                  </p>
+                  <p className="mt-2 text-base font-black tracking-tight text-foreground">
+                    {awakeCurrent.powerName}
+                  </p>
+                  {awakeCurrent.detail && (
+                    <p className="mt-2 w-full max-w-xs rounded-xl bg-primary/10 px-3 py-2.5 font-mono text-xs font-bold leading-snug text-primary ring-1 ring-primary/30">
+                      {awakeCurrent.detail}
+                    </p>
+                  )}
+                  <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
+                    {awakeCurrent.record && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-yellow-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-yellow-400">
+                        <Trophy className="size-3" />
+                        Record battu
+                      </span>
+                    )}
+                    {awakeCurrent.fragmentRarity && (
+                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${RARITY_COLORS[awakeCurrent.fragmentRarity].bg} ${RARITY_COLORS[awakeCurrent.fragmentRarity].text}`}>
+                        <Flame className="size-3" />
+                        +1 fragment {RARITY_LABELS[awakeCurrent.fragmentRarity].toLowerCase()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-border/50 px-6 pb-6 pt-4">
+                <div className="mb-3 flex flex-wrap items-center justify-center gap-1">
+                  {guardians.map((_, i) => (
+                    <span
+                      key={i}
+                      className={`h-1.5 rounded-full transition-all ${
+                        i === awakeStep ? "w-5 bg-primary" : i < awakeStep ? "w-1.5 bg-primary/50" : "w-1.5 bg-secondary"
+                      }`}
+                    />
+                  ))}
+                </div>
+                {awakeLast ? (
+                  <Button
+                    onClick={() => setShowAwakening(false)}
+                    className="h-12 w-full rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
+                  >
+                    <CheckCircle2 className="size-4" />
+                    {draws.length > 0 ? "Voir l'Échappée" : "Compris"}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setAwakeStep((n) => n + 1)}
+                    className="h-12 w-full rounded-2xl bg-gradient-orange-intense text-sm font-black uppercase tracking-wider text-black"
+                  >
+                    Gardien suivant
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {showConfetti && <ConfettiBurst />}
         {showPsyduck && assets["migraine"] && (
           <div className="pointer-events-none fixed bottom-10 left-1/2 z-[120] -translate-x-1/2">
@@ -292,44 +381,57 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
               {draws.map((d, i) => (
                 <div
                   key={d.drawId}
-                  className="animate-card-reveal flex items-center gap-2.5 rounded-lg bg-secondary/30 p-2 ring-1 ring-border"
+                  className="animate-card-reveal rounded-lg bg-secondary/30 p-2 ring-1 ring-border"
                   style={{ animationDelay: `${i * 0.45}s`, animationFillMode: "backwards" }}
                 >
-                  <div className={`relative size-11 shrink-0 overflow-hidden rounded-lg ${RARITY_COLORS[d.card.rarity].bg} ring-1 ${RARITY_COLORS[d.card.rarity].ring}`}>
-                    {d.card.imageUrl && (
-                      <Image src={d.card.imageUrl} alt="" fill unoptimized className="object-cover" />
-                    )}
+                  <div className="flex items-center gap-2.5">
+                    <div className={`relative size-11 shrink-0 overflow-hidden rounded-lg ${RARITY_COLORS[d.card.rarity].bg} ring-1 ${RARITY_COLORS[d.card.rarity].ring}`}>
+                      {d.card.imageUrl && (
+                        <Image src={d.card.imageUrl} alt="" fill unoptimized className="object-cover" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate text-xs font-black ${RARITY_COLORS[d.card.rarity].text}`}>
+                        {d.card.name}
+                      </p>
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                        {RARITY_LABELS[d.card.rarity]}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={`truncate text-xs font-black ${RARITY_COLORS[d.card.rarity].text}`}>
-                      {d.card.name}
-                    </p>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                      {RARITY_LABELS[d.card.rarity]}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
+                  {/* Chaque bouton dit CE QU'IL FERA pour cette carte-là */}
+                  <div className="mt-2 grid grid-cols-2 gap-1.5">
                     <button
                       onClick={() => setDrawModes((m) => ({ ...m, [d.drawId]: "attract" }))}
-                      className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                      className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 transition-all active:scale-95 ${
                         drawModes[d.drawId] === "attract"
                           ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/50"
                           : "bg-secondary/60 text-muted-foreground ring-1 ring-border"
                       }`}
                     >
-                      <Magnet className="size-3" />
-                      Attire
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider">
+                        <Magnet className="size-3" />
+                        Attire
+                      </span>
+                      <span className="font-mono text-[10px] font-bold tabular-nums text-emerald-300/90">
+                        {d.attract}
+                      </span>
                     </button>
                     <button
                       onClick={() => setDrawModes((m) => ({ ...m, [d.drawId]: "repel" }))}
-                      className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                      className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 transition-all active:scale-95 ${
                         drawModes[d.drawId] === "repel"
                           ? "bg-red-500/20 text-red-300 ring-1 ring-red-500/50"
                           : "bg-secondary/60 text-muted-foreground ring-1 ring-border"
                       }`}
                     >
-                      <ShieldOff className="size-3" />
-                      Repousse
+                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider">
+                        <ShieldOff className="size-3" />
+                        Repousse
+                      </span>
+                      <span className="font-mono text-[10px] font-bold tabular-nums text-red-300/90">
+                        {d.repel}
+                      </span>
                     </button>
                   </div>
                 </div>

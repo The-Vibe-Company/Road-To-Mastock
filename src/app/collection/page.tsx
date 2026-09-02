@@ -99,6 +99,7 @@ interface CollectionData {
   odds?: {
     hat: Record<PackType, number>;
     innerPokemon: number;
+    innerShift?: number;
     wheel: Record<string, number>;
   };
 }
@@ -445,15 +446,24 @@ export default function CollectionPage() {
                 return (
                   <span
                     key={key}
-                    className={`rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums ${
+                    className={`rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums ring-1 ${
                       boosted
-                        ? "bg-primary/15 text-primary"
+                        ? "bg-emerald-500/10 text-emerald-300 ring-emerald-500/30"
                         : nerfed
-                          ? "bg-secondary/50 text-muted-foreground/60 line-through decoration-1"
-                          : "bg-secondary/50 text-muted-foreground"
+                          ? "bg-red-500/10 text-red-300 ring-red-500/30"
+                          : "bg-secondary/50 text-muted-foreground ring-transparent"
                     }`}
                   >
-                    {label} {pct}%
+                    {label}{" "}
+                    {boosted || nerfed ? (
+                      <>
+                        <span className="text-muted-foreground/50 line-through decoration-1">{base}%</span>
+                        {"\u2009→\u2009"}
+                        {pct}%
+                      </>
+                    ) : (
+                      <>{pct}%</>
+                    )}
                   </span>
                 );
               })}
@@ -615,9 +625,9 @@ export default function CollectionPage() {
         </div>
       )}
 
-      {/* La Forge : sa jauge vit sa vie, filtre actif ou pas — pleine,
+      {/* La Forge : sa jauge est TOUJOURS là, même vide — pleine (20),
           elle paie un tour de la Roue (un fragment garanti, au tirage). */}
-      {(data.charges?.forge ?? 0) > 0 && (
+      {(
         <div className="mb-3 flex items-center gap-2.5 rounded-2xl bg-secondary/30 px-4 py-2.5 ring-1 ring-border">
           <Flame className="size-4 text-primary" />
           <div className="min-w-0 flex-1">
@@ -641,7 +651,10 @@ export default function CollectionPage() {
               {forging ? "Elle tourne..." : "Lancer la Roue"}
             </button>
           ) : (
-            <span className="font-mono text-[10px] font-black tabular-nums text-muted-foreground">
+            <span
+              className="font-mono text-[10px] font-black tabular-nums text-muted-foreground"
+              title="Les Gardiens forgerons la remplissent à chaque éveil — pleine, un fragment t'attend au tirage"
+            >
               {data.charges?.forge ?? 0}/20
             </span>
           )}
@@ -755,7 +768,7 @@ export default function CollectionPage() {
       )}
 
       {modalResult && (
-        <PackOpenModal result={modalResult} onClose={() => setModalResult(null)} />
+        <PackOpenModal result={modalResult} onClose={() => setModalResult(null)} odds={data.odds} />
       )}
       {detailCreature && (
         <CardDetailModal
