@@ -1,0 +1,24 @@
+src/lib/guardians.ts
+  s_6dc77352c5bc09::t_df3ec0004f5c8a 17,181,197,208,218,348-352,401
+  s_6dc77352c5bc09::t_9dd121a2f6cf4a 402
+src/app/manuel/page.tsx
+  s_6dc77352c5bc09::t_df3ec0004f5c8a 115-120
+src/lib/powers.ts
+  s_6dc77352c5bc09::t_df3ec0004f5c8a 1384-1398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4c6bc4131e41ae12f750569b12b8e597c2231c09",
+  "prompts": {},
+  "sessions": {
+    "s_6dc77352c5bc09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c821057a-6589-4ccc-9a68-ecc9f4e69e12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}
