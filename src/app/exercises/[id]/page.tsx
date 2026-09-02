@@ -73,6 +73,8 @@ export default function ExerciseDetail({
   // Le Métronome (50 séances) : la moyenne mobile sur les courbes.
   const { hasFeature } = useTrophies();
   const [smoothed, setSmoothed] = useState(false);
+  // Le déliement à la magnésie : requête en cours.
+  const [unbinding, setUnbinding] = useState(false);
 
   useEffect(() => {
     fetch(`/api/exercises/${id}/history`)
@@ -124,7 +126,6 @@ export default function ExerciseDetail({
   };
 
   // La polarité (cartes sous légendaire) : attirer ou repousser, à volonté.
-  const [unbinding, setUnbinding] = useState(false);
   const handleUnbind = async () => {
     if (unbinding) return;
     setUnbinding(true);
