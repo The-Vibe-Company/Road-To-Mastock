@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Users, Check, X, Eye, Search, Clock, Trash2, Loader2 } from "lucide-react";
+import { UserPlus, Users, Check, X, Eye, Search, Clock, Trash2, Loader2 } from "@/components/icons";
 import { BackButton } from "./back-button";
 
 interface Friend {
@@ -12,6 +13,9 @@ interface Friend {
   userId: number;
   name: string;
   email: string;
+  title?: string | null;
+  totemImage?: string | null;
+  totemName?: string | null;
 }
 
 interface FriendsData {
@@ -304,9 +308,28 @@ export function FriendsPage() {
               <div className="space-y-2">
                 {data.friends.map((f) => (
                   <div key={f.friendshipId} className="flex items-center justify-between rounded-lg bg-secondary/30 px-3 py-2">
-                    <div>
-                      <p className="text-sm font-bold">{f.name}</p>
-                      <p className="text-xs text-muted-foreground">{f.email}</p>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      {/* Le Totem de l'ami : sa carte de parade */}
+                      {f.totemImage && (
+                        <Image
+                          src={f.totemImage}
+                          alt={f.totemName ?? ""}
+                          width={32}
+                          height={32}
+                          unoptimized
+                          className="size-8 shrink-0 object-contain"
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold">{f.name}</p>
+                        {f.title ? (
+                          <p className="truncate text-[10px] font-bold uppercase tracking-widest text-primary/70">
+                            {f.title}
+                          </p>
+                        ) : (
+                          <p className="truncate text-xs text-muted-foreground">{f.email}</p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-1">
                       <Link href={`/friends/${f.userId}`}>

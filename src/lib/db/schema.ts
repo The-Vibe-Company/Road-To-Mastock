@@ -21,6 +21,27 @@ export const users = pgTable("users", {
   theme: text("theme").default("dark"),
   cardsTokens: integer("cards_tokens").notNull().default(0),
   cardsSpecialTokens: integer("cards_special_tokens").notNull().default(0),
+  // ── Privilèges des Talents cachés ──
+  // Totem (aura de Typhon) : carte affichée à côté du nom chez les amis.
+  totemCategory: text("totem_category"),
+  totemCardId: integer("totem_card_id"),
+  // Titre (aura du Dragon ancestral) : affiché sous le nom.
+  title: text("title"),
+  // Objectif hebdo (aura de Keldeo) : nombre de séances visé par semaine.
+  weeklyGoal: integer("weekly_goal"),
+  // Talents déjà présentés à la reconnexion (ids séparés par des virgules) :
+  // l'annonce « tes cartes cachaient des pouvoirs » ne se répète pas.
+  announcedTalents: text("announced_talents"),
+  // Trophées déjà annoncés à la clôture de séance (ids séparés par des
+  // virgules) — un trophée ne se célèbre qu'une fois.
+  announcedTrophies: text("announced_trophies"),
+  // L'Étendard (trophée) : la carte en bannière sur la home.
+  bannerCategory: text("banner_category"),
+  bannerCardId: integer("banner_card_id"),
+  // Trônes : fond d'écran choisi par page (id de talent, null = aucun).
+  wallpaperHome: text("wallpaper_home"),
+  wallpaperSession: text("wallpaper_session"),
+  wallpaperCollection: text("wallpaper_collection"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -57,6 +78,29 @@ export const exercises = pgTable(
     // chaque séance de cet exercice est rattachée à une version, et records,
     // paliers et dernière perf sont calculés version par version.
     hasVariants: boolean("has_variants").notNull().default(false),
+    // Mascotte de la machine : une carte possédée, affichée en filigrane
+    // derrière le bloc pendant la séance. Au plus une des deux colonnes est
+    // remplie ; les deux nulles = pas de mascotte. Pas de user_id ici non
+    // plus : exercise_id désigne déjà un exercice possédé.
+    mascotAnimalId: integer("mascot_animal_id").references(() => animals.id, {
+      onDelete: "set null",
+    }),
+    mascotPokemonId: integer("mascot_pokemon_id").references(() => pokemon.id, {
+      onDelete: "set null",
+    }),
+    // Nombre de fois où le gardien de cette machine s'est éveillé (série
+    // faite + séance clôturée). Alimente la Fidélité des Domestiques et
+    // certains talents. Remis à zéro quand la mascotte change de carte.
+    mascotTriggers: integer("mascot_triggers").notNull().default(0),
+    // Date de pose du gardien actuel. Un gardien posé est lié : pour en
+    // changer il faut battre son record sur la machine (charge max ou
+    // volume) depuis la pose, ou attendre 30 jours. Null = pas de lien
+    // (pas de gardien, ou pose antérieure à la règle).
+    mascotAssignedAt: timestamp("mascot_assigned_at", { withTimezone: true }),
+    // Polarité du gardien (cartes sous légendaire uniquement) : 'attract'
+    // ajoute des tickets du pack de sa famille, 'repel' en retire. Choisie
+    // par le joueur, modifiable à tout moment.
+    mascotMode: text("mascot_mode").notNull().default("attract"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
   (t) => [unique().on(t.userId, t.name)]
@@ -176,6 +220,10 @@ export const animals = pgTable("animals", {
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   rarity: text("rarity").notNull(),
+  // Lignée du gardien (felins, rapaces, meutes, troupeaux, nuees,
+  // domestiques, colosses, abyssaux, polaires, anciens). Détermine le
+  // pouvoir de la carte quand elle garde une machine. Assignée par script.
+  lineage: text("lineage"),
   cardNumber: integer("card_number"),
   scientificName: text("scientific_name"),
   imageUrl: text("image_url"),
@@ -245,4 +293,54 @@ export const userPokemonCards = pgTable(
     firstObtainedAt: timestamp("first_obtained_at", { withTimezone: true }).defaultNow(),
   },
   (t) => [unique().on(t.userId, t.pokemonId)],
+);
+
+// Énergie accumulée par les gardiens, par direction (pack_pokemon,
+// wheel_x4, forge...). Créditée à la clôture de séance, consommée à
+// l'ouverture d'un pack / roue / fusion / conversion. Les plafonds par
+// direction sont appliqués côté code (src/lib/powers.ts).
+export const userCharges = pgTable(
+  "user_charges",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    direction: text("direction").notNull(),
+    points: integer("points").notNull().default(0),
+    // Horodatage du dernier crédit — informatif depuis la remise à zéro par séance.
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [unique().on(t.userId, t.direction)],
+);
+
+// Miracles à limite hebdomadaire (le Vœu de Jirachi, le Pas de Qilin...) :
+// une ligne par (utilisateur, miracle, semaine ISO de la séance).
+export const userMiracleUses = pgTable(
+  "user_miracle_uses",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    miracle: text("miracle").notNull(),
+    isoWeek: date("iso_week").notNull(),
+  },
+  (t) => [unique().on(t.userId, t.miracle, t.isoWeek)],
+);
+
+// Surnoms de cartes (Le Vœu de Jirachi) : purement cosmétique, affiché à la
+// place du nom dans la collection de son propriétaire.
+export const userCardNames = pgTable(
+  "user_card_names",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    category: text("category").notNull(),
+    cardId: integer("card_id").notNull(),
+    nickname: text("nickname").notNull(),
+  },
+  (t) => [unique().on(t.userId, t.category, t.cardId)],
 );

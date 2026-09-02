@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, X, Loader2, MapPin, Pencil } from "lucide-react";
+import { Plus, X, Loader2, MapPin, Pencil } from "@/components/icons";
 
 interface Variant {
   id: number;

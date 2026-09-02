@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Trash2, Minus } from "lucide-react";
+import { Trash2, Minus } from "@/components/icons";
 
 interface AssistedSetRowProps {
   setNumber: number;

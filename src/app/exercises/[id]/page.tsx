@@ -1,11 +1,20 @@
 "use client";
 
+import { PowerRules } from "@/components/power-rules";
 import { use, useEffect, useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Minus, Trophy, Calendar, Clock, Flame } from "lucide-react";
+import { Minus, Trophy, Calendar, Clock, Flame, PawPrint, Plus, Lock, Magnet, ShieldOff } from "@/components/icons";
 import { BackButton } from "@/components/back-button";
 import { WeightSteps } from "@/components/weight-steps";
+import { CreatureCard } from "@/components/creature-card";
+import { MascotPicker } from "@/components/mascot-picker";
+import { Spinner } from "@/components/spinner";
+import { useTalents } from "@/components/talents-provider";
+import { useTrophies } from "@/components/trophies-provider";
+import { RARITY_COLORS, RARITY_LABELS } from "@/lib/rarities";
+import { powerLabel } from "@/lib/powers";
+import type { Mascot, MascotCategory } from "@/lib/mascot-types";
 
 interface ExerciseInfo {
   id: number;
@@ -15,6 +24,9 @@ interface ExerciseInfo {
   hasVariants?: boolean;
   muscleGroup: string | null;
   muscleGroups: string[];
+  mascot: Mascot | null;
+  mascotMode?: "attract" | "repel";
+  mascotBond?: { locked: boolean; unlockAt: string | null; grace?: boolean };
 }
 
 interface SetEntry {
@@ -55,6 +67,11 @@ export default function ExerciseDetail({
   const [muscuTab, setMuscuTab] = useState<MuscuTab>("weight");
   const [cardioTab, setCardioTab] = useState<CardioTab>("calories");
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+  const [showMascotPicker, setShowMascotPicker] = useState(false);
+  const { has } = useTalents();
+  // Le Métronome (50 séances) : la moyenne mobile sur les courbes.
+  const { hasFeature } = useTrophies();
+  const [smoothed, setSmoothed] = useState(false);
 
   useEffect(() => {
     fetch(`/api/exercises/${id}/history`)
@@ -68,10 +85,7 @@ export default function ExerciseDetail({
   if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-          <p className="text-sm font-medium text-primary/60">Chargement...</p>
-        </div>
+        <Spinner label="Chargement..." />
       </div>
     );
   }
@@ -79,6 +93,46 @@ export default function ExerciseDetail({
   if (!data) return null;
 
   const { exercise, history } = data;
+
+  // Le PATCH renvoie la mascotte résolue (image, rareté) : on recopie sa
+  // réponse plutôt que de deviner, et rien d'autre de la fiche ne bouge.
+  // Un 403 = le Gardien lié refuse de partir.
+  const handleSelectMascot = async (
+    mascot: { category: MascotCategory; id: number } | null,
+  ) => {
+    const res = await fetch(`/api/exercises/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mascot }),
+    });
+    if (!res.ok) return;
+    const updated = await res.json();
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            exercise: {
+              ...prev.exercise,
+              mascot: updated.mascot ?? null,
+              mascotMode: updated.mascotMode ?? "attract",
+              mascotBond: updated.mascotBond ?? prev.exercise.mascotBond,
+            },
+          }
+        : prev,
+    );
+  };
+
+  // La polarité (cartes sous légendaire) : attirer ou repousser, à volonté.
+  const handleSetMode = async (mode: "attract" | "repel") => {
+    setData((prev) =>
+      prev ? { ...prev, exercise: { ...prev.exercise, mascotMode: mode } } : prev,
+    );
+    await fetch(`/api/exercises/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mascotMode: mode }),
+    });
+  };
   const isCardio = exercise.kind === "cardio";
 
   const totalSessions = history.length;
@@ -125,6 +179,15 @@ export default function ExerciseDetail({
     unitLabel = "kg";
   }
 
+  // La moyenne mobile sur 3 séances : la tendance sans le bruit.
+  if (smoothed && hasFeature("smooth") && values.length >= 3) {
+    values = values.map((_, i) => {
+      const from = Math.max(0, i - 2);
+      const window = values.slice(from, i + 1);
+      return Math.round((window.reduce((a, b) => a + b, 0) / window.length) * 10) / 10;
+    });
+  }
+
   return (
     <div className="min-h-dvh px-4 pb-8 pt-6">
       <BackButton fallback="/exercises" />
@@ -139,6 +202,141 @@ export default function ExerciseDetail({
           </div>
         )}
       </div>
+
+      {/* Mascotte : purement décoratif. La carte choisie passe en filigrane
+          derrière ce bloc pendant les séances. */}
+      <Card className="card-gradient-border mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary/60">
+            <PawPrint className="size-4" />
+            Mascotte
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {exercise.mascot ? (
+            <div className="flex items-center gap-4">
+              <div className="w-16 shrink-0">
+                <CreatureCard
+                  name={exercise.mascot.name}
+                  rarity={exercise.mascot.rarity}
+                  imageUrl={exercise.mascot.imageUrl}
+                  number={exercise.mascot.number}
+                  category={exercise.mascot.category}
+                  size="sm"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`text-[10px] font-black uppercase tracking-widest ${
+                    RARITY_COLORS[exercise.mascot.rarity].text
+                  }`}
+                >
+                  {RARITY_LABELS[exercise.mascot.rarity]} ·{" "}
+                  {exercise.mascot.category === "animal" ? "Animal" : "Pokémon"}
+                </p>
+                <p className="mt-0.5 truncate text-base font-black tracking-tight">
+                  {exercise.mascot.name}
+                </p>
+                {(() => {
+                  const power = powerLabel(
+                    exercise.mascot!.category,
+                    exercise.mascot!.rarity,
+                    exercise.mascot!.subtype,
+                    exercise.mascot!.slug,
+                    exercise.mascotMode ?? null,
+                  );
+                  return power ? (
+                    <div className="mt-1">
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        <span className="font-black text-primary/80">{power.name}</span>
+                        {" — "}
+                        <span className="italic">{power.description}</span>
+                      </p>
+                      {power.rules && <PowerRules text={power.rules} className="mt-1.5" />}
+                    </div>
+                  ) : null;
+                })()}
+                {/* La Polarité : réservée aux cartes sous légendaire —
+                    Mew (l'Origine) fait exception, il épouse ta volonté. */}
+                {(!["legendary", "mythic"].includes(exercise.mascot.rarity) ||
+                  exercise.mascot.slug === "mew") && (
+                  <div className="mt-2 flex gap-1">
+                    <button
+                      onClick={() => handleSetMode("attract")}
+                      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                        (exercise.mascotMode ?? "attract") === "attract"
+                          ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/40"
+                          : "bg-secondary/50 text-muted-foreground"
+                      }`}
+                    >
+                      <Magnet className="size-3" />
+                      Attractif
+                    </button>
+                    <button
+                      onClick={() => handleSetMode("repel")}
+                      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                        exercise.mascotMode === "repel"
+                          ? "bg-red-500/15 text-red-300 ring-1 ring-red-500/40"
+                          : "bg-secondary/50 text-muted-foreground"
+                      }`}
+                    >
+                      <ShieldOff className="size-3" />
+                      Répulsif
+                    </button>
+                  </div>
+                )}
+                {exercise.mascotBond?.locked ? (
+                  <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-400/90">
+                    <Lock className="size-3" />
+                    Gardien lié — bats ton record ici, ou libre le{" "}
+                    {exercise.mascotBond.unlockAt
+                      ? new Date(exercise.mascotBond.unlockAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
+                      : "..."}
+                  </p>
+                ) : (
+                  <>
+                    {exercise.mascotBond?.grace && (
+                      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+                        Libre jusqu&apos;à son premier éveil — ensuite la carte
+                        sera <span className="font-bold text-amber-400/90">liée</span> :
+                        record sur cette machine, ou le{" "}
+                        <span className="font-bold text-foreground">
+                          {exercise.mascotBond.unlockAt
+                            ? new Date(exercise.mascotBond.unlockAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
+                            : "..."}
+                        </span>
+                        .
+                      </p>
+                    )}
+                    <button
+                      onClick={() => setShowMascotPicker(true)}
+                      className="mt-1.5 block text-[11px] font-bold text-muted-foreground transition-colors hover:text-primary"
+                    >
+                      Changer la carte
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowMascotPicker(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/30 bg-secondary/30 py-4 text-sm font-bold text-primary transition-all active:scale-[0.98] hover:bg-primary/10"
+            >
+              <Plus className="size-4" strokeWidth={3} />
+              Associer une carte
+            </button>
+          )}
+        </CardContent>
+      </Card>
+
+      <MascotPicker
+        open={showMascotPicker}
+        onOpenChange={setShowMascotPicker}
+        exerciseName={exercise.name}
+        current={exercise.mascot}
+        onSelect={handleSelectMascot}
+      />
 
       {/* Paliers : uniquement pour la muscu classique — en cardio il n'y a pas
           de poids, et en assiste le poids est derive du poids de corps. */}
@@ -191,6 +389,57 @@ export default function ExerciseDetail({
         )}
       </div>
 
+      {/* Le Scanner (Genesect) : max estimé + vitesse de progression */}
+      {has("scanner") && !isCardio && history.length >= 2 && (() => {
+        // 1RM estimé (formule d'Epley) sur la meilleure série de chaque séance.
+        const e1rm = (w: number, r: number) => w * (1 + r / 30);
+        const perSession = history.map((h) => ({
+          date: h.date,
+          best: Math.max(
+            0,
+            ...h.sets
+              .filter((st) => st.weightKg != null && st.reps != null)
+              .map((st) => e1rm(st.weightKg!, st.reps!)),
+          ),
+        })).filter((x) => x.best > 0);
+        if (perSession.length < 2) return null;
+        const current = perSession[perSession.length - 1].best;
+        const best = Math.max(...perSession.map((x) => x.best));
+        // Pente sur les 5 dernières séances, ramenée au mois.
+        const recent = perSession.slice(-5);
+        const t0 = new Date(recent[0].date).getTime();
+        const t1 = new Date(recent[recent.length - 1].date).getTime();
+        const days = Math.max(1, (t1 - t0) / 86400000);
+        const perMonth = ((recent[recent.length - 1].best - recent[0].best) / days) * 30;
+        return (
+          <Card className="card-gradient-border mb-6">
+            <CardHeader>
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary/60">
+                Le Scanner
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-2xl font-black text-primary">{Math.round(current)}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">1RM estimé</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-black">{Math.round(best)}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">1RM record</p>
+                </div>
+                <div>
+                  <p className={`text-2xl font-black ${perMonth >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                    {perMonth >= 0 ? "+" : ""}{perMonth.toFixed(1)}
+                  </p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">kg / mois</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Chart */}
       {history.length > 1 && values.some((v) => v > 0) && (() => {
         const maxVal = Math.max(...values);
@@ -217,6 +466,18 @@ export default function ExerciseDetail({
           <Card className="mb-6">
             <CardHeader>
               <div className="flex items-center gap-2 rounded-xl bg-secondary/50 p-1">
+                {hasFeature("smooth") && (
+                  <button
+                    onClick={() => setSmoothed((v) => !v)}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${
+                      smoothed
+                        ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Lissé
+                  </button>
+                )}
                 {isCardio ? (
                   <>
                     <button

@@ -9,12 +9,71 @@ import {
 } from "@/lib/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
-import {
-  rollCategoryForPack,
-  rollPackType,
-  rollRarityForPack,
-  type PackType,
-} from "@/lib/pack-types";
+import { rollRarityForPack, PACK_TYPES, PACK_CATEGORY_PROB_POKEMON, type PackType } from "@/lib/pack-types";
+import { HAT_DIRECTIONS, buildPackHat, innerPokemonProb, type Charges } from "@/lib/powers";
+import { loadCharges, saveCharges } from "@/lib/guardians";
+import { talentOf } from "@/lib/talents";
+
+// Hiérarchie de désirabilité des packs, pour le Passe-Mondes de Hoopa.
+const PACK_RANK: Record<PackType, number> = {
+  mythic: 5,
+  premium: 4,
+  pokemon_only: 3,
+  basic: 2,
+  animal_only: 1,
+};
+
+// Tirage du type de pack dans le chapeau chargé par les Gardiens, avec les
+// sorts à un coup : l'Ascension refuse le Basique, le Passe-Mondes tire deux
+// packs et garde le meilleur.
+function rollPackTypeFromHat(charges: Charges): PackType {
+  const hat = buildPackHat(charges);
+  const total = Object.values(hat).reduce((a, b) => a + b, 0);
+  const rollOnce = (): PackType => {
+    if (total <= 0) return "basic";
+    let r = Math.random() * total;
+    for (const t of PACK_TYPES) {
+      r -= hat[t];
+      if (r <= 0) return t;
+    }
+    return "basic";
+  };
+  let pick = rollOnce();
+  // L'Ascension / l'Ombre des Ailes : chaque charge retire un Basique.
+  let rerolls = charges.no_basic ?? 0;
+  while (pick === "basic" && rerolls > 0) {
+    rerolls--;
+    pick = rollOnce();
+  }
+  // Le Passe-Mondes : deux tirages, on garde le meilleur.
+  if ((charges.hoopa_double ?? 0) > 0) {
+    const second = rollOnce();
+    if (PACK_RANK[second] > PACK_RANK[pick]) pick = second;
+  }
+  return pick;
+}
+
+// Consommation : le chapeau se vide à l'ouverture. La Banquise préserve
+// jusqu'à N tickets par direction ; le Pardon des Abysses (Léviathan)
+// épargne tout le chapeau si le pack tiré est un Basique.
+function consumeHat(charges: Charges, packType: PackType): Charges {
+  const next: Charges = { ...charges };
+  // Sorts à un coup : consommés quoi qu'il arrive.
+  next.no_basic = 0;
+  next.hoopa_double = 0;
+  if (packType === "basic" && (charges.leviathan_guard ?? 0) > 0) {
+    next.leviathan_guard = 0;
+    return next; // le chapeau entier survit
+  }
+  next.leviathan_guard = 0;
+  const preserve = charges.banquise ?? 0;
+  for (const d of HAT_DIRECTIONS) {
+    const current = next[d] ?? 0;
+    next[d] = Math.min(current, preserve);
+  }
+  next.banquise = 0;
+  return next;
+}
 
 // Debug knobs (leave unset in prod):
 //   CARDS_DEBUG_FORCE_PACK_TYPE=basic|animal_only|pokemon_only|premium|mythic
@@ -56,12 +115,20 @@ export async function POST() {
     tokensRemaining = decremented.tokens;
   }
 
-  const packType: PackType = DEBUG_FORCE_PACK ?? rollPackType();
+  // Énergie des Gardiens : chargée aux clôtures de séance, consommée ici.
+  const charges = await loadCharges(auth.userId);
+  const packType: PackType = DEBUG_FORCE_PACK ?? rollPackTypeFromHat(charges);
   const category = DEBUG_FORCE_ANIMAL
     ? "animal"
     : DEBUG_FORCE_POKEMON
       ? "pokemon"
-      : rollCategoryForPack(packType);
+      : Math.random() < innerPokemonProb(PACK_CATEGORY_PROB_POKEMON[packType], charges)
+        ? "pokemon"
+        : "animal";
+  // La Curée se lit avant consommation ; le reste du chapeau se vide selon
+  // les pactes (Banquise, Pardon des Abysses).
+  const cureeCharges = charges.curee ?? 0;
+  await saveCharges(auth.userId, consumeHat(charges, packType));
 
   if (category === "animal") {
     let picked;
@@ -109,15 +176,25 @@ export async function POST() {
     const isDuplicate = (card?.count ?? 1) > 1;
     let shardsGranted = 0;
     if (isDuplicate) {
+      // La Curée : une charge stockée double le fragment du doublon.
+      const bonus = cureeCharges > 0 ? 1 : 0;
+      if (bonus) {
+        const after = await loadCharges(auth.userId);
+        after.curee = Math.max(0, (after.curee ?? 0) - 1);
+        await saveCharges(auth.userId, after);
+      }
+      shardsGranted = 1 + bonus;
       await db
         .insert(userShards)
-        .values({ userId: auth.userId, rarity, category: "animal", count: 1 })
+        .values({ userId: auth.userId, rarity, category: "animal", count: shardsGranted })
         .onConflictDoUpdate({
           target: [userShards.userId, userShards.rarity, userShards.category],
-          set: { count: sql`${userShards.count} + 1` },
+          set: { count: sql`${userShards.count} + ${shardsGranted}` },
         });
-      shardsGranted = 1;
     }
+
+    // Talent caché : révélé à la première obtention de la carte.
+    const talent = !isDuplicate ? talentOf("animal", picked.slug) : null;
 
     return Response.json({
       packType,
@@ -126,6 +203,9 @@ export async function POST() {
       creature: { ...picked, kind: "animal" },
       isDuplicate,
       shardsGranted,
+      talent: talent
+        ? { id: talent.id, family: talent.family, name: talent.name, description: talent.description }
+        : null,
       tokens: tokensRemaining,
     });
   }
@@ -176,15 +256,23 @@ export async function POST() {
   const isDuplicate = (card?.count ?? 1) > 1;
   let shardsGranted = 0;
   if (isDuplicate) {
+    const bonus = cureeCharges > 0 ? 1 : 0;
+    if (bonus) {
+      const after = await loadCharges(auth.userId);
+      after.curee = Math.max(0, (after.curee ?? 0) - 1);
+      await saveCharges(auth.userId, after);
+    }
+    shardsGranted = 1 + bonus;
     await db
       .insert(userShards)
-      .values({ userId: auth.userId, rarity, category: "pokemon", count: 1 })
+      .values({ userId: auth.userId, rarity, category: "pokemon", count: shardsGranted })
       .onConflictDoUpdate({
         target: [userShards.userId, userShards.rarity, userShards.category],
-        set: { count: sql`${userShards.count} + 1` },
+        set: { count: sql`${userShards.count} + ${shardsGranted}` },
       });
-    shardsGranted = 1;
   }
+
+  const talent = !isDuplicate ? talentOf("pokemon", picked.slug) : null;
 
   return Response.json({
     packType,
@@ -193,6 +281,9 @@ export async function POST() {
     creature: { ...picked, kind: "pokemon" },
     isDuplicate,
     shardsGranted,
+    talent: talent
+      ? { id: talent.id, family: talent.family, name: talent.name, description: talent.description }
+      : null,
     tokens: tokensRemaining,
   });
 }

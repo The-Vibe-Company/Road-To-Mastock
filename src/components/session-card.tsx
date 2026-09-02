@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Flame, Weight, Trophy } from "lucide-react";
+import { ChevronRight, Flame, Weight, Trophy } from "@/components/icons";
 
 interface SessionCardProps {
   id: number;

@@ -1,8 +1,12 @@
 "use client";
 
-import { X, Ruler, Weight, MapPin } from "lucide-react";
+import { useState } from "react";
+import { X, Ruler, Weight, MapPin, Shield, Pencil, Check } from "@/components/icons";
+import { useTalents } from "@/components/talents-provider";
 import { CreatureCard } from "@/components/creature-card";
 import { RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
+import { PowerRules } from "@/components/power-rules";
+import { powerLabel, polarityBreakdown } from "@/lib/powers";
 
 type Category = "animal" | "pokemon";
 
@@ -11,6 +15,7 @@ export interface DetailedCreature {
   id: number;
   slug: string;
   name: string;
+  nickname?: string | null;
   rarity: Rarity;
   imageUrl: string | null;
   count?: number;
@@ -23,6 +28,7 @@ export interface DetailedCreature {
   cardNumber?: number | null;
   scientificName?: string | null;
   description?: string | null;
+  lineage?: string | null;
   // pokemon-specific
   pokedexNumber?: number | null;
   primaryType?: string | null;
@@ -44,11 +50,38 @@ function formatWeight(kg: number | null): string | null {
 export function CardDetailModal({
   creature,
   onClose,
+  onNicknameChange,
 }: {
   creature: DetailedCreature;
   onClose: () => void;
+  onNicknameChange?: () => void;
 }) {
   const colors = RARITY_COLORS[creature.rarity];
+  // Le Vœu (Jirachi) : renommer une carte possédée.
+  const { has } = useTalents();
+  const canRename = has("voeu") && onNicknameChange !== undefined;
+  const [renaming, setRenaming] = useState(false);
+  const [nick, setNick] = useState(creature.nickname ?? "");
+  const [savingNick, setSavingNick] = useState(false);
+  const displayName = creature.nickname || creature.name;
+
+  const saveNickname = async () => {
+    if (savingNick) return;
+    setSavingNick(true);
+    try {
+      const r = await fetch("/api/cards/rename", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: creature.kind, cardId: creature.id, nickname: nick }),
+      });
+      if (r.ok) {
+        setRenaming(false);
+        onNicknameChange?.();
+      }
+    } finally {
+      setSavingNick(false);
+    }
+  };
   const number =
     creature.kind === "animal" ? creature.cardNumber ?? null : creature.pokedexNumber ?? null;
   // Show pokémon types as subtitle; no scientific name for animals.
@@ -59,6 +92,14 @@ export function CardDetailModal({
   const flavorText = creature.flavor ?? creature.description ?? null;
   const height = formatHeight(creature.heightCm);
   const weight = formatWeight(creature.weightKg);
+  // Pouvoir de Gardien : polarité pour le commun→épique, Prodige pour le
+  // légendaire, Miracle pour le mythique.
+  const subtype = creature.kind === "pokemon" ? creature.primaryType ?? null : creature.lineage ?? null;
+  const power = powerLabel(creature.kind, creature.rarity, subtype, creature.slug);
+  // Bas de pyramide : le métier se lit en deux lignes, un sens par ligne.
+  const breakdown = polarityBreakdown(creature.kind, creature.rarity, subtype);
+  const tierBadge =
+    creature.rarity === "mythic" ? "Miracle" : creature.rarity === "legendary" ? "Prodige" : null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/85 backdrop-blur-sm">
@@ -73,7 +114,7 @@ export function CardDetailModal({
       <div className="flex w-full max-w-md flex-col items-center gap-5 px-5 py-10">
         <div className="w-[18rem] sm:w-80">
           <CreatureCard
-            name={creature.name}
+            name={displayName}
             rarity={creature.rarity}
             imageUrl={creature.imageUrl}
             number={number}
@@ -89,13 +130,105 @@ export function CardDetailModal({
           <p className={`text-[10px] font-black uppercase tracking-widest ${colors.text}`}>
             {RARITY_LABELS[creature.rarity]} · {creature.kind === "animal" ? "Animal" : "Pokémon"}
           </p>
-          <h2 className="mt-1 text-2xl font-black tracking-tight">{creature.name}</h2>
+          <h2 className="mt-1 text-2xl font-black tracking-tight">{displayName}</h2>
+          {creature.nickname && (
+            <p className="mt-0.5 text-xs italic text-muted-foreground">{creature.name}</p>
+          )}
+          {canRename && !renaming && (
+            <button
+              onClick={() => setRenaming(true)}
+              className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground transition-colors hover:text-primary"
+            >
+              <Pencil className="size-3" />
+              {creature.nickname ? "Changer le surnom" : "Donner un surnom"}
+            </button>
+          )}
+          {renaming && (
+            <form
+              className="mt-2 flex items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                saveNickname();
+              }}
+            >
+              <input
+                value={nick}
+                onChange={(e) => setNick(e.target.value)}
+                placeholder={creature.name}
+                maxLength={40}
+                autoFocus
+                className="h-9 flex-1 rounded-lg bg-secondary/50 px-3 text-sm font-bold outline-none focus:ring-1 focus:ring-primary/40"
+              />
+              <button
+                type="submit"
+                disabled={savingNick}
+                className="flex size-9 items-center justify-center rounded-lg bg-primary/15 text-primary disabled:opacity-50"
+              >
+                <Check className="size-4" strokeWidth={3} />
+              </button>
+            </form>
+          )}
           {subtitle && (
             <p className="mt-1 text-xs uppercase tracking-widest text-muted-foreground">
               {subtitle}
             </p>
           )}
         </div>
+
+        {power && (
+          <div className={`w-full rounded-xl ${colors.bg} ring-1 ${colors.ring} px-4 py-3`}>
+            <div className="flex items-center gap-2">
+              <Shield className={`size-4 shrink-0 ${colors.text}`} />
+              <p className={`text-xs font-black uppercase tracking-widest ${colors.text}`}>
+                {breakdown ? breakdown.name : power.name}
+              </p>
+              {tierBadge && (
+                <span className="ml-auto rounded-md bg-black/20 px-1.5 py-0.5 font-mono text-[10px] font-black tabular-nums text-foreground/70">
+                  {tierBadge}
+                </span>
+              )}
+            </div>
+            {breakdown ? (
+              <div className="mt-2.5 space-y-2.5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 min-w-16 shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-emerald-500/15 px-2 font-mono text-lg font-black tabular-nums text-emerald-300 ring-1 ring-emerald-500/40">
+                    {breakdown.attract.delta}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-300">
+                      Attractif
+                    </p>
+                    <p className="text-xs leading-snug text-foreground/80">{breakdown.attract.text}</p>
+                    <p className="mt-0.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                      {breakdown.attract.example}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 min-w-16 shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-red-500/15 px-2 font-mono text-lg font-black tabular-nums text-red-300 ring-1 ring-red-500/40">
+                    {breakdown.repel.delta}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-red-300">
+                      Répulsif
+                    </p>
+                    <p className="text-xs leading-snug text-foreground/80">{breakdown.repel.text}</p>
+                    <p className="mt-0.5 font-mono text-[10px] tabular-nums text-muted-foreground">
+                      {breakdown.repel.example}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="mt-1.5 text-xs italic leading-relaxed text-foreground/70">
+                  {power.description}
+                </p>
+                {power.rules && <PowerRules text={power.rules} reminder className="mt-2" />}
+              </>
+            )}
+          </div>
+        )}
 
         {(height || weight || creature.habitat) && (
           <div className="w-full space-y-2">

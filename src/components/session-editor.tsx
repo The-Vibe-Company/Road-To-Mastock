@@ -8,10 +8,13 @@ import { ExerciseBlock } from "./exercise-block";
 import { DatePicker } from "./date-picker";
 import { BodyweightPicker } from "./bodyweight-picker";
 import { TerminateSessionButton } from "./terminate-session-button";
-import { Plus, Trash2, Dumbbell, Activity, Weight, Layers, CalendarDays, Loader2, Scale } from "lucide-react";
+import { Plus, Trash2, Dumbbell, Activity, Weight, Layers, CalendarDays, Loader2, Scale } from "@/components/icons";
 import { BackButton } from "./back-button";
+import { ThroneBackdrop } from "./throne-backdrop";
+import { Spinner } from "./spinner";
 import type { CardioPayload } from "./cardio-set-form";
 import type { AssistedPayload } from "./assisted-set-form";
+import type { Mascot } from "@/lib/mascot-types";
 
 interface ExerciseSet {
   id: number;
@@ -41,6 +44,7 @@ interface SessionExercise {
   isAssisted: boolean;
   muscleGroup: string | null;
   muscleGroups: string[];
+  mascot: Mascot | null;
   hasVariants: boolean;
   variantId: number | null;
   variantName: string | null;
@@ -351,10 +355,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-          <p className="text-sm font-medium text-primary/60">Chargement...</p>
-        </div>
+        <Spinner label="Chargement..." />
       </div>
     );
   }
@@ -394,7 +395,8 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col px-4 pb-24 pt-6">
+    <div className="relative flex min-h-dvh flex-col px-4 pb-24 pt-6">
+      <ThroneBackdrop page="session" />
       {/* Header */}
       <div className="mb-6">
         <BackButton fallback="/?tab=sessions" className="mb-3" />
@@ -493,6 +495,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
                 bodyweightKg={session.bodyweightKg}
                 onRequestBodyweight={() => setShowBodyweightPicker(true)}
                 muscleGroups={ex.muscleGroups}
+                mascot={ex.mascot}
                 hasVariants={ex.hasVariants}
                 variantId={ex.variantId}
                 variantName={ex.variantName}
@@ -514,6 +517,7 @@ export function SessionEditor({ sessionId }: { sessionId: number }) {
                 canMoveDown={i < exercises.length - 1}
                 onMoveUp={() => handleMoveExercise(i, "up")}
                 onMoveDown={() => handleMoveExercise(i, "down")}
+                onRefresh={refreshSession}
               />
             </div>
           ))}

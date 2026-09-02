@@ -1,9 +1,41 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, Lock, Loader2, Sparkles, Star } from "lucide-react";
+import { CheckCircle2, Lock, Loader2, Star, Trophy, Flame, Ticket, Shield } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { useTalents } from "./talents-provider";
+import { RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
+
+// Confettis de la Mélodie (Meloetta) : purement décoratif, 40 particules.
+function ConfettiBurst() {
+  const pieces = Array.from({ length: 40 }, (_, i) => ({
+    left: (i * 37) % 100,
+    delay: (i % 8) * 0.12,
+    duration: 1.6 + ((i * 13) % 10) / 10,
+    hue: (i * 47) % 360,
+    size: 5 + ((i * 7) % 6),
+  }));
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[120] overflow-hidden">
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          className="confetti absolute top-0 rounded-sm"
+          style={{
+            left: `${p.left}%`,
+            width: p.size,
+            height: p.size * 1.6,
+            background: `oklch(0.75 0.2 ${p.hue})`,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 interface SessionState {
   terminatedAt: string | null;
@@ -16,10 +48,31 @@ interface RewardInfo {
   weekPosition: number | null;
 }
 
+interface AwakenedGuardian {
+  exerciseId: number;
+  exerciseName: string;
+  card: {
+    category: "animal" | "pokemon";
+    name: string;
+    rarity: Rarity;
+    imageUrl: string | null;
+  };
+  powerName: string;
+  detail: string;
+  record: boolean;
+  fragmentRarity: Rarity | null;
+}
+
 export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   const [state, setState] = useState<SessionState | null>(null);
   const [busy, setBusy] = useState(false);
   const [reward, setReward] = useState<RewardInfo | null>(null);
+  const [guardians, setGuardians] = useState<AwakenedGuardian[]>([]);
+  const [recordCount, setRecordCount] = useState(0);
+  const [newTrophies, setNewTrophies] = useState<{ id: string; name: string; rewardLabel: string }[]>([]);
+  const { has, assets } = useTalents();
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showPsyduck, setShowPsyduck] = useState(false);
 
   const refresh = async () => {
     const r = await fetch(`/api/sessions/${sessionId}`);
@@ -52,6 +105,33 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
       } else if (data.tokenGranted) {
         setReward({ type: "normal", weekPosition: data.weekPosition ?? null });
       }
+      setGuardians(Array.isArray(data.guardians) ? data.guardians : []);
+      setRecordCount(data.recordCount ?? 0);
+      setNewTrophies(Array.isArray(data.newTrophies) ? data.newTrophies : []);
+
+      // Reliques de clôture — chacune ne s'éveille que si son talent est là.
+      const gotReward = data.tokenGranted || data.specialTokenGranted;
+      const gotRecord = (data.recordCount ?? 0) > 0;
+      if (has("melodie") && gotReward) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3200);
+        try {
+          navigator.vibrate?.([80, 60, 80, 60, 200]);
+        } catch {}
+      }
+      if (gotRecord) {
+        // Le Cri de la Banshee : une signature haptique rien qu'à elle.
+        if (has("cri")) {
+          try {
+            navigator.vibrate?.([300, 80, 100, 80, 500]);
+          } catch {}
+        }
+        // La Migraine : Psykokwak surgit, dépassé par tes progrès.
+        if (has("migraine") && assets["migraine"]) {
+          setShowPsyduck(true);
+          setTimeout(() => setShowPsyduck(false), 2700);
+        }
+      }
       await refresh();
     } finally {
       setBusy(false);
@@ -74,6 +154,19 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   if (state.terminatedAt) {
     return (
       <div className="mb-6 flex flex-col gap-2 rounded-2xl bg-emerald-500/10 px-4 py-3 ring-1 ring-emerald-500/30">
+        {showConfetti && <ConfettiBurst />}
+        {showPsyduck && assets["migraine"] && (
+          <div className="pointer-events-none fixed bottom-10 left-1/2 z-[120] -translate-x-1/2">
+            <Image
+              src={assets["migraine"]!}
+              alt=""
+              width={90}
+              height={90}
+              unoptimized
+              className="psyduck-pop size-24 object-contain drop-shadow-2xl"
+            />
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <CheckCircle2 className="size-5 text-emerald-400" />
           <p className="flex-1 text-sm font-bold text-emerald-300">
@@ -102,7 +195,7 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
                 href="/collection"
                 className="flex items-center gap-2 rounded-xl bg-gradient-orange-intense px-3 py-2 text-sm font-black text-black"
               >
-                <Sparkles className="size-4" strokeWidth={3} />
+                <Ticket className="size-4" />
                 +1 jeton — ouvre ton pack
               </Link>
             )}
@@ -115,6 +208,72 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
                     : `Séance ${reward.weekPosition} de la semaine`}
               </span>
             )}
+          </div>
+        )}
+
+        {/* Trophées gagnés par cette séance — la gloire d'abord */}
+        {newTrophies.map((t) => (
+          <Link
+            key={t.id}
+            href="/trophees"
+            className="flex items-center gap-3 rounded-xl bg-yellow-500/10 px-3 py-2.5 ring-1 ring-yellow-500/40"
+          >
+            <Trophy className="size-5 shrink-0 text-yellow-400" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-black uppercase tracking-[0.25em] text-yellow-400/80">
+                Trophée gagné
+              </p>
+              <p className="truncate text-sm font-black text-yellow-200">{t.name}</p>
+              <p className="truncate text-[10px] text-yellow-100/70">{t.rewardLabel}</p>
+            </div>
+          </Link>
+        ))}
+
+        {/* La récolte : les Gardiens éveillés par cette séance */}
+        {guardians.length > 0 && (
+          <div className="mt-1 rounded-xl bg-background/60 p-3 ring-1 ring-border">
+            <div className="mb-2 flex items-center gap-1.5">
+              <Shield className="size-3.5 text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/70">
+                {guardians.length} gardien{guardians.length > 1 ? "s" : ""} éveillé{guardians.length > 1 ? "s" : ""}
+              </span>
+              {recordCount > 0 && (
+                <span className="ml-auto inline-flex items-center gap-1 rounded-md bg-yellow-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-yellow-400">
+                  <Trophy className="size-3" />
+                  Record battu
+                </span>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              {guardians.map((g) => (
+                <div key={g.exerciseId} className="flex items-center gap-2.5">
+                  <div className="relative size-9 shrink-0 overflow-hidden rounded-lg bg-secondary/50">
+                    {g.card.imageUrl && (
+                      <Image src={g.card.imageUrl} alt="" fill unoptimized className="object-contain p-0.5" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold leading-tight">
+                      <span className={RARITY_COLORS[g.card.rarity].text}>{g.card.name}</span>
+                      <span className="text-muted-foreground"> · {g.exerciseName}</span>
+                    </p>
+                    <p className="truncate text-[10px] leading-tight text-muted-foreground">
+                      <span className="font-bold text-foreground/70">{g.powerName}</span>
+                      {g.detail && <span className="text-primary/80"> · {g.detail}</span>}
+                    </p>
+                  </div>
+                  {g.record && g.fragmentRarity && (
+                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase ${RARITY_COLORS[g.fragmentRarity].bg} ${RARITY_COLORS[g.fragmentRarity].text}`}>
+                      <Flame className="size-2.5" />
+                      +1 fragment {RARITY_LABELS[g.fragmentRarity].toLowerCase()}
+                    </span>
+                  )}
+                  {g.record && !g.fragmentRarity && (
+                    <Trophy className="size-3.5 shrink-0 text-yellow-400" />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

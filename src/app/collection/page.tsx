@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flame, Gift, Lock, PawPrint, Zap, Vault, Sparkles, Star } from "lucide-react";
+import Link from "next/link";
+import { Flame, PawPrint, Zap, Vault, Star, Package } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/back-button";
 import { PackOpenModal, type OpenResult } from "@/components/pack-open-modal";
@@ -17,6 +18,10 @@ import {
   CONVERSION_RATE,
   type Rarity,
 } from "@/lib/rarities";
+import { PACK_TYPE_WEIGHTS, type PackType } from "@/lib/pack-types";
+import { useTalents } from "@/components/talents-provider";
+import { ThroneBackdrop } from "@/components/throne-backdrop";
+import { Spinner } from "@/components/spinner";
 
 type Category = "animal" | "pokemon";
 type Filter = "all" | Rarity;
@@ -54,7 +59,9 @@ interface AnimalCard {
   firstObtainedAt: string;
   slug: string;
   name: string;
+  nickname: string | null;
   rarity: Rarity;
+  lineage: string | null;
   cardNumber: number | null;
   scientificName: string | null;
   imageUrl: string | null;
@@ -71,6 +78,7 @@ interface PokemonCard {
   firstObtainedAt: string;
   slug: string;
   name: string;
+  nickname: string | null;
   rarity: Rarity;
   pokedexNumber: number | null;
   primaryType: string | null;
@@ -87,6 +95,12 @@ interface CollectionData {
   pokemon: { cards: PokemonCard[]; totalsByRarity: Record<Rarity, number>; shards: Record<Rarity, number> };
   tokens: number;
   specialTokens: number;
+  charges?: Record<string, number>;
+  odds?: {
+    hat: Record<PackType, number>;
+    innerPokemon: number;
+    wheel: Record<string, number>;
+  };
 }
 
 function StableCount({ owned, total }: { owned: number; total: number }) {
@@ -110,14 +124,35 @@ export default function CollectionPage() {
   const [modalResult, setModalResult] = useState<OpenResult | null>(null);
   const [detailCreature, setDetailCreature] = useState<DetailedCreature | null>(null);
   const [showSpinWheel, setShowSpinWheel] = useState(false);
+  const { has } = useTalents();
+  // L'Inclassable (Ornithorynque) : des tris merveilleux et inutiles.
+  const [sortMode, setSortMode] = useState<"rarity" | "name" | "height" | "weight" | "habitat">("rarity");
 
   const refresh = async () => {
-    const r = await fetch("/api/cards");
-    if (r.ok) setData(await r.json());
-    setLoading(false);
+    try {
+      // Timeout de 8 s : une requête gelée pendant une transition iOS ne
+      // doit jamais verrouiller la page sur son spinner.
+      const r = await fetch("/api/cards", {
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (r.ok) setData(await r.json());
+    } catch {
+      // réseau : on retentera au prochain passage
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+    // Retour depuis une autre page : les effets ne se relancent pas sur une
+    // restauration bfcache (persisted), et un history load complet peut
+    // resservir le HTML-spinner — on recharge dans les deux cas.
+    const onShow = () => refresh();
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOpenPack = async () => {
     if (opening || !data || data.tokens < 1) return;
@@ -169,7 +204,7 @@ export default function CollectionPage() {
     if (activeCategory === "pokemon") {
       const p = c as PokemonCard;
       setDetailCreature({
-        kind: "pokemon", id: p.id, slug: p.slug, name: p.name, rarity: p.rarity,
+        kind: "pokemon", id: p.id, slug: p.slug, name: p.name, nickname: p.nickname, rarity: p.rarity,
         imageUrl: p.imageUrl, count: p.count, flavor: p.flavor,
         heightCm: p.heightCm, weightKg: p.weightKg, habitat: p.habitat,
         pokedexNumber: p.pokedexNumber, primaryType: p.primaryType, secondaryType: p.secondaryType,
@@ -177,10 +212,11 @@ export default function CollectionPage() {
     } else {
       const a = c as AnimalCard;
       setDetailCreature({
-        kind: "animal", id: a.id, slug: a.slug, name: a.name, rarity: a.rarity,
+        kind: "animal", id: a.id, slug: a.slug, name: a.name, nickname: a.nickname, rarity: a.rarity,
         imageUrl: a.imageUrl, count: a.count, flavor: a.flavor,
         heightCm: a.heightCm, weightKg: a.weightKg, habitat: a.habitat,
         cardNumber: a.cardNumber, scientificName: a.scientificName, description: a.description,
+        lineage: a.lineage,
       });
     }
   };
@@ -188,12 +224,29 @@ export default function CollectionPage() {
   if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+        <Spinner />
       </div>
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-sm text-muted-foreground">
+          La Collection ne répond pas. Vérifie ta connexion, puis réessaie.
+        </p>
+        <button
+          onClick={() => {
+            setLoading(true);
+            void refresh();
+          }}
+          className="rounded-xl bg-secondary/60 px-4 py-2.5 text-sm font-bold text-primary ring-1 ring-border"
+        >
+          Réessayer
+        </button>
+      </div>
+    );
+  }
 
   const section = activeCategory === "animal" ? data.animals : data.pokemon;
   const cardsByRarity: Record<Rarity, (AnimalCard | PokemonCard)[]> = {
@@ -207,9 +260,26 @@ export default function CollectionPage() {
   const fusionShards = fusionRarity ? (section.shards[fusionRarity] || 0) : 0;
   const canFuse = fusionRarity ? FUSION_NEXT[fusionRarity] !== null && fusionShards >= FUSION_COST : false;
 
+  // Tri par défaut : le numéro de carte, comme un vrai classeur.
+  // L'Inclassable (talent) ajoute ses tris absurdes par-dessus.
+  const numberOf = (c: AnimalCard | PokemonCard) =>
+    activeCategory === "pokemon"
+      ? (c as PokemonCard).pokedexNumber ?? Number.MAX_SAFE_INTEGER
+      : (c as AnimalCard).cardNumber ?? Number.MAX_SAFE_INTEGER;
+  const sortCards = (cards: (AnimalCard | PokemonCard)[]) => {
+    const sorted = [...cards];
+    if (sortMode === "rarity") sorted.sort((a, b) => numberOf(a) - numberOf(b));
+    if (sortMode === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortMode === "height") sorted.sort((a, b) => (b.heightCm ?? 0) - (a.heightCm ?? 0));
+    if (sortMode === "weight") sorted.sort((a, b) => (b.weightKg ?? 0) - (a.weightKg ?? 0));
+    if (sortMode === "habitat")
+      sorted.sort((a, b) => (a.habitat ?? "zzz").localeCompare(b.habitat ?? "zzz"));
+    return sorted;
+  };
+
   const renderGrid = (cards: (AnimalCard | PokemonCard)[]) => (
     <div className="grid grid-cols-3 gap-2.5">
-      {cards.map((c) => {
+      {sortCards(cards).map((c) => {
         const isPokemon = activeCategory === "pokemon";
         const number = isPokemon
           ? (c as PokemonCard).pokedexNumber
@@ -221,7 +291,7 @@ export default function CollectionPage() {
             className="group block w-full transition-all duration-150 hover:-translate-y-1 active:scale-95"
           >
             <CreatureCard
-              name={c.name}
+              name={c.nickname || c.name}
               rarity={c.rarity}
               imageUrl={c.imageUrl}
               number={number}
@@ -230,6 +300,7 @@ export default function CollectionPage() {
               secondaryType={isPokemon ? (c as PokemonCard).secondaryType : undefined}
               count={c.count}
               size="sm"
+              serti={has("sertissage")}
               className="group-hover:shadow-2xl"
             />
           </button>
@@ -241,19 +312,49 @@ export default function CollectionPage() {
   const tabCards = activeFilter === "all" ? section.cards : cardsByRarity[activeFilter];
 
   return (
-    <div className="min-h-dvh px-4 pb-12 pt-6">
+    <div className="relative min-h-dvh px-4 pb-12 pt-6">
+      <ThroneBackdrop page="collection" />
       <BackButton />
 
-      <header className="mb-6 mt-3">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/70">
-          Vault
-        </p>
-        <h1 className="mt-1 text-3xl font-black tracking-tighter">Collection</h1>
+      <header className="mb-6 mt-3 flex items-end justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/70">
+            Vault
+          </p>
+          <h1 className="mt-1 text-3xl font-black tracking-tighter">Collection</h1>
+        </div>
+        <div className="mb-1 flex gap-1.5">
+          <Link
+            href="/oracle"
+            className="inline-flex items-center rounded-xl bg-secondary/40 px-3 py-2 text-xs font-bold text-muted-foreground ring-1 ring-border transition-colors hover:text-primary"
+          >
+            Oracle
+          </Link>
+          {has("genome") && (
+            <Link
+              href="/genome"
+              className="inline-flex items-center rounded-xl bg-secondary/40 px-3 py-2 text-xs font-bold text-muted-foreground ring-1 ring-border transition-colors hover:text-primary"
+            >
+              Génome
+            </Link>
+          )}
+          <Link
+            href="/grimoire"
+            className="inline-flex items-center rounded-xl bg-secondary/40 px-3 py-2 text-xs font-bold text-muted-foreground ring-1 ring-border transition-colors hover:text-primary"
+          >
+            Grimoire
+          </Link>
+          <Link
+            href="/manuel"
+            className="inline-flex items-center rounded-xl bg-secondary/40 px-3 py-2 text-xs font-bold text-muted-foreground ring-1 ring-border transition-colors hover:text-primary"
+          >
+            ?
+          </Link>
+        </div>
       </header>
 
       {/* Hero panel */}
-      <div className="relative mb-6 overflow-hidden rounded-3xl border border-primary/30 bg-[radial-gradient(circle_at_top_left,oklch(var(--accent-l)_var(--accent-c)_var(--accent-h)/0.15)_0%,oklch(0.12_0_0)_60%)]">
-        <div className="absolute -right-8 -top-8 size-40 rounded-full bg-primary/10 blur-3xl" />
+      <div className="card-gradient-border relative mb-6 overflow-hidden rounded-3xl">
         <div className="relative flex items-stretch gap-4 px-5 pb-4 pt-5">
           <div className="flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground">
@@ -276,7 +377,7 @@ export default function CollectionPage() {
               disabled={data.tokens < 1 || opening}
               className="mt-3 h-10 self-start rounded-xl bg-gradient-orange-intense px-4 text-xs font-black uppercase tracking-wider text-black disabled:opacity-50"
             >
-              <Sparkles className="size-3.5" strokeWidth={3} />
+              <Package className="size-3.5" />
               {opening ? "Ouverture..." : "Ouvrir un pack"}
             </Button>
           </div>
@@ -302,6 +403,49 @@ export default function CollectionPage() {
             >
               Tourner
             </Button>
+          </div>
+        )}
+
+        {/* Le chapeau : l'énergie des Gardiens change les odds du prochain pack */}
+        {data.odds && data.charges && Object.values(data.charges).some((n) => n > 0) && (
+          <div className="relative mx-5 mb-3 rounded-2xl bg-secondary/30 px-3 py-2.5 ring-1 ring-border">
+            <p className="mb-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-primary/70">
+              Énergie des gardiens — prochain pack
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  ["basic", "Basique", PACK_TYPE_WEIGHTS.basic],
+                  ["animal_only", "Animal", PACK_TYPE_WEIGHTS.animal_only],
+                  ["pokemon_only", "Pokémon", PACK_TYPE_WEIGHTS.pokemon_only],
+                  ["premium", "Premium", PACK_TYPE_WEIGHTS.premium],
+                  ["mythic", "Mythique", PACK_TYPE_WEIGHTS.mythic],
+                ] as [PackType, string, number][]
+              ).map(([key, label, base]) => {
+                const pct = data.odds!.hat[key];
+                const boosted = pct > base;
+                const nerfed = pct < base;
+                return (
+                  <span
+                    key={key}
+                    className={`rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums ${
+                      boosted
+                        ? "bg-primary/15 text-primary"
+                        : nerfed
+                          ? "bg-secondary/50 text-muted-foreground/60 line-through decoration-1"
+                          : "bg-secondary/50 text-muted-foreground"
+                    }`}
+                  >
+                    {label} {pct}%
+                  </span>
+                );
+              })}
+              {(data.odds.wheel["4"] ?? 1) > 1 && (
+                <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-amber-300">
+                  Roue ×4 : {data.odds.wheel["4"]}%
+                </span>
+              )}
+            </div>
           </div>
         )}
 
@@ -399,6 +543,36 @@ export default function CollectionPage() {
         })}
       </div>
 
+      {/* L'Inclassable : le sélecteur de tris absurdes */}
+      {has("inclassable") && (
+        <div className="mb-4 flex items-center gap-1.5 overflow-x-auto">
+          <span className="shrink-0 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+            Trier
+          </span>
+          {(
+            [
+              ["rarity", "N°"],
+              ["name", "Nom"],
+              ["height", "Taille"],
+              ["weight", "Poids"],
+              ["habitat", "Habitat"],
+            ] as const
+          ).map(([mode, label]) => (
+            <button
+              key={mode}
+              onClick={() => setSortMode(mode)}
+              className={`shrink-0 rounded-lg px-2.5 py-1 text-[10px] font-bold transition-all active:scale-95 ${
+                sortMode === mode
+                  ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                  : "bg-secondary/40 text-muted-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Fusion bar — single tier when filter active, summary when "Tout" */}
       {fusionRarity && FUSION_NEXT[fusionRarity] ? (
         <div className="mb-5 flex items-center justify-between rounded-2xl bg-secondary/30 px-4 py-3 ring-1 ring-border">
@@ -408,6 +582,20 @@ export default function CollectionPage() {
               <span className="font-mono tabular-nums">{fusionShards}</span> fragment{fusionShards !== 1 ? "s" : ""}{" "}
               <span className="text-muted-foreground">{RARITY_LABELS[fusionRarity].toLowerCase()}</span>
             </span>
+            {/* La jauge de Forge : remplie par les Gardiens forgerons —
+                pleine, la prochaine fusion coûte 2 fragments au lieu de 3. */}
+            {(data.charges?.forge ?? 0) > 0 && (
+              <span
+                className={`rounded-md px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-wider ring-1 ${
+                  (data.charges?.forge ?? 0) >= 10
+                    ? "bg-primary/15 text-primary ring-primary/40"
+                    : "bg-secondary/60 text-muted-foreground ring-border"
+                }`}
+                title="Jauge de Forge — pleine (10), la prochaine fusion coûte 2 fragments"
+              >
+                Forge {Math.min(10, data.charges?.forge ?? 0)}/10
+              </span>
+            )}
           </div>
           <Button
             size="sm"
@@ -419,54 +607,49 @@ export default function CollectionPage() {
           </Button>
         </div>
       ) : activeFilter === "all" && Object.values(section.shards).some((n) => n > 0) ? (
-        <div className="mb-5 rounded-2xl bg-secondary/30 px-4 py-3 ring-1 ring-border">
-          <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-            <Flame className="size-3.5" />
-            Fragments
-          </div>
-          <div className="flex flex-col gap-1.5">
-            {[...RARITIES].reverse().map((r) => {
-              const n = section.shards[r] || 0;
-              if (n === 0) return null;
-              const next = FUSION_NEXT[r];
-              const fuseable = next && n >= FUSION_COST;
-              const convBatch = CONVERSION_BATCH[r];
-              const convReward = CONVERSION_RATE[r];
-              const convertible = n >= convBatch;
-              return (
-                <div
-                  key={r}
-                  className={`flex flex-wrap items-center gap-2 rounded-lg ${TIER_FILL[r]} ring-1 px-2.5 py-1.5`}
-                >
-                  <span className={`size-2 rounded-full ${TIER_DOT[r]}`} />
-                  <span className={`text-xs font-bold ${TIER_TEXT[r]}`}>
-                    <span className="font-mono tabular-nums">{n}</span>{" "}
-                    <span className="opacity-70">{RARITY_LABELS[r].toLowerCase()}</span>
-                  </span>
-                  <div className="ml-auto flex gap-1.5">
-                    {fuseable && (
-                      <button
-                        onClick={() => handleFuse(r)}
-                        disabled={fusing !== null || converting !== null}
-                        className="rounded-md bg-gradient-orange-intense px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-black disabled:opacity-40"
-                      >
-                        {fusing === r ? "..." : `Fuser ${FUSION_COST}→1`}
-                      </button>
-                    )}
-                    {convertible && (
-                      <button
-                        onClick={() => handleConvert(r)}
-                        disabled={converting !== null || fusing !== null}
-                        className="rounded-md bg-secondary px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-foreground/80 ring-1 ring-border disabled:opacity-40"
-                      >
-                        {converting === r ? "..." : `${convBatch}→${convReward} jeton${convReward > 1 ? "s" : ""}`}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        // Fragments : une seule ligne de pastilles. Les actions (fusion,
+        // conversion) n'apparaissent que quand elles sont possibles —
+        // sinon la pastille reste un simple compteur.
+        <div className="mb-5 flex flex-wrap items-center gap-1.5">
+          <Flame className="size-3.5 text-muted-foreground" />
+          {[...RARITIES].reverse().map((r) => {
+            const n = section.shards[r] || 0;
+            if (n === 0) return null;
+            const next = FUSION_NEXT[r];
+            const fuseable = next && n >= FUSION_COST;
+            const convBatch = CONVERSION_BATCH[r];
+            const convReward = CONVERSION_RATE[r];
+            const convertible = n >= convBatch;
+            return (
+              <span
+                key={r}
+                className={`inline-flex items-center gap-1.5 rounded-lg ${TIER_FILL[r]} ring-1 px-2 py-1`}
+              >
+                <span className={`size-1.5 rounded-full ${TIER_DOT[r]}`} />
+                <span className={`font-mono text-[11px] font-black tabular-nums ${TIER_TEXT[r]}`}>
+                  {n}
+                </span>
+                {fuseable && (
+                  <button
+                    onClick={() => handleFuse(r)}
+                    disabled={fusing !== null || converting !== null}
+                    className="rounded bg-gradient-orange-intense px-1.5 py-px text-[9px] font-black uppercase text-black disabled:opacity-40"
+                  >
+                    {fusing === r ? "..." : `${FUSION_COST}→1`}
+                  </button>
+                )}
+                {convertible && (
+                  <button
+                    onClick={() => handleConvert(r)}
+                    disabled={converting !== null || fusing !== null}
+                    className="rounded bg-secondary px-1.5 py-px text-[9px] font-black uppercase text-foreground/80 ring-1 ring-border disabled:opacity-40"
+                  >
+                    {converting === r ? "..." : `→${convReward}j`}
+                  </button>
+                )}
+              </span>
+            );
+          })}
         </div>
       ) : null}
 
@@ -514,7 +697,14 @@ export default function CollectionPage() {
         <PackOpenModal result={modalResult} onClose={() => setModalResult(null)} />
       )}
       {detailCreature && (
-        <CardDetailModal creature={detailCreature} onClose={() => setDetailCreature(null)} />
+        <CardDetailModal
+          creature={detailCreature}
+          onClose={() => setDetailCreature(null)}
+          onNicknameChange={() => {
+            setDetailCreature(null);
+            refresh();
+          }}
+        />
       )}
       {showSpinWheel && (
         <SpinWheelModal

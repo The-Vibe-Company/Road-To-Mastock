@@ -1,10 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Anton, Geist } from "next/font/google";
 import { AccentProvider } from "@/components/accent-provider";
+import { TalentsProvider } from "@/components/talents-provider";
+import { TrophiesProvider } from "@/components/trophies-provider";
+import { HydrationWatchdog, WATCHDOG_SCRIPT } from "@/components/hydration-watchdog";
 import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-sans",
+  subsets: ["latin"],
+});
+
+// LA FONTE : Anton, la condensée des affiches de meeting de force —
+// titres et gros chiffres uniquement, le corps reste en Geist.
+const anton = Anton({
+  variable: "--font-display",
+  weight: "400",
   subsets: ["latin"],
 });
 
@@ -32,10 +43,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={`dark ${geistSans.variable}`}>
+    <html lang="fr" className={`dark ${geistSans.variable} ${anton.variable}`}>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: WATCHDOG_SCRIPT }} />
+        <HydrationWatchdog />
         <AccentProvider>
-          <div className="mx-auto min-h-dvh max-w-lg">{children}</div>
+          <TalentsProvider>
+            <TrophiesProvider>
+              <div className="mx-auto min-h-dvh max-w-lg">{children}</div>
+            </TrophiesProvider>
+          </TalentsProvider>
         </AccentProvider>
       </body>
     </html>

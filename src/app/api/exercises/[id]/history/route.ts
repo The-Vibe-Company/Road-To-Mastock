@@ -3,6 +3,8 @@ import { exercises, sessions, sessionExercises, sets } from "@/lib/db/schema";
 import { eq, asc, and } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { resolveMuscleGroups } from "@/lib/muscle-groups";
+import { loadMascotsByExercise } from "@/lib/mascots";
+import { guardianBondStatus } from "@/lib/guardians";
 
 export async function GET(
   _request: Request,
@@ -92,6 +94,8 @@ export async function GET(
   const history = Object.values(bySession);
 
   const groups = resolveMuscleGroups(exercise.muscleGroups, exercise.muscleGroup);
+  const mascots = await loadMascotsByExercise([exercise.id]);
+  const bond = await guardianBondStatus(exercise.id, auth.userId);
   return Response.json({
     exercise: {
       id: exercise.id,
@@ -101,6 +105,9 @@ export async function GET(
       hasVariants: exercise.hasVariants ?? false,
       muscleGroup: groups[0] ?? null,
       muscleGroups: groups,
+      mascot: mascots.get(exercise.id) ?? null,
+      mascotMode: exercise.mascotMode ?? "attract",
+      mascotBond: bond,
     },
     history,
   });

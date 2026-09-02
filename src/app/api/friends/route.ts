@@ -9,12 +9,16 @@ export async function GET() {
 
   const rows = (await db.execute(sql`
     SELECT f.id, f.status, f.requester_id, f.addressee_id,
-           u.id AS user_id, u.name, u.email
+           u.id AS user_id, u.name, u.email, u.title,
+           COALESCE(a.image_url, p.image_url) AS totem_image,
+           COALESCE(a.name, p.name) AS totem_name
     FROM friendships f
     JOIN users u ON u.id = CASE
       WHEN f.requester_id = ${auth.userId} THEN f.addressee_id
       ELSE f.requester_id
     END
+    LEFT JOIN animals a ON u.totem_category = 'animal' AND a.id = u.totem_card_id
+    LEFT JOIN pokemon p ON u.totem_category = 'pokemon' AND p.id = u.totem_card_id
     WHERE (f.requester_id = ${auth.userId} OR f.addressee_id = ${auth.userId})
       AND f.status IN ('pending', 'accepted')
   `)) as unknown as { rows?: any[] };
@@ -27,11 +31,22 @@ export async function GET() {
     user_id: number;
     name: string;
     email: string;
+    title: string | null;
+    totem_image: string | null;
+    totem_name: string | null;
   }[];
 
   const friends = data
     .filter((r) => r.status === "accepted")
-    .map((r) => ({ friendshipId: r.id, userId: r.user_id, name: r.name, email: r.email }));
+    .map((r) => ({
+      friendshipId: r.id,
+      userId: r.user_id,
+      name: r.name,
+      email: r.email,
+      title: r.title,
+      totemImage: r.totem_image,
+      totemName: r.totem_name,
+    }));
 
   const pendingReceived = data
     .filter((r) => r.status === "pending" && r.addressee_id === auth.userId)

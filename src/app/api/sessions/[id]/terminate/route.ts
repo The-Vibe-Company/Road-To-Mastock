@@ -7,6 +7,9 @@ import {
 } from "@/lib/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
+import { resolveGuardians, type GuardianResolution } from "@/lib/guardians";
+import { claimNewTrophies } from "@/lib/trophies-server";
+import { TROPHIES } from "@/lib/trophies";
 import { revalidatePath } from "next/cache";
 
 async function sessionHasSets(sessionId: number) {
@@ -45,6 +48,11 @@ export async function POST(
 
   let tokenGranted = false;
   let specialTokenGranted = false;
+  // Résolution des Gardiens : uniquement au premier octroi de jetons, donc
+  // rouvrir/reclôturer ne rejoue rien.
+  let guardianResult: GuardianResolution | null = null;
+  // Trophées gagnés par CETTE clôture — célébrés une seule fois.
+  let newTrophies: string[] = [];
   // 1ʳᵉ et 4ᵉ séance terminée de la semaine ISO (basée sur sessions.date,
   // pas la date de termination) → jeton spécial à la place du jeton normal.
   // Sessions 2/3/5+ de la semaine → jeton normal classique.
@@ -66,6 +74,7 @@ export async function POST(
       )
       .returning();
     if (updated) {
+      try {
       // Compte les AUTRES sessions ayant déjà reçu un jeton et dont la
       // DATE de séance (pas la date de termination) tombe dans la même
       // semaine ISO que la session courante. Ainsi, terminer en batch
@@ -82,6 +91,14 @@ export async function POST(
       const previousThisWeek = Number(rows[0]?.countBefore ?? 0);
       weekPosition = previousThisWeek + 1;
 
+      guardianResult = await resolveGuardians({
+        userId: auth.userId,
+        sessionId,
+        sessionDate: session.date,
+        weekPosition,
+      });
+      newTrophies = await claimNewTrophies(auth.userId);
+
       const isSpecialPosition = weekPosition === 1 || weekPosition === 4;
       if (isSpecialPosition) {
         await db
@@ -95,6 +112,17 @@ export async function POST(
           .set({ cardsTokens: sql`${users.cardsTokens} + 1` })
           .where(eq(users.id, auth.userId));
         tokenGranted = true;
+      }
+      } catch (err) {
+        // Le claim tokensGrantedAt est déjà posé : sans réparation, un
+        // échec ici perdrait définitivement gardiens, jeton et trophées
+        // (le retry sauterait le bloc). On rend le claim, puis on relance
+        // l'erreur — la reclôture rejouera tout proprement.
+        await db
+          .update(sessions)
+          .set({ terminatedAt: null, tokensGrantedAt: null })
+          .where(and(eq(sessions.id, sessionId), eq(sessions.userId, auth.userId)));
+        throw err;
       }
     } else {
       await db
@@ -122,6 +150,15 @@ export async function POST(
     weekPosition,
     tokens: user?.tokens ?? 0,
     specialTokens: user?.specialTokens ?? 0,
+    guardians: guardianResult?.guardians ?? [],
+    recordCount: guardianResult?.recordCount ?? 0,
+    charges: guardianResult?.charges ?? null,
+    bonusTokens: guardianResult?.bonusTokens ?? 0,
+    bonusSpecialTokens: guardianResult?.bonusSpecialTokens ?? 0,
+    newTrophies: newTrophies
+      .map((id) => TROPHIES.find((t) => t.id === id))
+      .filter(Boolean)
+      .map((t) => ({ id: t!.id, name: t!.name, rewardLabel: t!.rewardLabel })),
   });
 }
 

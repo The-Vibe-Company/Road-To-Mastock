@@ -9,6 +9,9 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { FUSION_COST, FUSION_NEXT, RARITIES, type Rarity } from "@/lib/rarities";
+import { FORGE_DISCOUNT_COST, FORGE_THRESHOLD } from "@/lib/powers";
+import { loadCharges, saveCharges } from "@/lib/guardians";
+import { talentOf } from "@/lib/talents";
 
 type Category = "animal" | "pokemon";
 
@@ -31,16 +34,22 @@ export async function POST(request: Request) {
     return Response.json({ error: "Mythic shards cannot be fused" }, { status: 400 });
   }
 
+  // La Forge (Acier) : jauge pleine, la fusion coûte 2 fragments au lieu
+  // de 3, puis la jauge se vide.
+  const charges = await loadCharges(auth.userId);
+  const forgeReady = (charges.forge ?? 0) >= FORGE_THRESHOLD;
+  const cost = forgeReady ? FORGE_DISCOUNT_COST : FUSION_COST;
+
   // Atomic decrement: only succeed if user has enough shards in this category
   const [decremented] = await db
     .update(userShards)
-    .set({ count: sql`${userShards.count} - ${FUSION_COST}` })
+    .set({ count: sql`${userShards.count} - ${cost}` })
     .where(
       and(
         eq(userShards.userId, auth.userId),
         eq(userShards.rarity, fromRarity),
         eq(userShards.category, category),
-        sql`${userShards.count} >= ${FUSION_COST}`,
+        sql`${userShards.count} >= ${cost}`,
       ),
     )
     .returning();
@@ -48,11 +57,14 @@ export async function POST(request: Request) {
   if (!decremented) {
     return Response.json({ error: `Pas assez de fragments ${fromRarity}` }, { status: 400 });
   }
+  if (forgeReady) {
+    await saveCharges(auth.userId, { ...charges, forge: 0 });
+  }
 
   if (category === "animal") {
     const candidates = await db.select().from(animals).where(eq(animals.rarity, targetRarity));
     if (candidates.length === 0) {
-      await refundShards(auth.userId, fromRarity, category);
+      await refundShards(auth.userId, fromRarity, category, cost);
       return Response.json({ error: `No animals for rarity ${targetRarity}` }, { status: 500 });
     }
     const picked = candidates[Math.floor(Math.random() * candidates.length)];
@@ -79,19 +91,23 @@ export async function POST(request: Request) {
       shardsGranted = 1;
     }
 
+    const talent = !isDuplicate ? talentOf("animal", picked.slug) : null;
     return Response.json({
       category,
       rarity: targetRarity,
       creature: { ...picked, kind: "animal" },
       isDuplicate,
       shardsGranted,
+      talent: talent
+        ? { id: talent.id, family: talent.family, name: talent.name, description: talent.description }
+        : null,
     });
   }
 
   // pokemon
   const candidates = await db.select().from(pokemon).where(eq(pokemon.rarity, targetRarity));
   if (candidates.length === 0) {
-    await refundShards(auth.userId, fromRarity, category);
+    await refundShards(auth.userId, fromRarity, category, cost);
     return Response.json({ error: `No pokemon for rarity ${targetRarity}` }, { status: 500 });
   }
   const picked = candidates[Math.floor(Math.random() * candidates.length)];
@@ -118,19 +134,23 @@ export async function POST(request: Request) {
     shardsGranted = 1;
   }
 
+  const talent = !isDuplicate ? talentOf("pokemon", picked.slug) : null;
   return Response.json({
     category,
     rarity: targetRarity,
     creature: { ...picked, kind: "pokemon" },
     isDuplicate,
     shardsGranted,
+    talent: talent
+      ? { id: talent.id, family: talent.family, name: talent.name, description: talent.description }
+      : null,
   });
 }
 
-async function refundShards(userId: number, rarity: Rarity, category: Category) {
+async function refundShards(userId: number, rarity: Rarity, category: Category, cost: number = FUSION_COST) {
   await db
     .update(userShards)
-    .set({ count: sql`${userShards.count} + ${FUSION_COST}` })
+    .set({ count: sql`${userShards.count} + ${cost}` })
     .where(
       and(
         eq(userShards.userId, userId),

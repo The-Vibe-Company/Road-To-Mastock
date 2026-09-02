@@ -2,24 +2,22 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
+import { buildWheel, type Charges } from "@/lib/powers";
+import { loadCharges, saveCharges } from "@/lib/guardians";
 
-// Roue d'un jeton spécial : convertit en 1, 2, 3 ou 4 jetons normaux.
-// Probabilités : 20% / 60% / 19% / 1%.
-export const SPIN_OUTCOMES: { reward: 1 | 2 | 3 | 4; weight: number }[] = [
-  { reward: 1, weight: 20 },
-  { reward: 2, weight: 60 },
-  { reward: 3, weight: 19 },
-  { reward: 4, weight: 1 },
-];
-
-function rollSpin(): 1 | 2 | 3 | 4 {
-  const total = SPIN_OUTCOMES.reduce((a, o) => a + o.weight, 0);
+// Roue d'un jeton spécial : convertit en jetons normaux. La table de base
+// (×1 à ×4) peut être transformée par les sorts des Gardiens : la Roue
+// Pipée retire le ×1, le Festin des Songes le change en ×2, la Colère de
+// Typhon ne laisse que ×3/×4, et le Pas de la Fortune ouvre le ×10.
+function rollSpin(charges: Charges): number {
+  const outcomes = buildWheel(charges);
+  const total = outcomes.reduce((a, o) => a + o.weight, 0);
   let r = Math.random() * total;
-  for (const o of SPIN_OUTCOMES) {
+  for (const o of outcomes) {
     r -= o.weight;
     if (r <= 0) return o.reward;
   }
-  return 1;
+  return outcomes[0]?.reward ?? 1;
 }
 
 // POST: spend 1 special token, roll the wheel, grant 1-4 normal tokens.
@@ -38,7 +36,17 @@ export async function POST() {
     return Response.json({ error: "Pas de jeton spécial disponible" }, { status: 400 });
   }
 
-  const reward = rollSpin();
+  const charges = await loadCharges(auth.userId);
+  const reward = rollSpin(charges);
+  // La roue consomme ses tickets et ses sorts, et seulement les siens.
+  await saveCharges(auth.userId, {
+    ...charges,
+    wheel_x3: 0,
+    wheel_no_x1: 0,
+    wheel_min2: 0,
+    wheel_34: 0,
+    qilin_wheel: 0,
+  });
 
   const [updatedUser] = await db
     .update(users)

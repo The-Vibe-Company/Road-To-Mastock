@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Dumbbell } from "lucide-react";
+import { ChevronRight, Dumbbell } from "@/components/icons";
 
 interface RankedExercise {
   id: number;

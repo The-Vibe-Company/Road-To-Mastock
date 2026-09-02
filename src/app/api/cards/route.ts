@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import {
   animals,
   pokemon,
+  userCardNames,
   userCards,
   userPokemonCards,
   userShards,
@@ -10,6 +11,8 @@ import {
 import { eq } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { RARITIES, type Rarity } from "@/lib/rarities";
+import { loadCharges } from "@/lib/guardians";
+import { buildPackHat, buildWheel } from "@/lib/powers";
 
 type Category = "animal" | "pokemon";
 
@@ -29,6 +32,7 @@ export async function GET() {
       slug: animals.slug,
       name: animals.name,
       rarity: animals.rarity,
+      lineage: animals.lineage,
       cardNumber: animals.cardNumber,
       scientificName: animals.scientificName,
       imageUrl: animals.imageUrl,
@@ -99,14 +103,39 @@ export async function GET() {
     .from(users)
     .where(eq(users.id, auth.userId));
 
+  // Surnoms (Le Vœu) : affichés à la place du nom pour leur propriétaire.
+  const nicknameRows = await db
+    .select({ category: userCardNames.category, cardId: userCardNames.cardId, nickname: userCardNames.nickname })
+    .from(userCardNames)
+    .where(eq(userCardNames.userId, auth.userId));
+  const nicknames = new Map(nicknameRows.map((n) => [`${n.category}:${n.cardId}`, n.nickname]));
+  const withNick = <T extends { id: number }>(cards: T[], category: string) =>
+    cards.map((c) => ({ ...c, nickname: nicknames.get(`${category}:${c.id}`) ?? null }));
+
+  // Énergie des Gardiens + aperçu du chapeau qu'elle produit.
+  const charges = await loadCharges(auth.userId);
+  const hat = buildPackHat(charges);
+  const hatTotal = Object.values(hat).reduce((a, b) => a + b, 0);
+  const wheel = buildWheel(charges);
+  const wheelTotal = wheel.reduce((a, o) => a + o.weight, 0);
+
   return Response.json({
+    charges,
+    odds: {
+      hat: Object.fromEntries(
+        Object.entries(hat).map(([k, w]) => [k, hatTotal > 0 ? Math.round((w / hatTotal) * 100) : 0]),
+      ),
+      wheel: Object.fromEntries(
+        wheel.map((o) => [o.reward, Math.round((o.weight / wheelTotal) * 100)]),
+      ),
+    },
     animals: {
-      cards: ownedAnimals,
+      cards: withNick(ownedAnimals, "animal"),
       totalsByRarity: animalTotalsByRarity,
       shards: shards.animal,
     },
     pokemon: {
-      cards: ownedPokemon,
+      cards: withNick(ownedPokemon, "pokemon"),
       totalsByRarity: pokemonTotalsByRarity,
       shards: shards.pokemon,
     },

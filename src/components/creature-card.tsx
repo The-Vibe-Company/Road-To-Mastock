@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Sparkles } from "lucide-react";
+import { Zap, PawPrint } from "@/components/icons";
 import { type Rarity } from "@/lib/rarities";
 
 type Category = "animal" | "pokemon";
@@ -62,6 +62,8 @@ interface CreatureCardProps {
   count?: number;
   size?: "sm" | "lg";
   className?: string;
+  // Le Sertissage (Diancie) : cadre serti sur les cartes de la collection.
+  serti?: boolean;
 }
 
 export function CreatureCard({
@@ -75,6 +77,7 @@ export function CreatureCard({
   count,
   size = "sm",
   className = "",
+  serti = false,
 }: CreatureCardProps) {
   const isPolished = rarity === "rare" || rarity === "epic" || rarity === "legendary" || rarity === "mythic";
   const isHolo = rarity === "legendary" || rarity === "mythic";
@@ -84,7 +87,7 @@ export function CreatureCard({
 
   return (
     <div
-      className={`relative aspect-[3/4] overflow-hidden rounded-xl border-2 ${TIER_BORDER[rarity]} ${TIER_GLOW[rarity]} bg-gradient-to-b ${TIER_GRADIENT[rarity]} ${className}`}
+      className={`relative aspect-[3/4] overflow-hidden rounded-[10px] border-2 ${TIER_BORDER[rarity]} ${TIER_GLOW[rarity]} bg-gradient-to-b ${TIER_GRADIENT[rarity]} ${serti ? "card-serti" : ""} ${className}`}
     >
       {/* Holo shimmer for legendary+ */}
       {isHolo && (
@@ -116,7 +119,11 @@ export function CreatureCard({
             unoptimized
           />
         ) : (
-          <Sparkles className={`${TIER_ACCENT[rarity]} ${size === "lg" ? "size-32" : "size-12"}`} />
+          category === "pokemon" ? (
+            <Zap className={`${TIER_ACCENT[rarity]} ${size === "lg" ? "size-32" : "size-12"}`} />
+          ) : (
+            <PawPrint className={`${TIER_ACCENT[rarity]} ${size === "lg" ? "size-32" : "size-12"}`} />
+          )
         )}
       </div>
 
