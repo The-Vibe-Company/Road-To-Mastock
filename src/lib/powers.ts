@@ -59,7 +59,7 @@ export const DIRECTION_CAPS: Record<Direction, number> = {
   inner_pokemon: 15, // 1 point = 2 % de curseur, ±30 % au maximum
   inner_animal: 15,
   wheel_x3: 15,
-  forge: 10,
+  forge: 20,
   curee: 5,
   orpailleur: 1,
   banquise: 10,
@@ -407,7 +407,7 @@ export const PRODIGES: Record<string, ProdigeDef> = {
     id: "golem",
     name: "Le Socle Gravé",
     description:
-      "Fait pour bâtir, jamais pour détruire : à son éveil, +8 dans la jauge de Forge. Jauge pleine (10), la Roue de la Forge t'offre un fragment au tirage.",
+      "Fait pour bâtir, jamais pour détruire : à son éveil, +8 dans la jauge de Forge. Jauge pleine (20), la Roue de la Forge t'offre un fragment au tirage.",
     effect: { kind: "hat", add: { forge: 8 }, detail: "+8 dans la jauge de Forge" },
   },
   "animal:naga": {
@@ -788,7 +788,7 @@ function fmtAdd(d: Direction, n: number): string {
     case "inner_pokemon": return `dans un pack Basique, la carte tirée est animale à 75 % / Pokémon à 25 % — ce curseur bouge de ${n} % vers les Pokémon`;
     case "inner_animal": return `dans un pack Basique, la carte tirée est animale à 75 % / Pokémon à 25 % — ce curseur bouge de ${n} % vers les animaux`;
     case "wheel_x3": return `+${n} tickets sur la case ×3 de la roue des jetons spéciaux`;
-    case "forge": return `+${n} dans la jauge de Forge — visible sur la barre de fusion de la Collection ; pleine à 10, elle paie un tour de la Roue de la Forge : un fragment garanti, sa rareté au tirage (40 % commun → 1 % mythique)`;
+    case "forge": return `+${n} dans la jauge de Forge — visible sur la Collection ; pleine à 20, elle paie un tour de la Roue de la Forge : un fragment garanti, sa rareté au tirage (40 % commun → 1 % mythique)`;
     case "curee": return `${n} charges de Curée : tes ${n} prochains doublons tirés rapportent chacun 1 fragment de plus`;
     case "banquise": return `ouvrir un pack consomme normalement tous tes tickets — là, jusqu'à ${n} tickets par direction restent dans le chapeau après ta prochaine ouverture`;
     case "no_basic": return n > 1 ? `tes ${n} prochains packs refusent d'être Basiques` : `ton prochain pack refuse d'être Basique`;
@@ -1067,7 +1067,7 @@ export const MIRACLES: Record<string, Miracle> = {
     description:
       "À son éveil, la machine de guerre remplit la Forge d'un coup : la Roue de la Forge est payée, un fragment t'attend au tirage, sans attendre.",
     rules:
-      "À chaque éveil : remplit la jauge de Forge d'un coup (10/10) — un tour de la Roue de la Forge payé : un fragment garanti, sa rareté au tirage. La jauge est visible sur la barre de fusion de la Collection.",
+      "À chaque éveil : remplit la jauge de Forge d'un coup (20/20) — un tour de la Roue de la Forge payé : un fragment garanti, sa rareté au tirage. La jauge est visible sur la Collection.",
   },
   "pokemon:celebi": {
     id: "second-souffle",
@@ -1375,13 +1375,13 @@ export const WHEEL_SPELLS: Direction[] = [
   "qilin_wheel",
 ];
 
-export const FORGE_THRESHOLD = 10;
+export const FORGE_THRESHOLD = 20;
 
 // ─── La Roue de la Forge ────────────────────────────────────────────────────
 // La fusion coûte TOUJOURS 3 fragments. La jauge de Forge sert à autre
 // chose : pleine (10 points), elle paie un tour de la Roue de la Forge —
 // un fragment garanti, dont la rareté se joue aux pourcentages.
-export const FORGE_WHEEL_COST = 10;
+export const FORGE_WHEEL_COST = 20;
 
 export const FORGE_WHEEL_ODDS: Record<Rarity, number> = {
   common: 40,

@@ -627,11 +627,11 @@ export default function CollectionPage() {
             <div className="mt-1 flex h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-secondary/60">
               <div
                 className="bg-gradient-orange rounded-full"
-                style={{ width: `${Math.min(100, ((data.charges?.forge ?? 0) / 10) * 100)}%` }}
+                style={{ width: `${Math.min(100, ((data.charges?.forge ?? 0) / 20) * 100)}%` }}
               />
             </div>
           </div>
-          {(data.charges?.forge ?? 0) >= 10 ? (
+          {(data.charges?.forge ?? 0) >= 20 ? (
             <button
               onClick={handleForgeWheel}
               disabled={forging}
@@ -642,7 +642,7 @@ export default function CollectionPage() {
             </button>
           ) : (
             <span className="font-mono text-[10px] font-black tabular-nums text-muted-foreground">
-              {data.charges?.forge ?? 0}/10
+              {data.charges?.forge ?? 0}/20
             </span>
           )}
         </div>
