@@ -72,10 +72,31 @@ export async function PATCH(
       if (bond.locked) {
         return Response.json(
           {
-            error: "Gardien lié — bats ton record sur cette machine ou attends la fin du lien",
+            error: "Gardien lié — attends la fin du lien, ou paie sa magnésie",
             unlockAt: bond.unlockAt,
           },
           { status: 403 },
+        );
+      }
+    }
+
+    // Un Gardien ne garde qu'UNE machine : refuser la double affectation.
+    if (mascot !== null && !isSameCard) {
+      const [already] = await db
+        .select({ id: exercises.id, name: exercises.name })
+        .from(exercises)
+        .where(
+          and(
+            eq(exercises.userId, auth.userId),
+            mascot.category === "animal"
+              ? eq(exercises.mascotAnimalId, mascot.id)
+              : eq(exercises.mascotPokemonId, mascot.id),
+          ),
+        );
+      if (already && already.id !== exerciseId) {
+        return Response.json(
+          { error: `Cette carte garde déjà « ${already.name} » — un Gardien ne tient qu'un poste` },
+          { status: 409 },
         );
       }
     }

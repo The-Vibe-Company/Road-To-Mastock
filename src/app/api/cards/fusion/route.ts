@@ -9,7 +9,6 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { FUSION_COST, FUSION_NEXT, RARITIES, type Rarity } from "@/lib/rarities";
-import { FORGE_DISCOUNT_COST, FORGE_THRESHOLD } from "@/lib/powers";
 import { loadCharges, saveCharges } from "@/lib/guardians";
 import { talentOf } from "@/lib/talents";
 
@@ -34,11 +33,9 @@ export async function POST(request: Request) {
     return Response.json({ error: "Mythic shards cannot be fused" }, { status: 400 });
   }
 
-  // La Forge (Acier) : jauge pleine, la fusion coûte 2 fragments au lieu
-  // de 3, puis la jauge se vide.
-  const charges = await loadCharges(auth.userId);
-  const forgeReady = (charges.forge ?? 0) >= FORGE_THRESHOLD;
-  const cost = forgeReady ? FORGE_DISCOUNT_COST : FUSION_COST;
+  // La fusion coûte toujours 3 fragments — la jauge de Forge, elle, paie
+  // la Roue de la Forge (voir /api/cards/forge).
+  const cost = FUSION_COST;
 
   // Atomic decrement: only succeed if user has enough shards in this category
   const [decremented] = await db
@@ -56,9 +53,6 @@ export async function POST(request: Request) {
 
   if (!decremented) {
     return Response.json({ error: `Pas assez de fragments ${fromRarity}` }, { status: 400 });
-  }
-  if (forgeReady) {
-    await saveCharges(auth.userId, { ...charges, forge: 0 });
   }
 
   if (category === "animal") {

@@ -59,7 +59,7 @@ export const DIRECTION_CAPS: Record<Direction, number> = {
   inner_pokemon: 15, // 1 point = 2 % de curseur, ±30 % au maximum
   inner_animal: 15,
   wheel_x3: 15,
-  forge: 10,
+  forge: 20,
   curee: 5,
   orpailleur: 1,
   banquise: 10,
@@ -407,7 +407,7 @@ export const PRODIGES: Record<string, ProdigeDef> = {
     id: "golem",
     name: "Le Socle Gravé",
     description:
-      "Fait pour bâtir, jamais pour détruire : à son éveil, +8 dans la jauge de Forge. Jauge pleine (10), ta prochaine fusion coûte 2 fragments au lieu de 3.",
+      "Fait pour bâtir, jamais pour détruire : à son éveil, +8 dans la jauge de Forge. Jauge pleine (20), la Roue de la Forge t'offre un fragment au tirage.",
     effect: { kind: "hat", add: { forge: 8 }, detail: "+8 dans la jauge de Forge" },
   },
   "animal:naga": {
@@ -788,7 +788,7 @@ function fmtAdd(d: Direction, n: number): string {
     case "inner_pokemon": return `dans un pack Basique, la carte tirée est animale à 75 % / Pokémon à 25 % — ce curseur bouge de ${n} % vers les Pokémon`;
     case "inner_animal": return `dans un pack Basique, la carte tirée est animale à 75 % / Pokémon à 25 % — ce curseur bouge de ${n} % vers les animaux`;
     case "wheel_x3": return `+${n} tickets sur la case ×3 de la roue des jetons spéciaux`;
-    case "forge": return `+${n} dans la jauge de Forge — visible sur la barre de fusion de la Collection ; pleine à 10, ta prochaine fusion coûte 2 fragments au lieu de 3`;
+    case "forge": return `+${n} dans la jauge de Forge — visible sur la Collection ; pleine à 20, elle paie un tour de la Roue de la Forge : un fragment garanti, du commun (42 %) à l'épique (10 %)`;
     case "curee": return `${n} charges de Curée : tes ${n} prochains doublons tirés rapportent chacun 1 fragment de plus`;
     case "banquise": return `ouvrir un pack consomme normalement tous tes tickets — là, jusqu'à ${n} tickets par direction restent dans le chapeau après ta prochaine ouverture`;
     case "no_basic": return n > 1 ? `tes ${n} prochains packs refusent d'être Basiques` : `ton prochain pack refuse d'être Basique`;
@@ -1065,9 +1065,9 @@ export const MIRACLES: Record<string, Miracle> = {
     id: "forge-vivante",
     name: "La Forge Vivante",
     description:
-      "À son éveil, la machine de guerre remplit la Forge d'un coup : ta prochaine fusion coûte 2 fragments au lieu de 3, sans attendre.",
+      "À son éveil, la machine de guerre remplit la Forge d'un coup : la Roue de la Forge est payée, un fragment t'attend au tirage, sans attendre.",
     rules:
-      "À chaque éveil : remplit la jauge de Forge d'un coup (10/10) — ta prochaine fusion coûte 2 fragments au lieu de 3. La jauge est visible sur la barre de fusion de la Collection.",
+      "À chaque éveil : remplit la jauge de Forge d'un coup (20/20) — un tour de la Roue de la Forge payé : un fragment garanti, sa rareté au tirage. La jauge est visible sur la Collection.",
   },
   "pokemon:celebi": {
     id: "second-souffle",
@@ -1375,11 +1375,91 @@ export const WHEEL_SPELLS: Direction[] = [
   "qilin_wheel",
 ];
 
-export const FORGE_THRESHOLD = 10;
-export const FORGE_DISCOUNT_COST = 2;
+export const FORGE_THRESHOLD = 20;
+
+// ─── La Roue de la Forge ────────────────────────────────────────────────────
+// La fusion coûte TOUJOURS 3 fragments. La jauge de Forge sert à autre
+// chose : pleine (10 points), elle paie un tour de la Roue de la Forge —
+// un fragment garanti, dont la rareté se joue aux pourcentages.
+export const FORGE_WHEEL_COST = 20;
+
+// Pas de fragment légendaire ni mythique : la Roue s'arrête à l'épique.
+export const FORGE_WHEEL_ODDS: Partial<Record<Rarity, number>> = {
+  common: 42,
+  uncommon: 30,
+  rare: 18,
+  epic: 10,
+};
+
+// Tirage pur (injectable pour les tests) : renvoie la rareté gagnée.
+export function drawForgeFragment(rand: () => number = Math.random): Rarity {
+  const entries = Object.entries(FORGE_WHEEL_ODDS) as [Rarity, number][];
+  const total = entries.reduce((a, [, w]) => a + w, 0);
+  let roll = rand() * total;
+  for (const [rarity, weight] of entries) {
+    roll -= weight;
+    if (roll < 0) return rarity;
+  }
+  return "common";
+}
 
 // Le Gardien lié : record battu depuis la pose, ou 30 jours d'attente.
 export const GUARDIAN_BOND_DAYS = 30;
+
+// ─── La Magnésie ────────────────────────────────────────────────────────────
+// La poudre qui délie. Environ 10 % des cartes du catalogue la portent —
+// tirées au sort une fois pour toutes (hachage stable du slug, personne ne
+// choisit). Quand une porteuse s'éveille (Gardienne posée ou renfort de
+// l'Échappée), elle dépose sa magnésie EN PLUS de son pouvoir.
+// Elle sert à une seule chose : délier un Gardien lié sans attendre les
+// 30 jours ni battre de record — au prix du rang de la carte libérée.
+
+export const MAGNESIE_YIELD: Record<Rarity, number> = {
+  common: 1,
+  uncommon: 1,
+  rare: 2,
+  epic: 3,
+  legendary: 5,
+  mythic: 8,
+};
+
+// Le prix du déliement, selon la rareté du Gardien qu'on libère.
+export const UNBIND_PRICE: Record<Rarity, number> = {
+  common: 4,
+  uncommon: 6,
+  rare: 9,
+  epic: 12,
+  legendary: 16,
+  mythic: 20,
+};
+
+// Hachage djb2 : stable pour toujours, indépendant de la base.
+function slugHash(key: string): number {
+  let h = 5381;
+  for (let i = 0; i < key.length; i++) {
+    h = ((h << 5) + h + key.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+// La carte porte-t-elle la magnésie ? ~10 % du catalogue, à jamais fixe.
+export function magnesieOf(
+  category: "animal" | "pokemon",
+  slug: string,
+  rarity: Rarity,
+): number | null {
+  return slugHash(`${category}:${slug}`) % 10 === 0 ? MAGNESIE_YIELD[rarity] : null;
+}
+
+// L'Échappée : sur une machine de cardio, chaque quart d'heure ENTAMÉ
+// après le premier tire une carte au hasard dans la réserve (les cartes
+// possédées non associées à une machine), à placer en attractif ou
+// répulsif à la clôture.
+//   14 min → 0 · 16 min → 1 · 29 min → 1 · 31 min → 2 · 61 min → 4
+export function cardioDrawCount(minutes: number): number {
+  if (!minutes || minutes <= 0) return 0;
+  return Math.max(0, Math.ceil(minutes / 15) - 1);
+}
 
 // Nombre minimal de séances d'historique sur une machine pour qu'un record
 // y compte (badge, Gardiens à record : Banshee, Sphinx, Marshadow…) : sans

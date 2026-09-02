@@ -112,6 +112,15 @@ export default function ManuelPage() {
             <B>La Balance</B> — penche le 75/25 des packs mixtes vers les
             animaux ou les Pokémon (1 à 6 % par éveil).
           </p>
+          <p>
+            <B>L&apos;Échappée</B> — sur une machine de cardio, chaque quart
+            d&apos;heure <B>entamé</B> après le premier tire une carte au
+            hasard dans ta réserve (tes cartes qui ne gardent aucune
+            machine). À la clôture, tu places chacune en Attractif ou
+            Répulsif : son éveil part dans le chapeau. Les légendaires et
+            mythiques tirés pèsent leur rang : ±8 et ±13 tickets de leur
+            famille. 16 min → 1 carte, 31 min → 2, une heure → 4.
+          </p>
         </Section>
 
         <Section icon={<Star className="size-4" />} title="Les Prodiges et les Miracles (légendaire et mythique)">
@@ -156,9 +165,20 @@ export default function ManuelPage() {
           <p>
             <Lock className="mr-1 inline size-3" />
             Un Gardien posé est <B>lié</B> dès son premier éveil : pour changer
-            sa carte, bats ton record sur cette machine… ou attends 30 jours.
-            Tant qu&apos;il ne s&apos;est pas éveillé, tu peux encore changer
-            d&apos;avis librement.
+            sa carte, attends 30 jours… ou paie sa <B>magnésie</B>. Et un
+            Gardien ne tient qu&apos;<B>un seul poste</B> — impossible de
+            poser la même carte sur deux machines. Tant qu&apos;il ne
+            s&apos;est pas éveillé, tu peux encore changer d&apos;avis
+            librement.
+          </p>
+          <p>
+            La <B>Magnésie</B>, c&apos;est la poudre qui délie. Environ une
+            carte sur dix la porte — tirée au sort une fois pour toutes,
+            visible sur sa fiche. Quand une porteuse s&apos;éveille, elle en
+            dépose (1 à 8 selon son rang) en plus de son pouvoir. Délier
+            coûte selon le Gardien libéré : 4 (commun), 6 (peu commun), 9
+            (rare), 12 (épique), 16 (légendaire), 20 (mythique) — le bouton
+            vit sur la fiche de la machine, sous le verrou.
           </p>
         </Section>
 

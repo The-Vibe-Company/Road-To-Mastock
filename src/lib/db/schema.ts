@@ -18,6 +18,9 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
   accentColor: text("accent_color").default("orange"),
+  // La Magnésie : la poudre qui délie les Gardiens, gagnée par les éveils
+  // des cartes porteuses (~10 % du catalogue, tirées au sort).
+  magnesie: integer("magnesie").notNull().default(0),
   theme: text("theme").default("dark"),
   cardsTokens: integer("cards_tokens").notNull().default(0),
   cardsSpecialTokens: integer("cards_special_tokens").notNull().default(0),
@@ -316,6 +319,23 @@ export const userCharges = pgTable(
 
 // Miracles à limite hebdomadaire (le Vœu de Jirachi, le Pas de Qilin...) :
 // une ligne par (utilisateur, miracle, semaine ISO de la séance).
+// L'Échappée : cartes tirées par le cardio (un tirage par quart d'heure
+// entamé après le premier), en attente du choix attractif/répulsif.
+export const sessionCardioDraws = pgTable("session_cardio_draws", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  cardCategory: text("card_category").notNull(), // 'animal' | 'pokemon'
+  cardId: integer("card_id").notNull(),
+  mode: text("mode"), // choisi à la résolution
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 export const userMiracleUses = pgTable(
   "user_miracle_uses",
   {

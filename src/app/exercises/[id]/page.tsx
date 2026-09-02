@@ -4,7 +4,7 @@ import { PowerRules } from "@/components/power-rules";
 import { use, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Minus, Trophy, Calendar, Clock, Flame, PawPrint, Plus, Lock, Magnet, ShieldOff } from "@/components/icons";
+import { Minus, Trophy, Calendar, Clock, Flame, PawPrint, Plus, Lock, Magnet, ShieldOff, Unlock } from "@/components/icons";
 import { BackButton } from "@/components/back-button";
 import { WeightSteps } from "@/components/weight-steps";
 import { CreatureCard } from "@/components/creature-card";
@@ -27,6 +27,7 @@ interface ExerciseInfo {
   mascot: Mascot | null;
   mascotMode?: "attract" | "repel";
   mascotBond?: { locked: boolean; unlockAt: string | null; grace?: boolean };
+  unbind?: { price: number; balance: number } | null;
 }
 
 interface SetEntry {
@@ -72,6 +73,8 @@ export default function ExerciseDetail({
   // Le Métronome (50 séances) : la moyenne mobile sur les courbes.
   const { hasFeature } = useTrophies();
   const [smoothed, setSmoothed] = useState(false);
+  // Le déliement à la magnésie : requête en cours.
+  const [unbinding, setUnbinding] = useState(false);
 
   useEffect(() => {
     fetch(`/api/exercises/${id}/history`)
@@ -123,6 +126,21 @@ export default function ExerciseDetail({
   };
 
   // La polarité (cartes sous légendaire) : attirer ou repousser, à volonté.
+  const handleUnbind = async () => {
+    if (unbinding) return;
+    setUnbinding(true);
+    try {
+      const r = await fetch(`/api/exercises/${id}/unbind`, { method: "POST" });
+      if (r.ok) {
+        // Recharge la fiche : gardien parti, lien dissous, solde débité.
+        const d = await fetch(`/api/exercises/${id}/history`).then((res) => res.json());
+        setData(d);
+      }
+    } finally {
+      setUnbinding(false);
+    }
+  };
+
   const handleSetMode = async (mode: "attract" | "repel") => {
     setData((prev) =>
       prev ? { ...prev, exercise: { ...prev.exercise, mascotMode: mode } } : prev,
@@ -286,20 +304,39 @@ export default function ExerciseDetail({
                   </div>
                 )}
                 {exercise.mascotBond?.locked ? (
-                  <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-amber-400/90">
-                    <Lock className="size-3" />
-                    Gardien lié — bats ton record ici, ou libre le{" "}
-                    {exercise.mascotBond.unlockAt
-                      ? new Date(exercise.mascotBond.unlockAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
-                      : "..."}
-                  </p>
+                  <div className="mt-1.5">
+                    <p className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400/90">
+                      <Lock className="size-3" />
+                      Gardien lié — libre le{" "}
+                      {exercise.mascotBond.unlockAt
+                        ? new Date(exercise.mascotBond.unlockAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
+                        : "..."}
+                    </p>
+                    {/* La Magnésie : payer pour délier sans attendre */}
+                    {exercise.unbind && (
+                      <button
+                        onClick={handleUnbind}
+                        disabled={unbinding || exercise.unbind.balance < exercise.unbind.price}
+                        className={`mt-1.5 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider ring-1 transition-all active:scale-95 ${
+                          exercise.unbind.balance >= exercise.unbind.price
+                            ? "bg-sky-500/15 text-sky-300 ring-sky-500/40"
+                            : "bg-secondary/40 text-muted-foreground ring-border opacity-60"
+                        }`}
+                      >
+                        <Unlock className="size-3" />
+                        {unbinding
+                          ? "Déliement..."
+                          : `Délier — ${exercise.unbind.price} magnésie (tu en as ${exercise.unbind.balance})`}
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <>
                     {exercise.mascotBond?.grace && (
                       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
                         Libre jusqu&apos;à son premier éveil — ensuite la carte
-                        sera <span className="font-bold text-amber-400/90">liée</span> :
-                        record sur cette machine, ou le{" "}
+                        sera <span className="font-bold text-amber-400/90">liée</span>{" "}
+                        jusqu&apos;au{" "}
                         <span className="font-bold text-foreground">
                           {exercise.mascotBond.unlockAt
                             ? new Date(exercise.mascotBond.unlockAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })

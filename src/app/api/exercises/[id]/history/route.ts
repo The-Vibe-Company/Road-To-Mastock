@@ -1,10 +1,12 @@
 import { db } from "@/lib/db";
-import { exercises, sessions, sessionExercises, sets } from "@/lib/db/schema";
+import { exercises, sessions, sessionExercises, sets, users } from "@/lib/db/schema";
 import { eq, asc, and } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { resolveMuscleGroups } from "@/lib/muscle-groups";
 import { loadMascotsByExercise } from "@/lib/mascots";
 import { guardianBondStatus } from "@/lib/guardians";
+import { UNBIND_PRICE } from "@/lib/powers";
+import type { Rarity } from "@/lib/rarities";
 
 export async function GET(
   _request: Request,
@@ -96,6 +98,22 @@ export async function GET(
   const groups = resolveMuscleGroups(exercise.muscleGroups, exercise.muscleGroup);
   const mascots = await loadMascotsByExercise([exercise.id]);
   const bond = await guardianBondStatus(exercise.id, auth.userId);
+  // La Magnésie : quand le lien est verrouillé, on donne le prix du
+  // déliement (rang du gardien) et le solde du joueur.
+  let unbind: { price: number; balance: number } | null = null;
+  if (bond.locked) {
+    const mascot = mascots.get(exercise.id);
+    if (mascot) {
+      const [u] = await db
+        .select({ magnesie: users.magnesie })
+        .from(users)
+        .where(eq(users.id, auth.userId));
+      unbind = {
+        price: UNBIND_PRICE[mascot.rarity as Rarity],
+        balance: u?.magnesie ?? 0,
+      };
+    }
+  }
   return Response.json({
     exercise: {
       id: exercise.id,
@@ -108,6 +126,7 @@ export async function GET(
       mascot: mascots.get(exercise.id) ?? null,
       mascotMode: exercise.mascotMode ?? "attract",
       mascotBond: bond,
+      unbind,
     },
     history,
   });

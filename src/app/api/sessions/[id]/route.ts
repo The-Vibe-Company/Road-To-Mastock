@@ -4,6 +4,7 @@ import { eq, and, sql, inArray, asc } from "drizzle-orm";
 import { getAuthUser } from "@/lib/auth";
 import { resolveMuscleGroups } from "@/lib/muscle-groups";
 import { loadMascotsByExercise } from "@/lib/mascots";
+import { pendingCardioDraws } from "@/lib/guardians";
 import { revalidatePath } from "next/cache";
 
 export async function GET(
@@ -313,8 +314,15 @@ export async function GET(
   // Mascottes des machines : filigrane derrière le bloc pendant la séance.
   const mascots = await loadMascotsByExercise(exerciseIds);
 
+  // L'Échappée : tirages du cardio encore en attente de placement — pour
+  // que la cérémonie se re-propose même après un rechargement.
+  const cardioDraws = session.tokensGrantedAt
+    ? await pendingCardioDraws(auth.userId, sessionId)
+    : [];
+
   return Response.json({
     ...session,
+    cardioDraws,
     exercises: exerciseList.map((e) => ({
       ...e,
       mascot: mascots.get(e.exerciseId) ?? null,
