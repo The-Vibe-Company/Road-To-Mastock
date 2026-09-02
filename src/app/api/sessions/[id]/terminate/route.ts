@@ -61,6 +61,27 @@ export async function POST(
   let weekPosition: number | null = null;
 
   if (!session.tokensGrantedAt) {
+    // LA RÈGLE DU JOUR : une seule clôture (donc un seul jeton) par jour.
+    // Une autre séance datée du même jour a déjà été clôturée → refus net.
+    const dayRes = (await db.execute(sql`
+      SELECT id FROM sessions
+      WHERE user_id = ${auth.userId}
+        AND date = ${session.date}
+        AND id != ${sessionId}
+        AND tokens_granted_at IS NOT NULL
+      LIMIT 1
+    `)) as unknown as { rows?: { id: number }[] };
+    const alreadyClosed = (((dayRes.rows ?? dayRes) as unknown as { id: number }[]) ?? []).length > 0;
+    if (alreadyClosed) {
+      return Response.json(
+        {
+          error:
+            "Une seule clôture par jour — celle de cette journée est déjà passée. Fusionne tes séries dans la séance du jour, ou change la date de celle-ci.",
+        },
+        { status: 400 },
+      );
+    }
+
     const [updated] = await db
       .update(sessions)
       .set({

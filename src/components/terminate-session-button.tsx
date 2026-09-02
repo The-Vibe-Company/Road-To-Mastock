@@ -96,6 +96,7 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
   // Le carrousel de l'Éveil : un Gardien par écran, à la clôture.
   const [showAwakening, setShowAwakening] = useState(false);
   const [awakeStep, setAwakeStep] = useState(0);
+  const [closeError, setCloseError] = useState<string | null>(null);
   const { has, assets } = useTalents();
   const [showConfetti, setShowConfetti] = useState(false);
   const [showPsyduck, setShowPsyduck] = useState(false);
@@ -125,9 +126,14 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
     if (busy || !state) return;
     setBusy(true);
     setReward(null);
+    setCloseError(null);
     try {
       const r = await fetch(`/api/sessions/${sessionId}/terminate`, { method: "POST" });
-      if (!r.ok) return;
+      if (!r.ok) {
+        const err = await r.json().catch(() => null);
+        if (err?.error) setCloseError(err.error);
+        return;
+      }
       const data = await r.json();
       if (data.specialTokenGranted) {
         setReward({ type: "special", weekPosition: data.weekPosition ?? null });
@@ -533,6 +539,11 @@ export function TerminateSessionButton({ sessionId }: { sessionId: number }) {
 
   return (
     <div className="mb-6">
+      {closeError && (
+        <p className="mb-2 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-bold leading-snug text-red-300 ring-1 ring-red-500/30">
+          {closeError}
+        </p>
+      )}
       <Button
         onClick={handleTerminate}
         disabled={busy}
