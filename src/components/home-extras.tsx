@@ -112,9 +112,13 @@ function NewsModal() {
   }, []);
 
   const dismiss = () => {
-    try {
-      localStorage.setItem(NEWS_KEY, "1");
-    } catch {}
+    // En tournée de démo (?nouveaute), on ne marque rien : la vraie
+    // première fois du joueur reste à venir.
+    if (!forced) {
+      try {
+        localStorage.setItem(NEWS_KEY, "1");
+      } catch {}
+    }
     setOpen(false);
     setStep(0);
     // La tournée continue : au tour de la Révélation des talents.

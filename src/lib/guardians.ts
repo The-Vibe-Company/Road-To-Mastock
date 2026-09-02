@@ -107,12 +107,6 @@ async function resetHatForNewSession(userId: number, charges: Charges) {
   const hasEnergy = WIPE_DIRECTIONS.some((d) => (charges[d] ?? 0) > 0);
   if (!hasEnergy) return;
 
-  // La Seconde Éternelle de Dialga : consommée, elle épargne tout.
-  if ((charges.time_hold ?? 0) > 0) {
-    charges.time_hold = 0;
-    return;
-  }
-
   const [ouro] = await db
     .select({ id: animals.id })
     .from(animals)
@@ -126,6 +120,13 @@ async function resetHatForNewSession(userId: number, charges: Charges) {
     .from(exercises)
     .where(eq(exercises.userId, userId));
   if (ouro && posted.some((r) => r.a === ouro.id)) return; // l'Éternel Retour
+
+  // La Seconde Éternelle de Dialga : consommée seulement si elle sert —
+  // sous la garde d'Ouroboros, elle reste en réserve.
+  if ((charges.time_hold ?? 0) > 0) {
+    charges.time_hold = 0;
+    return;
+  }
 
   const half = !!celebi && posted.some((r) => r.p === celebi.id); // le Second Souffle
   for (const d of WIPE_DIRECTIONS) {
@@ -213,7 +214,9 @@ export async function resolveGuardians(params: {
       });
     }
   }
-  const entries = [...byExercise.values()];
+  // Ordre stable (id d'exercice) : l'Écho et les plafonds ne doivent pas
+  // dépendre de l'ordre de retour du SQL.
+  const entries = [...byExercise.values()].sort((a, b) => a.exerciseId - b.exerciseId);
   const charges = await loadCharges(userId);
   // La remise à zéro frappe à CHAQUE clôture, gardiens ou pas : l'énergie
   // de la séance précédente est annulée avant la nouvelle récolte.
@@ -476,9 +479,22 @@ export async function resolveGuardians(params: {
         g.detail = "cette carte n'a pas encore reçu son miracle";
       } else {
         g.powerName = miracle.name;
-        const weeklyOk = miracle.weekly
-          ? await claimWeekly(userId, miracle.id, sessionDate)
-          : true;
+        // Les hebdomadaires CONDITIONNELS (Qilin, Victini, Keldeo) ne
+        // brûlent leur usage de la semaine que si leur condition est
+        // remplie — sinon un éveil « à vide » rendrait le pouvoir
+        // inatteignable (« déjà accompli » sans avoir rien donné).
+        const weeklyCondition =
+          miracle.id === "pas-fortune"
+            ? weekPosition === 1
+            : miracle.id === "victoire-ecrite"
+              ? recordCount > 0
+              : miracle.id === "lame-resolue"
+                ? weekPosition === 4
+                : true;
+        const weeklyOk =
+          miracle.weekly && weeklyCondition
+            ? await claimWeekly(userId, miracle.id, sessionDate)
+            : true;
         if (!weeklyOk) {
           g.detail = "déjà accompli cette semaine";
         } else {
@@ -607,8 +623,11 @@ export async function resolveGuardians(params: {
               const roll = Math.random();
               const target: Direction =
                 roll < 0.4 ? "pack_pokemon" : roll < 0.7 ? "pack_animal" : roll < 0.95 ? "pack_premium" : "pack_mythic";
-              add(target, 13);
-              g.detail = `mutation : +13 vers ${target === "pack_mythic" ? "le Mythique !" : target === "pack_premium" ? "le Premium" : target === "pack_animal" ? "l'Animal" : "le Pokémon"}`;
+              // Le Mythique est plafonné à 9 : on donne le plafond, et on
+              // l'affiche tel quel plutôt que de promettre 13 fantômes.
+              const amount = target === "pack_mythic" ? 9 : 13;
+              add(target, amount);
+              g.detail = `mutation : +${amount} vers ${target === "pack_mythic" ? "le Mythique ! (le plafond)" : target === "pack_premium" ? "le Premium" : target === "pack_animal" ? "l'Animal" : "le Pokémon"}`;
               break;
             }
             case "aria":

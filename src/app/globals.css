@@ -102,9 +102,10 @@
   --sidebar-ring: oklch(var(--accent-l) var(--accent-c) var(--accent-h));
 }
 
+
 /* ── LA FONTE, version papier ──────────────────────────────────────────────
-   Le mode clair — interdit jusqu'à la centième séance. Même brutalisme,
-   même orange, mais sur béton clair et papier d'atelier. */
+   Le mode clair — gagné à la centième séance. Même brutalisme, même
+   orange, mais sur béton clair et papier d'atelier. */
 .light {
   --background: oklch(0.955 0.004 80);
   --foreground: oklch(0.17 0.012 50);
@@ -112,54 +113,30 @@
   --card-foreground: oklch(0.17 0.012 50);
   --popover: oklch(0.985 0.002 85);
   --popover-foreground: oklch(0.17 0.012 50);
-  --primary-foreground: oklch(0.98 0 0);
+  --primary: oklch(var(--accent-l) var(--accent-c) var(--accent-h));
+  --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.905 0.006 75);
   --secondary-foreground: oklch(0.24 0.01 50);
   --muted: oklch(0.905 0.006 75);
   --muted-foreground: oklch(0.44 0.014 50);
   --accent: oklch(0.90 0.035 var(--accent-h));
   --accent-foreground: oklch(0.17 0 0);
+  --destructive: oklch(0.55 0.24 25);
   --border: oklch(0.83 0.012 65);
   --input: oklch(0.86 0.012 65);
-  --sidebar: oklch(0.94 0.004 80);
-  --sidebar-foreground: oklch(0.17 0.012 50);
-  --sidebar-accent: oklch(0.90 0.02 var(--accent-h));
-  --sidebar-accent-foreground: oklch(0.17 0 0);
-  --sidebar-border: oklch(0.83 0.012 65);
-}
-
-
-.light {
-  --background: oklch(0.97 0.005 90);
-  --foreground: oklch(0.15 0.01 50);
-  --card: oklch(0.99 0.002 90);
-  --card-foreground: oklch(0.15 0.01 50);
-  --popover: oklch(0.99 0.002 90);
-  --popover-foreground: oklch(0.15 0.01 50);
-  --primary: oklch(var(--accent-l) var(--accent-c) var(--accent-h));
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.93 0.005 90);
-  --secondary-foreground: oklch(0.20 0.01 50);
-  --muted: oklch(0.93 0.005 90);
-  --muted-foreground: oklch(0.50 0.01 50);
-  --accent: oklch(0.93 0.01 var(--accent-h));
-  --accent-foreground: oklch(0.15 0.01 50);
-  --destructive: oklch(0.55 0.24 25);
-  --border: oklch(0.88 0.008 90);
-  --input: oklch(0.88 0.008 90);
   --ring: oklch(var(--accent-l) var(--accent-c) var(--accent-h));
   --chart-1: oklch(var(--accent-l) var(--accent-c) var(--accent-h));
   --chart-2: oklch(0.60 0.17 var(--accent-h));
   --chart-3: oklch(0.50 0.13 var(--accent-h));
   --chart-4: oklch(0.40 0.09 var(--accent-h));
   --chart-5: oklch(0.30 0.05 var(--accent-h));
-  --sidebar: oklch(0.96 0.005 90);
-  --sidebar-foreground: oklch(0.15 0.01 50);
+  --sidebar: oklch(0.94 0.004 80);
+  --sidebar-foreground: oklch(0.17 0.012 50);
   --sidebar-primary: oklch(var(--accent-l) var(--accent-c) var(--accent-h));
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.93 0.01 var(--accent-h));
-  --sidebar-accent-foreground: oklch(0.15 0.01 50);
-  --sidebar-border: oklch(0.88 0.008 90);
+  --sidebar-accent: oklch(0.90 0.02 var(--accent-h));
+  --sidebar-accent-foreground: oklch(0.17 0 0);
+  --sidebar-border: oklch(0.83 0.012 65);
   --sidebar-ring: oklch(var(--accent-l) var(--accent-c) var(--accent-h));
 }
 

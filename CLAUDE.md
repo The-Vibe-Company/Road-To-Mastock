@@ -36,10 +36,10 @@ Design **dark, bold et athlétique** pensé pour l'usage mobile en salle.
 - Inputs dark : `bg-secondary/50`
 
 ### Ne pas faire
-- Pas de mode clair
+- Dark par défaut — le mode clair (« LA FONTE papier ») existe mais SE GAGNE (trophée 100 séances), jamais offert
 - Pas d'emojis dans l'UI
-- Pas de couleurs autres qu'orange/noir/gris
-- Pas de fonts autres que Geist
+- Orange/noir/gris par défaut — les autres accents SE GAGNENT (une couleur par trophée, parures scellées par talents)
+- Pas de fonts autres que Geist + Anton (--font-display, titres LA FONTE)
 
 ## Base de données
 

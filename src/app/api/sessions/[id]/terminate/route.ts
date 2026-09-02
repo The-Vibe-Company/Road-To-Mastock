@@ -74,6 +74,7 @@ export async function POST(
       )
       .returning();
     if (updated) {
+      try {
       // Compte les AUTRES sessions ayant déjà reçu un jeton et dont la
       // DATE de séance (pas la date de termination) tombe dans la même
       // semaine ISO que la session courante. Ainsi, terminer en batch
@@ -111,6 +112,17 @@ export async function POST(
           .set({ cardsTokens: sql`${users.cardsTokens} + 1` })
           .where(eq(users.id, auth.userId));
         tokenGranted = true;
+      }
+      } catch (err) {
+        // Le claim tokensGrantedAt est déjà posé : sans réparation, un
+        // échec ici perdrait définitivement gardiens, jeton et trophées
+        // (le retry sauterait le bloc). On rend le claim, puis on relance
+        // l'erreur — la reclôture rejouera tout proprement.
+        await db
+          .update(sessions)
+          .set({ terminatedAt: null, tokensGrantedAt: null })
+          .where(and(eq(sessions.id, sessionId), eq(sessions.userId, auth.userId)));
+        throw err;
       }
     } else {
       await db

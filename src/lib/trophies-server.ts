@@ -57,13 +57,17 @@ export async function computeTrophyStats(userId: number): Promise<TrophyStats> {
       GROUP BY se.exercise_id, se.variant_id, se.session_id, s.date, s.created_at
     )
     SELECT COUNT(*)::int AS records FROM (
-      SELECT maxw > COALESCE(MAX(maxw) OVER w, 0) OR vol > COALESCE(MAX(vol) OVER w, 0) AS is_record
+      SELECT maxw > COALESCE(MAX(maxw) OVER w, 0) OR vol > COALESCE(MAX(vol) OVER w, 0) AS is_record,
+             ROW_NUMBER() OVER (PARTITION BY exercise_id, variant_id ORDER BY date, created_at) AS rn
       FROM per_ex
       WINDOW w AS (
         PARTITION BY exercise_id, variant_id ORDER BY date, created_at
         ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
       )
-    ) f WHERE is_record
+    -- Même verrou que le moteur des Gardiens (RECORD_MIN_HISTORY = 3) :
+    -- un record ne compte qu'avec au moins 3 séances d'historique, sinon
+    -- la première séance de chaque machine est un record automatique.
+    ) f WHERE is_record AND rn >= 4
   `)) as unknown as { rows?: { records: number }[] };
   const records = ((recordsRes.rows ?? recordsRes) as unknown as { records: number }[])[0]?.records ?? 0;
 

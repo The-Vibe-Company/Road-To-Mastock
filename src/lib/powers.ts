@@ -378,7 +378,7 @@ export const PRODIGES: Record<string, ProdigeDef> = {
     id: "cerberus",
     name: "Les Trois Gueules",
     description:
-      "Le chien des enfers imite le plus fort de la meute : à son éveil, il répète le geste attractif ou répulsif le plus puissant de la séance.",
+      "Le chien des enfers imite le plus fort de la meute : à son éveil, il répète le geste de tickets (Famille ou Lest) le plus puissant de la séance.",
     effect: { kind: "echo", fallback: { add: { pack_animal: 6 }, detail: "+6 tickets Animal (personne à imiter)" } },
   },
   "animal:fae": {
@@ -526,7 +526,7 @@ export const PRODIGES: Record<string, ProdigeDef> = {
     id: "mewtwo",
     name: "Le Clone Parfait",
     description:
-      "Créé pour surpasser l'original : à son éveil, Mewtwo copie le geste attractif ou répulsif le plus puissant de la séance — mêmes tickets, même direction.",
+      "Créé pour surpasser l'original : à son éveil, Mewtwo copie le geste de tickets (Famille ou Lest) le plus puissant de la séance — mêmes tickets, même direction.",
     effect: { kind: "echo", fallback: { add: { pack_pokemon: 6 }, detail: "+6 tickets Pokémon (personne à copier)" } },
   },
   "pokemon:suicune": {
@@ -840,7 +840,7 @@ function rawProdigeRules(p: ProdigeDef): string {
     case "chaos":
       return `À chaque éveil, UN seul effet au hasard : ${fx.pool.map((o) => fmtAdds(o.add)).join("  /  ")}.`;
     case "echo":
-      return `À chaque éveil : copie le geste à polarité le plus fort de la séance (mêmes tickets, même direction). Personne à copier : ${fmtAdds(fx.fallback.add)}.`;
+      return `À chaque éveil : copie le geste de tickets le plus fort de la séance (métiers Famille et Lest — mêmes tickets, même direction). Personne à copier : ${fmtAdds(fx.fallback.add)}.`;
   }
 }
 
@@ -1081,9 +1081,9 @@ export const MIRACLES: Record<string, Miracle> = {
     id: "adn-instable",
     name: "L'ADN Instable",
     description:
-      "À son éveil, ses 13 tickets mutent vers un pack tiré au sort : souvent Pokémon ou Animal, parfois Premium… et une fois sur vingt, Mythique.",
+      "À son éveil, ses tickets mutent vers un pack tiré au sort : souvent Pokémon ou Animal, parfois Premium… et une fois sur vingt, le Mythique porté à son plafond.",
     rules:
-      "À chaque éveil : +13 tickets vers UN pack au hasard — 40 % Pokémon, 30 % Animal, 25 % Premium, 5 % Mythique.",
+      "À chaque éveil : +13 tickets vers UN pack au hasard — 40 % Pokémon, 30 % Animal, 25 % Premium — et 5 % Mythique (+9, son plafond).",
   },
   "pokemon:meloetta-aria": {
     id: "aria",
