@@ -1,0 +1,31 @@
+src/components/home-extras.tsx
+  s_6dc77352c5bc09::t_92846becaa7253 56-57,920-959
+  s_6dc77352c5bc09::t_d20d48664babcd 960-963
+src/app/page.tsx
+  s_6dc77352c5bc09::t_0cbc738f5a6c89 118-119,123,125,127
+  s_6dc77352c5bc09::t_28946e065df90e 126,128,132
+src/components/pack-open-modal.tsx
+  s_6dc77352c5bc09::t_37a63daa8295c2 5,25-26,45,632-659,662-663,666,669-674
+src/app/oracle/page.tsx
+  s_6dc77352c5bc09::t_28946e065df90e 265-273
+  s_6dc77352c5bc09::t_5c9c17724f80b3 4,57-70,283-288,294-295,338-358
+  s_6dc77352c5bc09::t_ab14b93faa0640 359-361
+src/app/globals.css
+  s_6dc77352c5bc09::t_92846becaa7253 363-406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "17045cb997398feda571675e31d8e81e8343110e",
+  "prompts": {},
+  "sessions": {
+    "s_6dc77352c5bc09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c821057a-6589-4ccc-9a68-ecc9f4e69e12",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}
