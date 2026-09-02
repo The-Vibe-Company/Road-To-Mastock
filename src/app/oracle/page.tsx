@@ -280,11 +280,12 @@ export default function OraclePage() {
                         width={cell}
                         height={cell}
                         rx={1.5}
-                        // var() ne se résout pas en attribut SVG : le fill
-                        // passe par le style (CSS), sinon cases noires.
+                        // Safari iOS refuse oklch(var(...)) en fill SVG →
+                        // tout noir. On peint avec le hex littéral de
+                        // l'accent et un blanc translucide : incassable.
                         style={{
-                          fill: c.on ? "var(--primary)" : "var(--muted)",
-                          opacity: c.on ? 1 : 0.35,
+                          fill: c.on ? "var(--accent-gradient-mid)" : "rgba(255,255,255,0.16)",
+                          opacity: 1,
                         }}
                       />
                     ))}
