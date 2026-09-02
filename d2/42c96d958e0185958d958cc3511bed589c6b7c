@@ -1,0 +1,19 @@
+src/components/terminate-session-button.tsx
+  s_6dc77352c5bc09::t_40a5ec199ffe71 100-101,550,562-604
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d242c96d958e0185958d958cc3511bed589c6b7c",
+  "prompts": {},
+  "sessions": {
+    "s_6dc77352c5bc09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c821057a-6589-4ccc-9a68-ecc9f4e69e12",
+        "model": "unknown"
+      },
+      "human_author": "Zewed <dewez.antoine2@gmail.com>"
+    }
+  }
+}
