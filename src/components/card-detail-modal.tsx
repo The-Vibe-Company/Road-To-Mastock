@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { X, Ruler, Weight, MapPin, Shield, Pencil, Check } from "@/components/icons";
+import { X, Ruler, Weight, MapPin, Shield, Pencil, Check, Gem } from "@/components/icons";
 import { useTalents } from "@/components/talents-provider";
 import { CreatureCard } from "@/components/creature-card";
 import { RARITY_COLORS, RARITY_LABELS, type Rarity } from "@/lib/rarities";
 import { PowerRules } from "@/components/power-rules";
-import { powerLabel, polarityBreakdown } from "@/lib/powers";
+import { magnesieOf, powerLabel, polarityBreakdown } from "@/lib/powers";
 
 type Category = "animal" | "pokemon";
 
@@ -100,6 +100,8 @@ export function CardDetailModal({
   const breakdown = polarityBreakdown(creature.kind, creature.rarity, subtype);
   const tierBadge =
     creature.rarity === "mythic" ? "Miracle" : creature.rarity === "legendary" ? "Prodige" : null;
+  // La Magnésie : ~10 % des cartes la portent, en plus de leur pouvoir.
+  const dust = magnesieOf(creature.kind, creature.slug, creature.rarity);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/85 backdrop-blur-sm">
@@ -227,6 +229,21 @@ export function CardDetailModal({
                 {power.rules && <PowerRules text={power.rules} reminder className="mt-2" />}
               </>
             )}
+          </div>
+        )}
+
+        {dust != null && (
+          <div className="flex w-full items-center gap-2.5 rounded-xl bg-sky-500/10 px-4 py-2.5 ring-1 ring-sky-500/30">
+            <Gem className="size-4 shrink-0 text-sky-300" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-widest text-sky-300">
+                Porteuse de magnésie
+              </p>
+              <p className="text-xs leading-snug text-foreground/80">
+                À chaque éveil, elle dépose <span className="font-black text-sky-200">+{dust} magnésie</span> —
+                la poudre qui délie les Gardiens liés.
+              </p>
+            </div>
           </div>
         )}
 

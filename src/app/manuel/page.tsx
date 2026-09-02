@@ -165,9 +165,18 @@ export default function ManuelPage() {
           <p>
             <Lock className="mr-1 inline size-3" />
             Un Gardien posé est <B>lié</B> dès son premier éveil : pour changer
-            sa carte, bats ton record sur cette machine… ou attends 30 jours.
-            Tant qu&apos;il ne s&apos;est pas éveillé, tu peux encore changer
-            d&apos;avis librement.
+            sa carte, bats ton record sur cette machine, attends 30 jours…
+            ou paie sa <B>magnésie</B>. Tant qu&apos;il ne s&apos;est pas
+            éveillé, tu peux encore changer d&apos;avis librement.
+          </p>
+          <p>
+            La <B>Magnésie</B>, c&apos;est la poudre qui délie. Environ une
+            carte sur dix la porte — tirée au sort une fois pour toutes,
+            visible sur sa fiche. Quand une porteuse s&apos;éveille, elle en
+            dépose (1 à 8 selon son rang) en plus de son pouvoir. Délier
+            coûte selon le Gardien libéré : 4 (commun), 6 (peu commun), 10
+            (rare), 16 (épique), 25 (légendaire), 40 (mythique) — le bouton
+            vit sur la fiche de la machine, sous le verrou.
           </p>
         </Section>
 

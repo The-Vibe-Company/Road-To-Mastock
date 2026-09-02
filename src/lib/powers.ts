@@ -1381,6 +1381,51 @@ export const FORGE_DISCOUNT_COST = 2;
 // Le Gardien lié : record battu depuis la pose, ou 30 jours d'attente.
 export const GUARDIAN_BOND_DAYS = 30;
 
+// ─── La Magnésie ────────────────────────────────────────────────────────────
+// La poudre qui délie. Environ 10 % des cartes du catalogue la portent —
+// tirées au sort une fois pour toutes (hachage stable du slug, personne ne
+// choisit). Quand une porteuse s'éveille (Gardienne posée ou renfort de
+// l'Échappée), elle dépose sa magnésie EN PLUS de son pouvoir.
+// Elle sert à une seule chose : délier un Gardien lié sans attendre les
+// 30 jours ni battre de record — au prix du rang de la carte libérée.
+
+export const MAGNESIE_YIELD: Record<Rarity, number> = {
+  common: 1,
+  uncommon: 1,
+  rare: 2,
+  epic: 3,
+  legendary: 5,
+  mythic: 8,
+};
+
+// Le prix du déliement, selon la rareté du Gardien qu'on libère.
+export const UNBIND_PRICE: Record<Rarity, number> = {
+  common: 4,
+  uncommon: 6,
+  rare: 10,
+  epic: 16,
+  legendary: 25,
+  mythic: 40,
+};
+
+// Hachage djb2 : stable pour toujours, indépendant de la base.
+function slugHash(key: string): number {
+  let h = 5381;
+  for (let i = 0; i < key.length; i++) {
+    h = ((h << 5) + h + key.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+// La carte porte-t-elle la magnésie ? ~10 % du catalogue, à jamais fixe.
+export function magnesieOf(
+  category: "animal" | "pokemon",
+  slug: string,
+  rarity: Rarity,
+): number | null {
+  return slugHash(`${category}:${slug}`) % 10 === 0 ? MAGNESIE_YIELD[rarity] : null;
+}
+
 // L'Échappée : sur une machine de cardio, chaque quart d'heure ENTAMÉ
 // après le premier tire une carte au hasard dans la réserve (les cartes
 // possédées non associées à une machine), à placer en attractif ou

@@ -51,6 +51,7 @@ export function HomeExtras() {
       <NewsModal />
       <TalentAnnounceModal />
       <TrophyAnnounceModal />
+      <MagnesieAnnounceModal />
 
       {/* Le Squatteur : le chat vit sa vie en bas de l'écran */}
       {loaded && has("squatteur") && assets["squatteur"] && (
@@ -795,6 +796,137 @@ function TalentAnnounceModal() {
 
 
 
+// ─── L'annonce de la Magnésie ───────────────────────────────────────────────
+// La nouveauté du déliement : la règle, les prix — et les cartes du joueur
+// qui portent la poudre, s'il en a.
+const MAGNESIE_KEY = "news-magnesie-v1";
+
+interface MagnesieCarrier {
+  category: "animal" | "pokemon";
+  name: string;
+  rarity: Rarity;
+  imageUrl: string | null;
+  yieldPerAwakening: number | null;
+}
+
+function MagnesieAnnounceModal() {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<{ balance: number; carriers: MagnesieCarrier[] } | null>(null);
+  const [forced] = useState(isForcedTour);
+
+  useEffect(() => {
+    const show = () => {
+      fetch("/api/magnesie")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d) setData(d);
+          setOpen(true);
+        })
+        .catch(() => {});
+    };
+    if (forced) {
+      // La tournée forcée : la Magnésie ferme le cortège, après le Palmarès.
+      window.addEventListener("rtm:trophies-done", show);
+      return () => window.removeEventListener("rtm:trophies-done", show);
+    }
+    try {
+      if (localStorage.getItem(MAGNESIE_KEY)) return;
+      if (!localStorage.getItem(NEWS_KEY)) return; // la grande annonce d'abord
+    } catch {
+      return;
+    }
+    const t = setTimeout(show, 1000);
+    return () => clearTimeout(t);
+  }, [forced]);
+
+  const dismiss = () => {
+    if (!forced) {
+      try {
+        localStorage.setItem(MAGNESIE_KEY, "1");
+      } catch {}
+    }
+    setOpen(false);
+  };
+
+  if (!open) return null;
+  const carriers = data?.carriers ?? [];
+
+  return (
+    <div className="fixed inset-0 z-[103] flex items-end justify-center bg-black/85 backdrop-blur-sm sm:items-center">
+      <div className="relative flex h-[34rem] max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border-t-2 border-t-sky-400/50 bg-background sm:rounded-3xl sm:border-2 sm:border-sky-400/40">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-4 pt-8">
+          <div className="pointer-events-none absolute left-1/2 top-14 size-56 -translate-x-1/2 rounded-full bg-sky-400/10 blur-3xl" />
+          <p className="text-center font-mono text-[10px] font-black uppercase tracking-[0.35em] text-sky-300/70">
+            Nouveauté
+          </p>
+          <h2 className="mt-1 text-center text-2xl font-black leading-tight tracking-tighter">
+            La <span className="text-sky-300">Magnésie</span>
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Un Gardien lié se libère en battant ton record sur sa machine, ou
+            après 30 jours. Désormais, il y a une troisième voie :{" "}
+            <strong className="text-foreground">payer sa magnésie</strong> —
+            la poudre qui délie — au prix du rang de la carte libérée.
+          </p>
+          <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+            {([["Commun", 4], ["Peu commun", 6], ["Rare", 10], ["Épique", 16], ["Légendaire", 25], ["Mythique", 40]] as const).map(([label, price]) => (
+              <span key={label} className="rounded-md bg-secondary/50 px-2 py-1 font-mono text-[10px] font-black tabular-nums text-muted-foreground ring-1 ring-border">
+                {label} {price}
+              </span>
+            ))}
+          </div>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Où la trouver ? Environ une carte sur dix la{" "}
+            <strong className="text-foreground">porte</strong>, tirée au sort
+            une fois pour toutes : quand elle s&apos;éveille — posée en
+            Gardienne ou tirée par l&apos;Échappée du cardio — elle dépose sa
+            poudre en plus de son pouvoir.
+          </p>
+
+          {carriers.length > 0 ? (
+            <div className="mt-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-sky-300">
+                {carriers.length} de tes cartes la portent
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {carriers.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2.5 rounded-lg bg-sky-500/5 p-2 ring-1 ring-sky-500/20">
+                    <div className={`relative size-9 shrink-0 overflow-hidden rounded-lg ${RARITY_COLORS[c.rarity]?.bg ?? "bg-secondary/40"} ring-1 ${RARITY_COLORS[c.rarity]?.ring ?? "ring-border"}`}>
+                      {c.imageUrl && (
+                        <Image src={c.imageUrl} alt="" fill unoptimized className="object-cover" />
+                      )}
+                    </div>
+                    <p className={`min-w-0 flex-1 truncate text-xs font-black ${RARITY_COLORS[c.rarity]?.text ?? ""}`}>
+                      {c.name}
+                    </p>
+                    <span className="shrink-0 font-mono text-[10px] font-black text-sky-300">
+                      +{c.yieldPerAwakening} / éveil
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-xl bg-secondary/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground ring-1 ring-border">
+              Aucune de tes cartes actuelles ne la porte — elle t&apos;attend
+              dans les packs. Personne ne sait lesquelles avant de les tirer.
+            </p>
+          )}
+        </div>
+        <div className="border-t border-border/50 px-6 pb-6 pt-4">
+          <Button
+            onClick={dismiss}
+            className="h-12 w-full rounded-2xl bg-sky-400 text-sm font-black uppercase tracking-wider text-black hover:bg-sky-300"
+          >
+            <Check className="size-4" />
+            Compris
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── La vitrine ─────────────────────────────────────────────────────────────
 // Les gadgets des Talents — rigolos mais secondaires : ils vivent en bas de
 // page, compacts, sous les vraies informations d'entraînement.
@@ -934,7 +1066,10 @@ function TrophyAnnounceModal() {
     if (!loaded || dismissed) return;
     if (forced) {
       // La tournée forcée : après la Révélation des talents.
-      const onTalents = () => setOpen(true);
+      const onTalents = () => {
+        if (trophies.some((t) => t.earned)) setOpen(true);
+        else window.dispatchEvent(new Event("rtm:trophies-done"));
+      };
       window.addEventListener("rtm:talents-done", onTalents);
       return () => window.removeEventListener("rtm:talents-done", onTalents);
     }
@@ -944,7 +1079,7 @@ function TrophyAnnounceModal() {
     } catch {}
     const t = setTimeout(() => setOpen(true), 700);
     return () => clearTimeout(t);
-  }, [loaded, unannounced, dismissed, forced]);
+  }, [loaded, unannounced, dismissed, forced, trophies]);
 
   const items = useMemo(
     () =>
@@ -958,7 +1093,11 @@ function TrophyAnnounceModal() {
     setOpen(false);
     setDismissed(true);
     setStep(0);
-    if (forced) return; // rien n'est marqué en mode démo
+    if (forced) {
+      // Rien n'est marqué — au tour de la Magnésie.
+      window.dispatchEvent(new Event("rtm:trophies-done"));
+      return;
+    }
     try {
       await fetch("/api/trophies/announce", { method: "POST" });
     } catch {}

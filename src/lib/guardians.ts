@@ -19,6 +19,7 @@ import {
   DIRECTION_CAPS,
   ENERGY_BY_RARITY,
   cardioDrawCount,
+  magnesieOf,
   FORGE_THRESHOLD,
   HAT_DIRECTIONS,
   POLARITY_POINTS,
@@ -55,6 +56,8 @@ export interface AwakenedGuardian {
   detail: string;
   record: boolean; // record battu sur SA machine (badge + effets sur record)
   fragmentRarity: Rarity | null;
+  // La carte porte la magnésie : ce qu'elle a déposé à cet éveil.
+  magnesie?: number;
 }
 
 export interface GuardianResolution {
@@ -63,6 +66,7 @@ export interface GuardianResolution {
   charges: Charges;
   bonusTokens: number; // jetons normaux offerts (Faveur, Grâce, Lame Résolue)
   bonusSpecialTokens: number; // jetons spéciaux offerts (le Vœu)
+  magnesieEarned: number; // la poudre déposée par les porteuses éveillées
 }
 
 // ─── Chargement et remise à zéro ────────────────────────────────────────────
@@ -291,7 +295,7 @@ export async function resolveGuardians(params: {
   await resetHatForNewSession(userId, charges);
   if (entries.length === 0) {
     await saveCharges(userId, charges);
-    return { guardians: [], recordCount: 0, charges, bonusTokens: 0, bonusSpecialTokens: 0 };
+    return { guardians: [], recordCount: 0, charges, bonusTokens: 0, bonusSpecialTokens: 0, magnesieEarned: 0 };
   }
 
   // 2. Cartes gardiennes.
@@ -360,6 +364,7 @@ export async function resolveGuardians(params: {
   let recordCount = 0;
   let bonusTokens = 0;
   let bonusSpecialTokens = 0;
+  let magnesieEarned = 0;
   const deltas: Charges = {};
   const fragments: { rarity: Rarity; category: "animal" | "pokemon"; count: number }[] = [];
   const add = (d: Direction, n: number) => {
@@ -687,6 +692,14 @@ export async function resolveGuardians(params: {
         }
       }
     }
+    // La Magnésie : si la carte est porteuse, elle dépose sa poudre en
+    // plus de son pouvoir — quel que soit son étage.
+    const dust = magnesieOf(e.side.category, card.slug, rarity);
+    if (dust) {
+      g.magnesie = dust;
+      magnesieEarned += dust;
+      g.detail = g.detail ? `${g.detail} · +${dust} magnésie` : `+${dust} magnésie`;
+    }
     guardians.push(g);
   }
 
@@ -720,6 +733,12 @@ export async function resolveGuardians(params: {
       .set({ cardsSpecialTokens: sql`${users.cardsSpecialTokens} + ${bonusSpecialTokens}` })
       .where(eq(users.id, userId));
   }
+  if (magnesieEarned > 0) {
+    await db
+      .update(users)
+      .set({ magnesie: sql`${users.magnesie} + ${magnesieEarned}` })
+      .where(eq(users.id, userId));
+  }
 
   // 8. Compteur d'éveils (talents évolutifs : la Légende de la Carpe...).
   const awakenedIds = guardians.map((g) => g.exerciseId);
@@ -730,7 +749,7 @@ export async function resolveGuardians(params: {
       .where(inArray(exercises.id, awakenedIds));
   }
 
-  return { guardians, recordCount, charges, bonusTokens, bonusSpecialTokens };
+  return { guardians, recordCount, charges, bonusTokens, bonusSpecialTokens, magnesieEarned };
 }
 
 // ─── Le Gardien lié ─────────────────────────────────────────────────────────
@@ -916,6 +935,7 @@ export interface DraftAwakening {
   card: { category: "animal" | "pokemon"; name: string; rarity: Rarity; imageUrl: string | null };
   powerName: string;
   detail: string;
+  magnesie?: number;
 }
 
 // Le placement : chaque carte tirée s'éveille dans le sens choisi. Les
@@ -926,9 +946,10 @@ export async function resolveCardioDraft(
   userId: number,
   sessionId: number,
   choices: { drawId: number; mode: MascotMode }[],
-): Promise<{ awakenings: DraftAwakening[]; charges: Charges }> {
+): Promise<{ awakenings: DraftAwakening[]; charges: Charges; magnesieEarned: number }> {
   const awakenings: DraftAwakening[] = [];
   const deltas: Charges = {};
+  let magnesieEarned = 0;
   const add = (d: Direction, n: number) => {
     deltas[d] = (deltas[d] ?? 0) + n;
   };
@@ -953,8 +974,8 @@ export async function resolveCardioDraft(
     const { category, cardId } = claimed[0];
     const card =
       category === "animal"
-        ? (await db.select({ name: animals.name, rarity: animals.rarity, imageUrl: animals.imageUrl, subtype: animals.lineage }).from(animals).where(eq(animals.id, cardId)))[0]
-        : (await db.select({ name: pokemon.name, rarity: pokemon.rarity, imageUrl: pokemon.imageUrl, subtype: pokemon.primaryType }).from(pokemon).where(eq(pokemon.id, cardId)))[0];
+        ? (await db.select({ name: animals.name, slug: animals.slug, rarity: animals.rarity, imageUrl: animals.imageUrl, subtype: animals.lineage }).from(animals).where(eq(animals.id, cardId)))[0]
+        : (await db.select({ name: pokemon.name, slug: pokemon.slug, rarity: pokemon.rarity, imageUrl: pokemon.imageUrl, subtype: pokemon.primaryType }).from(pokemon).where(eq(pokemon.id, cardId)))[0];
     if (!card) continue;
 
     const rarity = card.rarity as Rarity;
@@ -968,10 +989,13 @@ export async function resolveCardioDraft(
       repel: choice.mode === "repel",
       add,
     });
+    const dust = magnesieOf(category as "animal" | "pokemon", card.slug, rarity);
+    if (dust) magnesieEarned += dust;
     awakenings.push({
       card: { category: category as "animal" | "pokemon", name: card.name, rarity, imageUrl: card.imageUrl },
       powerName: `L'Échappée — ${a.powerName}`,
-      detail: a.detail,
+      detail: dust ? `${a.detail} · +${dust} magnésie` : a.detail,
+      magnesie: dust ?? undefined,
     });
   }
 
@@ -980,5 +1004,11 @@ export async function resolveCardioDraft(
     charges[d] = Math.min(DIRECTION_CAPS[d], Math.max(0, (charges[d] ?? 0) + delta));
   }
   await saveCharges(userId, charges);
-  return { awakenings, charges };
+  if (magnesieEarned > 0) {
+    await db
+      .update(users)
+      .set({ magnesie: sql`${users.magnesie} + ${magnesieEarned}` })
+      .where(eq(users.id, userId));
+  }
+  return { awakenings, charges, magnesieEarned };
 }

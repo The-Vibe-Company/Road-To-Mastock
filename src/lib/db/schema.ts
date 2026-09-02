@@ -18,6 +18,9 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
   accentColor: text("accent_color").default("orange"),
+  // La Magnésie : la poudre qui délie les Gardiens, gagnée par les éveils
+  // des cartes porteuses (~10 % du catalogue, tirées au sort).
+  magnesie: integer("magnesie").notNull().default(0),
   theme: text("theme").default("dark"),
   cardsTokens: integer("cards_tokens").notNull().default(0),
   cardsSpecialTokens: integer("cards_special_tokens").notNull().default(0),
