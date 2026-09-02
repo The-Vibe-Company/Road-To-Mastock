@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { X, ChevronRight, Gem, Package, Eye, Cards } from "@/components/icons";
+import { X, ChevronRight, Gem, Package, Eye, Cards, Shield } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { CreatureCard } from "@/components/creature-card";
 import { SlotReel, type ReelItem } from "@/components/slot-reel";
@@ -22,6 +22,8 @@ import {
 } from "@/lib/pack-types";
 import { PACK_ART_URLS } from "@/lib/pack-art-urls";
 import { useTalents } from "@/components/talents-provider";
+import { TalentDescription } from "@/components/talent-description";
+import { magnesieOf, powerLabel, powerShorts } from "@/lib/powers";
 
 type Category = "animal" | "pokemon";
 type Stage = "pack" | "category" | "rarity" | "creature" | "duplicate";
@@ -40,6 +42,7 @@ interface AnimalCreature extends CreatureBase {
   cardNumber: number | null;
   scientificName: string | null;
   description: string | null;
+  lineage?: string | null;
 }
 interface PokemonCreature extends CreatureBase {
   kind: "pokemon";
@@ -626,17 +629,49 @@ export function PackOpenModal({
                   )}
                 </div>
 
+                {/* Ce que la carte APPORTE : son pouvoir de Gardien, sa
+                    magnésie éventuelle — l'impact se lit dès le tirage. */}
+                {(() => {
+                  const subtype =
+                    result.creature.kind === "pokemon"
+                      ? result.creature.primaryType ?? null
+                      : result.creature.lineage ?? null;
+                  const big = result.rarity === "legendary" || result.rarity === "mythic";
+                  const hint = big
+                    ? powerLabel(result.creature.kind, result.rarity, subtype, result.creature.slug).name
+                    : powerShorts(result.creature.kind, subtype, result.rarity).tiny;
+                  const dust = magnesieOf(result.creature.kind, result.creature.slug, result.rarity);
+                  return (
+                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-black text-primary ring-1 ring-primary/30">
+                        <Shield className="size-3" />
+                        Gardien : {hint}
+                      </span>
+                      {dust != null && (
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-sky-500/10 px-2 py-1 text-[10px] font-black text-sky-300 ring-1 ring-sky-500/30">
+                          <Gem className="size-3" />
+                          +{dust} magnésie / éveil
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Le jackpot dans le jackpot : un Talent caché découvert */}
                 {result.talent && (
-                  <div className="w-full max-w-xs rounded-2xl bg-amber-400/10 px-4 py-3 text-center ring-1 ring-amber-400/60 shadow-[0_0_44px_-8px_rgba(251,191,36,0.8)] animate-card-reveal">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-300">
+                  <div className="w-full max-w-xs rounded-2xl bg-amber-400/10 px-4 py-3 ring-1 ring-amber-400/60 shadow-[0_0_44px_-8px_rgba(251,191,36,0.8)] animate-card-reveal">
+                    <p className="text-center text-[10px] font-black uppercase tracking-[0.3em] text-amber-300">
                       Talent caché découvert
                     </p>
-                    <p className="mt-1.5 text-base font-black tracking-tight text-amber-200">
+                    <p className="mt-1.5 text-center text-base font-black tracking-tight text-amber-200">
                       {result.talent.name}
                     </p>
-                    <p className="mt-1 text-xs leading-relaxed text-amber-100/80">
-                      {result.talent.description}
+                    <TalentDescription
+                      text={result.talent.description}
+                      className="mt-1 text-left text-xs leading-relaxed text-amber-100/80"
+                    />
+                    <p className="mt-2 text-center text-[10px] font-bold text-amber-200/60">
+                      Inscrit dans ton Grimoire — certains talents ouvrent l&apos;Oracle
                     </p>
                   </div>
                 )}

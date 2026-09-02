@@ -115,17 +115,21 @@ export default async function Home() {
       {/* Hero — l'affiche : titre pleine largeur, puis la rangée d'outils */}
       <div className="hero-gradient relative -mx-4 -mt-10 mb-8 overflow-hidden px-4 pb-6 pt-12">
         {/* L'Étendard : la carte flotte derrière le titre */}
+        {/* L'Étendard : la carte choisie habille TOUTE la home — plein
+            écran, fondue vers le bas pour laisser respirer le contenu. */}
         {bannerUrl && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 w-2/5 select-none"
+            className="pointer-events-none fixed inset-0 -z-10 select-none"
             style={{
-              maskImage: "linear-gradient(to left, rgba(0,0,0,0.9), transparent 95%)",
-              WebkitMaskImage: "linear-gradient(to left, rgba(0,0,0,0.9), transparent 95%)",
+              maskImage:
+                "linear-gradient(to bottom, black, rgba(0,0,0,0.75) 55%, rgba(0,0,0,0.35) 85%, rgba(0,0,0,0.15))",
+              WebkitMaskImage:
+                "linear-gradient(to bottom, black, rgba(0,0,0,0.75) 55%, rgba(0,0,0,0.35) 85%, rgba(0,0,0,0.15))",
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={bannerUrl} alt="" className="size-full object-cover opacity-25" />
+            <img src={bannerUrl} alt="" className="size-full object-cover opacity-30" />
           </div>
         )}
         <h1 className="text-4xl leading-[0.95] tracking-tight">

@@ -53,19 +53,8 @@ export function HomeExtras() {
       <TrophyAnnounceModal />
       <MagnesieAnnounceModal />
 
-      {/* Le Squatteur : le chat vit sa vie en bas de l'écran */}
-      {loaded && has("squatteur") && assets["squatteur"] && (
-        <div className="pointer-events-none fixed bottom-20 right-3 z-30">
-          <Image
-            src={assets["squatteur"]!}
-            alt=""
-            width={44}
-            height={44}
-            unoptimized
-            className="cat-idle size-11 object-contain opacity-90 drop-shadow-lg"
-          />
-        </div>
-      )}
+      {/* Le Squatteur : le chat traverse le bas de l'écran, sans se presser */}
+      {loaded && has("squatteur") && <CatWalker />}
     </>
   );
 }
@@ -924,6 +913,50 @@ function MagnesieAnnounceModal() {
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Le Squatteur ───────────────────────────────────────────────────────────
+// Un chat dessiné à la main (SVG) qui marche le long du bas de l'écran,
+// de droite à gauche, en boucle lente. Pattes alternées, queue vivante,
+// petit bob du corps — il ne te regarde pas, il passe.
+function CatWalker() {
+  return (
+    <div aria-hidden className="cat-track pointer-events-none fixed bottom-16 left-0 z-30">
+      <svg
+        width="52"
+        height="34"
+        viewBox="0 0 52 34"
+        className="cat-body text-foreground/80 drop-shadow-lg"
+        fill="currentColor"
+      >
+        {/* pattes arrière + avant : deux paires alternées */}
+        <g className="cat-legs-a">
+          <rect x="12" y="22" width="3" height="10" rx="1.5" />
+          <rect x="34" y="22" width="3" height="10" rx="1.5" />
+        </g>
+        <g className="cat-legs-b">
+          <rect x="18" y="22" width="3" height="10" rx="1.5" />
+          <rect x="40" y="22" width="3" height="10" rx="1.5" />
+        </g>
+        {/* le corps */}
+        <rect x="9" y="12" width="34" height="13" rx="6.5" />
+        {/* la tête, tournée vers la gauche (sens de la marche) */}
+        <circle cx="8.5" cy="12" r="6.5" />
+        {/* les oreilles */}
+        <path d="M3.5 8.5 L4.5 2.5 L9 6.5 Z" />
+        <path d="M9.5 6 L12.5 1.5 L14.5 7.5 Z" />
+        {/* la queue, relevée, qui ondule */}
+        <path
+          className="cat-tail"
+          d="M42 16 Q 50 14 49 5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+      </svg>
     </div>
   );
 }
