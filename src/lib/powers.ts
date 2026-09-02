@@ -788,7 +788,7 @@ function fmtAdd(d: Direction, n: number): string {
     case "inner_pokemon": return `dans un pack Basique, la carte tirée est animale à 75 % / Pokémon à 25 % — ce curseur bouge de ${n} % vers les Pokémon`;
     case "inner_animal": return `dans un pack Basique, la carte tirée est animale à 75 % / Pokémon à 25 % — ce curseur bouge de ${n} % vers les animaux`;
     case "wheel_x3": return `+${n} tickets sur la case ×3 de la roue des jetons spéciaux`;
-    case "forge": return `+${n} dans la jauge de Forge — visible sur la Collection ; pleine à 20, elle paie un tour de la Roue de la Forge : un fragment garanti, sa rareté au tirage (40 % commun → 1 % mythique)`;
+    case "forge": return `+${n} dans la jauge de Forge — visible sur la Collection ; pleine à 20, elle paie un tour de la Roue de la Forge : un fragment garanti, du commun (42 %) à l'épique (10 %)`;
     case "curee": return `${n} charges de Curée : tes ${n} prochains doublons tirés rapportent chacun 1 fragment de plus`;
     case "banquise": return `ouvrir un pack consomme normalement tous tes tickets — là, jusqu'à ${n} tickets par direction restent dans le chapeau après ta prochaine ouverture`;
     case "no_basic": return n > 1 ? `tes ${n} prochains packs refusent d'être Basiques` : `ton prochain pack refuse d'être Basique`;
@@ -1383,20 +1383,20 @@ export const FORGE_THRESHOLD = 20;
 // un fragment garanti, dont la rareté se joue aux pourcentages.
 export const FORGE_WHEEL_COST = 20;
 
-export const FORGE_WHEEL_ODDS: Record<Rarity, number> = {
-  common: 40,
+// Pas de fragment légendaire ni mythique : la Roue s'arrête à l'épique.
+export const FORGE_WHEEL_ODDS: Partial<Record<Rarity, number>> = {
+  common: 42,
   uncommon: 30,
-  rare: 17,
-  epic: 9,
-  legendary: 3,
-  mythic: 1,
+  rare: 18,
+  epic: 10,
 };
 
 // Tirage pur (injectable pour les tests) : renvoie la rareté gagnée.
 export function drawForgeFragment(rand: () => number = Math.random): Rarity {
-  const total = Object.values(FORGE_WHEEL_ODDS).reduce((a, b) => a + b, 0);
+  const entries = Object.entries(FORGE_WHEEL_ODDS) as [Rarity, number][];
+  const total = entries.reduce((a, [, w]) => a + w, 0);
   let roll = rand() * total;
-  for (const [rarity, weight] of Object.entries(FORGE_WHEEL_ODDS) as [Rarity, number][]) {
+  for (const [rarity, weight] of entries) {
     roll -= weight;
     if (roll < 0) return rarity;
   }

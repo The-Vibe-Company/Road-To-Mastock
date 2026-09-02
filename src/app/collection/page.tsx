@@ -636,7 +636,7 @@ export default function CollectionPage() {
               onClick={handleForgeWheel}
               disabled={forging}
               className="animate-pulse rounded-lg bg-primary/20 px-2.5 py-1.5 font-mono text-[10px] font-black uppercase tracking-wider text-primary ring-1 ring-primary/50 transition-all active:scale-95"
-              title="Roue de la Forge — un fragment garanti : 40 % commun, 30 % peu commun, 17 % rare, 9 % épique, 3 % légendaire, 1 % mythique"
+              title="Roue de la Forge — un fragment garanti : 42 % commun, 30 % peu commun, 18 % rare, 10 % épique"
             >
               {forging ? "Elle tourne..." : "Lancer la Roue"}
             </button>
